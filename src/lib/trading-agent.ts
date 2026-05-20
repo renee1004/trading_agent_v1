@@ -63,7 +63,7 @@ let agentState: AgentStatus = {
 
 const MAX_LOGS = 200;
 
-function addLog(
+export function addLog(
   type: AgentLog['type'],
   market: MarketType,
   message: string,
@@ -78,6 +78,18 @@ function addLog(
     details,
   };
   agentState.logs = [log, ...agentState.logs].slice(0, MAX_LOGS);
+
+  // DB에 로그 영속화 (비동기, 실패해도 무시)
+  db.agentLog.create({
+    data: {
+      type,
+      market,
+      message,
+      details: details ? JSON.stringify(details) : null,
+      sessionId: agentState.currentSessionId,
+    },
+  }).catch(() => {});
+
   return log;
 }
 

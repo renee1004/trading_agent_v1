@@ -223,6 +223,29 @@ export default function TradingDashboard() {
   const [isRunningCycle, setIsRunningCycle] = useState(false);
   const [autoCycleEnabled, setAutoCycleEnabled] = useState(false);
 
+  // 서버 스케줄러 상태
+  const [schedulerInfo, setSchedulerInfo] = useState<{
+    isSchedulerRunning: boolean;
+    schedulerMode: string;
+    isCycleRunning: boolean;
+    errorCount: number;
+    startedAt: string | null;
+    lastCycleAt: string | null;
+    nextCycleAt: string | null;
+    isMarketOpen: { domestic: boolean; overseas: boolean };
+    config: {
+      cycleIntervalMs: number;
+      tradeOnlyMarketHours: boolean;
+      domesticMarketOpen: string;
+      domesticMarketClose: string;
+      overseasMarketOpen: string;
+      overseasMarketClose: string;
+    };
+    totalCycles: number;
+    totalTrades: number;
+  } | null>(null);
+  const [agentMode, setAgentMode] = useState<'SERVER' | 'BROWSER'>('SERVER');
+
   // 해외주식 상태
   const [marketType, setMarketType] = useState<'DOMESTIC' | 'OVERSEAS'>('DOMESTIC');
   const [overseasPositions, setOverseasPositions] = useState<OverseasPositionData[]>([]);
@@ -402,6 +425,11 @@ export default function TradingDashboard() {
           setAgentStatus(data.data);
           setAgentLogs(data.data.recentLogs || []);
           setTradingStatus(data.data.isRunning ? 'RUNNING' : 'STOPPED');
+          // 서버 스케줄러 상태 업데이트
+          if (data.data.scheduler) {
+            setSchedulerInfo(data.data.scheduler);
+            setAgentMode(data.data.scheduler.schedulerMode as 'SERVER' | 'BROWSER');
+          }
         }
       }
     } catch (error) {
@@ -443,10 +471,17 @@ export default function TradingDashboard() {
   const startTrading = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch('/api/agent/start', { method: 'POST' });
+      const res = await fetch('/api/agent/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode: agentMode }),
+      });
       const data = await res.json();
       if (data.success) {
         setTradingStatus('RUNNING');
+        if (agentMode === 'BROWSER') {
+          setAutoCycleEnabled(true);
+        }
         await loadAgentStatus();
       }
     } catch (error) {
@@ -1592,36 +1627,140 @@ export default function TradingDashboard() {
 
           {/* ===== 에이전트 탭 ===== */}
           <TabsContent value="agent" className="space-y-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-xl font-bold">AI 자동매매 에이전트</h2>
-                <p className="text-sm text-muted-foreground">
-                  시그널 분석 → 리스크 체크 → 자동 주문 → 포지션 모니터링
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                <Button 
-                  onClick={runOneCycle} 
-                  disabled={isRunningCycle}
-                  className="bg-blue-600 hover:bg-blue-700"
-                >
-                  <RotateCw className={`h-4 w-4 mr-1 ${isRunningCycle ? 'animate-spin' : ''}`} />
-                  1사이클 실행
-                </Button>
-                <div className="flex items-center gap-2 rounded-lg border px-3 py-2">
-                  <Switch 
-                    checked={autoCycleEnabled} 
-                    onCheckedChange={(checked) => {
-                      setAutoCycleEnabled(checked);
-                      if (checked && tradingStatus !== 'RUNNING') {
-                        startTrading();
-                      }
-                    }} 
-                  />
-                  <Label className="text-sm">자동실행 (60초)</Label>
+            {/* 실행 모드 선택 */}
+            <Card className="border-2 border-dashed">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <Bot className="h-5 w-5" />
+                      AI 자동매매 에이전트 실행
+                    </CardTitle>
+                    <CardDescription>실행 모드를 선택하고 에이전트를 시작하세요</CardDescription>
+                  </div>
+                  {/* 장시간 상태 표시 */}
+                  <div className="flex items-center gap-2">
+                    {schedulerInfo?.isMarketOpen && (
+                      <>
+                        <Badge variant="outline" className={`text-xs ${schedulerInfo.isMarketOpen.domestic ? 'border-emerald-300 text-emerald-600' : 'border-gray-300 text-gray-400'}`}>
+                          국내 {schedulerInfo.isMarketOpen.domestic ? '장 열림' : '장 닫힘'}
+                        </Badge>
+                        <Badge variant="outline" className={`text-xs ${schedulerInfo.isMarketOpen.overseas ? 'border-blue-300 text-blue-600' : 'border-gray-300 text-gray-400'}`}>
+                          해외 {schedulerInfo.isMarketOpen.overseas ? '장 열림' : '장 닫힘'}
+                        </Badge>
+                      </>
+                    )}
+                  </div>
                 </div>
-              </div>
-            </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* 모드 선택 카드 */}
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div 
+                    className={`cursor-pointer rounded-lg border-2 p-4 transition-all ${
+                      agentMode === 'SERVER' 
+                        ? 'border-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/20' 
+                        : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                    onClick={() => setAgentMode('SERVER')}
+                  >
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${agentMode === 'SERVER' ? 'bg-emerald-100 dark:bg-emerald-900' : 'bg-gray-100'}`}>
+                        <Terminal className={`h-5 w-5 ${agentMode === 'SERVER' ? 'text-emerald-600' : 'text-gray-500'}`} />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold">서버 모드</h3>
+                        <p className="text-xs text-muted-foreground">24/7 자동 실행 (권장)</p>
+                      </div>
+                      {agentMode === 'SERVER' && <CheckCircle className="h-5 w-5 text-emerald-500 ml-auto" />}
+                    </div>
+                    <ul className="text-xs text-muted-foreground space-y-1.5 ml-1">
+                      <li className="flex items-center gap-1.5"><CheckCircle className="h-3 w-3 text-emerald-500" /> 브라우저를 닫아도 계속 실행</li>
+                      <li className="flex items-center gap-1.5"><CheckCircle className="h-3 w-3 text-emerald-500" /> 서버 재시작 시 자동 복구</li>
+                      <li className="flex items-center gap-1.5"><CheckCircle className="h-3 w-3 text-emerald-500" /> 장시간에만 자동 거래</li>
+                      <li className="flex items-center gap-1.5"><CheckCircle className="h-3 w-3 text-emerald-500" /> 클라우드 서버 배포 가능</li>
+                    </ul>
+                  </div>
+
+                  <div 
+                    className={`cursor-pointer rounded-lg border-2 p-4 transition-all ${
+                      agentMode === 'BROWSER' 
+                        ? 'border-blue-500 bg-blue-50/50 dark:bg-blue-950/20' 
+                        : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                    onClick={() => setAgentMode('BROWSER')}
+                  >
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${agentMode === 'BROWSER' ? 'bg-blue-100 dark:bg-blue-900' : 'bg-gray-100'}`}>
+                        <Activity className={`h-5 w-5 ${agentMode === 'BROWSER' ? 'text-blue-600' : 'text-gray-500'}`} />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold">브라우저 모드</h3>
+                        <p className="text-xs text-muted-foreground">브라우저에서 수동 실행</p>
+                      </div>
+                      {agentMode === 'BROWSER' && <CheckCircle className="h-5 w-5 text-blue-500 ml-auto" />}
+                    </div>
+                    <ul className="text-xs text-muted-foreground space-y-1.5 ml-1">
+                      <li className="flex items-center gap-1.5"><CircleDot className="h-3 w-3 text-blue-500" /> 브라우저가 열려있어야 실행</li>
+                      <li className="flex items-center gap-1.5"><CircleDot className="h-3 w-3 text-blue-500" /> 수동으로 사이클 실행</li>
+                      <li className="flex items-center gap-1.5"><CircleDot className="h-3 w-3 text-blue-500" /> 테스트/디버깅용</li>
+                      <li className="flex items-center gap-1.5"><XCircle className="h-3 w-3 text-gray-400" /> 탭 닫으면 매매 중지</li>
+                    </ul>
+                  </div>
+                </div>
+
+                {/* 시작/중지 버튼 */}
+                <div className="flex items-center gap-3 pt-2">
+                  {tradingStatus !== 'RUNNING' ? (
+                    <Button 
+                      size="lg"
+                      onClick={startTrading} 
+                      disabled={isLoading}
+                      className="bg-emerald-600 hover:bg-emerald-700 flex-1"
+                    >
+                      <Play className="h-5 w-5 mr-2" />
+                      {agentMode === 'SERVER' ? '서버 모드로 시작 (24/7)' : '브라우저 모드로 시작'}
+                    </Button>
+                  ) : (
+                    <div className="flex items-center gap-2 flex-1">
+                      <Badge className="bg-emerald-500 text-white py-1 px-3">
+                        <div className="h-2 w-2 rounded-full bg-white animate-pulse mr-2" />
+                        {schedulerInfo?.isSchedulerRunning ? '서버 모드 실행 중' : '브라우저 모드 실행 중'}
+                      </Badge>
+                      <Button 
+                        size="sm" 
+                        variant="destructive" 
+                        onClick={stopTrading}
+                        disabled={isLoading}
+                      >
+                        <Square className="h-4 w-4 mr-1" />
+                        중지
+                      </Button>
+                      <Button 
+                        onClick={runOneCycle} 
+                        disabled={isRunningCycle}
+                        size="sm"
+                        variant="outline"
+                      >
+                        <RotateCw className={`h-4 w-4 mr-1 ${isRunningCycle ? 'animate-spin' : ''}`} />
+                        1사이클 수동 실행
+                      </Button>
+                    </div>
+                  )}
+                </div>
+
+                {/* 서버 모드 안내 */}
+                {agentMode === 'SERVER' && tradingStatus !== 'RUNNING' && (
+                  <Alert className="bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800">
+                    <Terminal className="h-4 w-4 text-emerald-600" />
+                    <AlertDescription className="text-sm">
+                      서버 모드로 시작하면 브라우저를 닫아도 서버에서 자동으로 매매가 진행됩니다. 
+                      클라우드 서버(AWS, GCP 등)에 배포하면 24/7 끊김 없이 실행할 수 있습니다.
+                    </AlertDescription>
+                  </Alert>
+                )}
+              </CardContent>
+            </Card>
 
             {/* 에이전트 상태 카드 */}
             <div className="grid gap-4 md:grid-cols-4">
@@ -1648,7 +1787,7 @@ export default function TradingDashboard() {
                     </div>
                     <div>
                       <p className="text-sm text-muted-foreground">실행 사이클</p>
-                      <p className="text-2xl font-bold">{agentStatus?.totalCycles || 0}회</p>
+                      <p className="text-2xl font-bold">{schedulerInfo?.totalCycles || agentStatus?.totalCycles || 0}회</p>
                     </div>
                   </div>
                 </CardContent>
@@ -1661,7 +1800,7 @@ export default function TradingDashboard() {
                     </div>
                     <div>
                       <p className="text-sm text-muted-foreground">총 주문 건수</p>
-                      <p className="text-2xl font-bold">{agentStatus?.totalTrades || 0}건</p>
+                      <p className="text-2xl font-bold">{schedulerInfo?.totalTrades || agentStatus?.totalTrades || 0}건</p>
                     </div>
                   </div>
                 </CardContent>
@@ -1673,18 +1812,147 @@ export default function TradingDashboard() {
                       <Clock className="h-6 w-6 text-amber-600" />
                     </div>
                     <div>
-                      <p className="text-sm text-muted-foreground">마지막 실행</p>
+                      <p className="text-sm text-muted-foreground">다음 실행</p>
                       <p className="text-lg font-bold">
-                        {agentStatus?.lastCycleTime 
-                          ? new Date(agentStatus.lastCycleTime).toLocaleTimeString('ko-KR')
-                          : '-'
+                        {schedulerInfo?.nextCycleAt 
+                          ? new Date(schedulerInfo.nextCycleAt).toLocaleTimeString('ko-KR')
+                          : agentStatus?.lastCycleTime
+                            ? new Date(agentStatus.lastCycleTime).toLocaleTimeString('ko-KR')
+                            : '-'
                         }
                       </p>
+                      {schedulerInfo?.nextCycleAt && (
+                        <p className="text-xs text-muted-foreground">다음 사이클</p>
+                      )}
                     </div>
                   </div>
                 </CardContent>
               </Card>
             </div>
+
+            {/* 스케줄러 설정 */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Settings className="h-5 w-5" />
+                  스케줄러 설정
+                </CardTitle>
+                <CardDescription>에이전트 자동 실행 주기 및 장시간 설정</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid gap-4 md:grid-cols-2">
+                  {/* 사이클 주기 */}
+                  <div className="space-y-2">
+                    <Label>사이클 실행 주기</Label>
+                    <Select 
+                      value={String(schedulerInfo?.config?.cycleIntervalMs || 60000)} 
+                      onValueChange={async (value) => {
+                        await fetch('/api/agent/scheduler', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ cycleIntervalMs: parseInt(value) }),
+                        });
+                        loadAgentStatus();
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="30000">30초마다</SelectItem>
+                        <SelectItem value="60000">1분마다 (권장)</SelectItem>
+                        <SelectItem value="120000">2분마다</SelectItem>
+                        <SelectItem value="300000">5분마다</SelectItem>
+                        <SelectItem value="600000">10분마다</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* 장시간 거래 제한 */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label>장시간에만 거래</Label>
+                      <Switch 
+                        checked={schedulerInfo?.config?.tradeOnlyMarketHours ?? true}
+                        onCheckedChange={async (checked) => {
+                          await fetch('/api/agent/scheduler', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ tradeOnlyMarketHours: checked }),
+                          });
+                          loadAgentStatus();
+                        }}
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {schedulerInfo?.config?.tradeOnlyMarketHours !== false 
+                        ? '장시간(09:00~15:30, 23:30~06:00)에만 자동 주문 실행' 
+                        : '24시간 주기로 분석 실행 (장외 시간은 신호만 기록)'}
+                    </p>
+                  </div>
+                </div>
+
+                {/* 장시간 설정 */}
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label className="text-sm">국내 장시간</Label>
+                    <div className="flex items-center gap-2">
+                      <Input 
+                        value={schedulerInfo?.config?.domesticMarketOpen || '09:00'} 
+                        className="w-24 text-center" 
+                        onChange={async (e) => {
+                          await fetch('/api/agent/scheduler', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ domesticMarketOpen: e.target.value }),
+                          });
+                        }}
+                      />
+                      <span className="text-muted-foreground">~</span>
+                      <Input 
+                        value={schedulerInfo?.config?.domesticMarketClose || '15:30'} 
+                        className="w-24 text-center"
+                        onChange={async (e) => {
+                          await fetch('/api/agent/scheduler', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ domesticMarketClose: e.target.value }),
+                          });
+                        }}
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm">해외 장시간 (한국시간)</Label>
+                    <div className="flex items-center gap-2">
+                      <Input 
+                        value={schedulerInfo?.config?.overseasMarketOpen || '23:30'} 
+                        className="w-24 text-center"
+                        onChange={async (e) => {
+                          await fetch('/api/agent/scheduler', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ overseasMarketOpen: e.target.value }),
+                          });
+                        }}
+                      />
+                      <span className="text-muted-foreground">~</span>
+                      <Input 
+                        value={schedulerInfo?.config?.overseasMarketClose || '06:00'} 
+                        className="w-24 text-center"
+                        onChange={async (e) => {
+                          await fetch('/api/agent/scheduler', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ overseasMarketClose: e.target.value }),
+                          });
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
             {/* 마지막 사이클 결과 */}
             {agentStatus?.lastCycleSummary && (
@@ -1759,6 +2027,49 @@ export default function TradingDashboard() {
               </CardContent>
             </Card>
 
+            {/* 서버 배포 가이드 */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Globe className="h-5 w-5" />
+                  24/7 실행 방법 (클라우드 배포)
+                </CardTitle>
+                <CardDescription>컴퓨터를 켜두지 않아도 클라우드 서버에서 24시간 실행 가능</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  <div className="flex items-start gap-3 rounded-lg border p-3">
+                    <Badge className="bg-blue-500 text-white shrink-0 mt-0.5">1</Badge>
+                    <div>
+                      <p className="font-medium text-sm">KIS API 키 설정</p>
+                      <p className="text-xs text-muted-foreground">위 &quot;API 설정&quot; 버튼으로 App Key, App Secret, 계좌번호를 입력하세요. 모의투자 모드로 먼저 테스트하는 것을 권장합니다.</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3 rounded-lg border p-3">
+                    <Badge className="bg-blue-500 text-white shrink-0 mt-0.5">2</Badge>
+                    <div>
+                      <p className="font-medium text-sm">관심종목 추가</p>
+                      <p className="text-xs text-muted-foreground">관심종목 탭에서 분석할 종목을 추가하세요. 추가된 종목만 자동매매 대상이 됩니다.</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3 rounded-lg border p-3">
+                    <Badge className="bg-blue-500 text-white shrink-0 mt-0.5">3</Badge>
+                    <div>
+                      <p className="font-medium text-sm">서버 모드로 시작</p>
+                      <p className="text-xs text-muted-foreground">위에서 &quot;서버 모드로 시작 (24/7)&quot; 버튼을 클릭하면 서버에서 자동으로 매매가 시작됩니다.</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3 rounded-lg border p-3">
+                    <Badge className="bg-violet-500 text-white shrink-0 mt-0.5">A</Badge>
+                    <div>
+                      <p className="font-medium text-sm">클라우드 배포 (선택사항)</p>
+                      <p className="text-xs text-muted-foreground">AWS Lightsail, GCP Compute Engine, Oracle Cloud 등에 이 앱을 배포하면 컴퓨터를 끄고 외출해도 24/7 자동매매가 계속 실행됩니다. 월 5천원~1만원대 가상서버면 충분합니다.</p>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
             {/* 실시간 에이전트 로그 */}
             <Card>
               <CardHeader>
@@ -1767,10 +2078,18 @@ export default function TradingDashboard() {
                     <CardTitle className="text-base">에이전트 실행 로그</CardTitle>
                     <CardDescription>자동매매 에이전트의 실시간 작업 기록</CardDescription>
                   </div>
-                  <Badge variant="outline" className="text-xs">
-                    {agentLogs.length}건
-                    {isRunningCycle && ' · 실행 중...'}
-                  </Badge>
+                  <div className="flex items-center gap-2">
+                    {schedulerInfo?.isSchedulerRunning && (
+                      <Badge className="bg-emerald-500 text-white text-xs">
+                        <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse mr-1.5" />
+                        서버 실행 중
+                      </Badge>
+                    )}
+                    <Badge variant="outline" className="text-xs">
+                      {agentLogs.length}건
+                      {(isRunningCycle || schedulerInfo?.isCycleRunning) && ' · 실행 중...'}
+                    </Badge>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>

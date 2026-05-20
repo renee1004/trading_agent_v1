@@ -127,3 +127,33 @@ model MarketData {
 
   @@unique([stockCode, date])
 }
+
+model AgentConfig {
+  id                  String   @id @default(cuid())
+  isRunning           Boolean  @default(false)
+  currentSessionId    String?
+  schedulerMode       String   @default("SERVER")   // SERVER, BROWSER
+  cycleIntervalMs     Int      @default(60000)      // 사이클 주기 (ms)
+  tradeOnlyMarketHours Boolean @default(true)       // 장시간에만 거래
+  domesticMarketOpen  String   @default("09:00")    // 국내 장 시작
+  domesticMarketClose String   @default("15:30")    // 국내 장 종료
+  overseasMarketOpen  String   @default("23:30")    // 해외 장 시작 (한국시간)
+  overseasMarketClose String   @default("06:00")    // 해외 장 종료 (한국시간)
+  totalCycles         Int      @default(0)
+  totalTrades         Int      @default(0)
+  dailyPnL            Float    @default(0)
+  lastCycleAt         DateTime?
+  lastCycleResult     String?  // JSON string
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
+model AgentLog {
+  id        String   @id @default(cuid())
+  type      String   // INFO, SIGNAL, TRADE, RISK, ERROR, EXIT
+  market    String   // DOMESTIC, OVERSEAS
+  message   String
+  details   String?  // JSON string
+  sessionId String?
+  createdAt DateTime @default(now())
+}
