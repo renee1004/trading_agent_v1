@@ -1464,7 +1464,7 @@ export default function TradingDashboard() {
                 <CardDescription>클릭하여 시세를 확인하거나 관심종목에 추가</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
                   {[
                     { code: 'AAPL', name: '애플', exchange: 'NAS' },
                     { code: 'NVDA', name: '엔비디아', exchange: 'NAS' },
@@ -1476,8 +1476,14 @@ export default function TradingDashboard() {
                     { code: 'NFLX', name: '넷플릭스', exchange: 'NAS' },
                     { code: 'AMD', name: 'AMD', exchange: 'NAS' },
                     { code: 'AVGO', name: '브로드컴', exchange: 'NAS' },
-                    { code: 'JPM', name: 'JP모건', exchange: 'NYS' },
-                    { code: 'SPY', name: 'S&P500 ETF', exchange: 'AMS' },
+                    { code: 'RKLB', name: '로켓랩🚀', exchange: 'NAS' },
+                    { code: 'LUNR', name: '인튜이티브머신스', exchange: 'NAS' },
+                    { code: 'ASTS', name: 'AST스페이스모빌', exchange: 'NAS' },
+                    { code: 'SPCE', name: '버진갤럭틱', exchange: 'NYS' },
+                    { code: 'JOBY', name: '조비에비에이션', exchange: 'NYS' },
+                    { code: 'PLTR', name: '팔란티어', exchange: 'NYS' },
+                    { code: 'CRWD', name: '크라우드스트라이크', exchange: 'NAS' },
+                    { code: 'COIN', name: '코인베이스', exchange: 'NAS' },
                   ].map((stock) => (
                     <Button
                       key={stock.code}

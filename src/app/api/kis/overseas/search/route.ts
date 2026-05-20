@@ -71,7 +71,6 @@ const US_STOCK_DATABASE = [
   
   // 산업재
   { code: 'CAT', name: '캐터필라', nameEng: 'Caterpillar Inc.', exchangeCode: 'NYS', sector: '산업재', market: '뉴욕' },
-  { code: 'BA', name: '보잉', nameEng: 'Boeing Co.', exchangeCode: 'NYS', sector: '항공', market: '뉴욕' },
   { code: 'GE', name: 'GE헬스케어', nameEng: 'GE Aerospace', exchangeCode: 'NYS', sector: '산업재', market: '뉴욕' },
   
   // ETF
@@ -80,6 +79,51 @@ const US_STOCK_DATABASE = [
   { code: 'IWM', name: 'iShares 러셀2000 ETF', nameEng: 'iShares Russell 2000 ETF', exchangeCode: 'AMS', sector: 'ETF', market: '아멕스' },
   { code: 'VTI', name: '뱅가드 토탈스톡 ETF', nameEng: 'Vanguard Total Stock ETF', exchangeCode: 'AMS', sector: 'ETF', market: '아멕스' },
   { code: 'VOO', name: '뱅가드 S&P500 ETF', nameEng: 'Vanguard S&P 500 ETF', exchangeCode: 'AMS', sector: 'ETF', market: '아멕스' },
+  
+  // 우주/항공우주 (Space & Aerospace)
+  { code: 'RKLB', name: '로켓랩', nameEng: 'Rocket Lab USA Inc.', exchangeCode: 'NAS', sector: '우주', market: '나스닥' },
+  { code: 'LUNR', name: '인튜이티브 머신스', nameEng: 'Intuitive Machines Inc.', exchangeCode: 'NAS', sector: '우주', market: '나스닥' },
+  { code: 'ASTR', name: '아스트라 스페이스', nameEng: 'Astra Space Inc.', exchangeCode: 'NAS', sector: '우주', market: '나스닥' },
+  { code: 'ASTS', name: 'AST 스페이스모빌', nameEng: 'AST SpaceMobile Inc.', exchangeCode: 'NAS', sector: '우주', market: '나스닥' },
+  { code: 'SPCE', name: '버진 갤럭틱', nameEng: 'Virgin Galactic Holdings', exchangeCode: 'NYS', sector: '우주', market: '뉴욕' },
+  { code: 'JOBY', name: '조비 에비에이션', nameEng: 'Joby Aviation Inc.', exchangeCode: 'NYS', sector: '우주', market: '뉴욕' },
+  { code: 'EVTL', name: '베티칼 에어스', nameEng: 'Vertical Aerospace Ltd.', exchangeCode: 'NYS', sector: '우주', market: '뉴욕' },
+  { code: 'BA', name: '보잉', nameEng: 'Boeing Co.', exchangeCode: 'NYS', sector: '항공우주', market: '뉴욕' },
+  { code: 'LMT', name: '록히드마틴', nameEng: 'Lockheed Martin Corp.', exchangeCode: 'NYS', sector: '항공우주', market: '뉴욕' },
+  { code: 'RTX', name: 'RTX코퍼레이션', nameEng: 'RTX Corp.', exchangeCode: 'NYS', sector: '항공우주', market: '뉴욕' },
+  { code: 'NOC', name: '노스롭그루먼', nameEng: 'Northrop Grumman Corp.', exchangeCode: 'NYS', sector: '항공우주', market: '뉴욕' },
+  { code: 'GD', name: '제너럴 다이내믹스', nameEng: 'General Dynamics Corp.', exchangeCode: 'NYS', sector: '항공우주', market: '뉴욕' },
+  { code: 'TDG', name: '트랜스다임', nameEng: 'TransDigm Group Inc.', exchangeCode: 'NYS', sector: '항공우주', market: '뉴욕' },
+  { code: 'UFO', name: 'PROCURE UFO ETF', nameEng: 'Procure Space ETF', exchangeCode: 'NAS', sector: '우주ETF', market: '나스닥' },
+  
+  // AI/로봇
+  { code: 'PLTR', name: '팔란티어', nameEng: 'Palantir Technologies', exchangeCode: 'NYS', sector: 'AI', market: '뉴욕' },
+  { code: 'SNOW', name: '스노우플레이크', nameEng: 'Snowflake Inc.', exchangeCode: 'NYS', sector: '데이터', market: '뉴욕' },
+  { code: 'AI', name: 'C3.ai', nameEng: 'C3.ai Inc.', exchangeCode: 'NYS', sector: 'AI', market: '뉴욕' },
+  { code: 'SOUN', name: '사운드하운드AI', nameEng: 'SoundHound AI Inc.', exchangeCode: 'NAS', sector: 'AI', market: '나스닥' },
+  { code: 'SERV', name: '서브로크AI', nameEng: 'Serve Robotics Inc.', exchangeCode: 'NAS', sector: '로봇', market: '나스닥' },
+  { code: 'PATH', name: 'UiPath', nameEng: 'UiPath Inc.', exchangeCode: 'NYS', sector: '로봇', market: '뉴욕' },
+  { code: 'ISRG', name: '인튜이티브 서지컬', nameEng: 'Intuitive Surgical Inc.', exchangeCode: 'NAS', sector: '로봇', market: '나스닥' },
+  
+  // 전기차/클린에너지
+  { code: 'RIVN', name: '리비안', nameEng: 'Rivian Automotive', exchangeCode: 'NAS', sector: '전기차', market: '나스닥' },
+  { code: 'LCID', name: '루시드 모터스', nameEng: 'Lucid Group Inc.', exchangeCode: 'NAS', sector: '전기차', market: '나스닥' },
+  { code: 'F', name: '포드', nameEng: 'Ford Motor Co.', exchangeCode: 'NYS', sector: '자동차', market: '뉴욕' },
+  { code: 'GM', name: '제너럴모터스', nameEng: 'General Motors Co.', exchangeCode: 'NYS', sector: '자동차', market: '뉴욕' },
+  { code: 'ENPH', name: '엔페이즈 에너지', nameEng: 'Enphase Energy Inc.', exchangeCode: 'NAS', sector: '태양광', market: '나스닥' },
+  { code: 'SEDG', name: '솔라에지', nameEng: 'SolarEdge Technologies', exchangeCode: 'NAS', sector: '태양광', market: '나스닥' },
+  
+  // 암호화폐/블록체인
+  { code: 'COIN', name: '코인베이스', nameEng: 'Coinbase Global Inc.', exchangeCode: 'NAS', sector: '블록체인', market: '나스닥' },
+  { code: 'MSTR', name: '마이크로스트래티지', nameEng: 'MicroStrategy Inc.', exchangeCode: 'NAS', sector: '블록체인', market: '나스닥' },
+  { code: 'RIOT', name: '리오트 플랫폼', nameEng: 'Riot Platforms Inc.', exchangeCode: 'NAS', sector: '블록체인', market: '나스닥' },
+  { code: 'CLSK', name: '클린스파크', nameEng: 'CleanSpark Inc.', exchangeCode: 'NAS', sector: '블록체인', market: '나스닥' },
+  
+  // 사이버보안
+  { code: 'CRWD', name: '크라우드스트라이크', nameEng: 'CrowdStrike Holdings', exchangeCode: 'NAS', sector: '사이버보안', market: '나스닥' },
+  { code: 'PANW', name: '팔로알토네트웍스', nameEng: 'Palo Alto Networks', exchangeCode: 'NAS', sector: '사이버보안', market: '나스닥' },
+  { code: 'ZS', name: '즈케일러', nameEng: 'Zscaler Inc.', exchangeCode: 'NAS', sector: '사이버보안', market: '나스닥' },
+  { code: 'FTNT', name: '포티넷', nameEng: 'Fortinet Inc.', exchangeCode: 'NAS', sector: '사이버보안', market: '나스닥' },
 ];
 
 export async function GET(request: NextRequest) {
@@ -99,14 +143,47 @@ export async function GET(request: NextRequest) {
     const upperQuery = query.toUpperCase();
     const lowerQuery = query.toLowerCase();
 
+    // 한글-영문 섹터 매핑 (한글로 검색해도 영문 섹터명과 매칭)
+    const sectorAliases: Record<string, string[]> = {
+      '우주': ['space', '우주', '항공우주'],
+      '우주주': ['space', '우주', '항공우주'],
+      '항공우주': ['aerospace', '우주', '항공우주'],
+      '방산': ['defense', '항공우주'],
+      '인공지능': ['ai', '인공지능'],
+      '로봇': ['robot', '로봇'],
+      '전기차': ['ev', '전기차'],
+      '블록체인': ['blockchain', '블록체인'],
+      '암호화폐': ['crypto', '블록체인'],
+      '보안': ['security', '사이버보안'],
+      '사이버': ['cyber', '사이버보안'],
+      '태양광': ['solar', '태양광'],
+    };
+
+    // 검색어에 매칭되는 추가 섹터 키워드
+    const extraSectorKeywords: string[] = [];
+    for (const [keyword, aliases] of Object.entries(sectorAliases)) {
+      if (lowerQuery.includes(keyword) || aliases.some(a => lowerQuery.includes(a.toLowerCase()))) {
+        extraSectorKeywords.push(...aliases);
+      }
+    }
+
     // 1. 먼저 로컬 DB에서 검색
-    const localResults = US_STOCK_DATABASE.filter(stock => 
-      stock.code.toUpperCase().includes(upperQuery) ||
-      stock.name.toLowerCase().includes(lowerQuery) ||
-      stock.nameEng.toLowerCase().includes(lowerQuery) ||
-      stock.sector.toLowerCase().includes(lowerQuery) ||
-      stock.market.includes(query)
-    ).slice(0, limit);
+    const localResults = US_STOCK_DATABASE.filter(stock => {
+      const matchesBasic = 
+        stock.code.toUpperCase().includes(upperQuery) ||
+        stock.name.toLowerCase().includes(lowerQuery) ||
+        stock.nameEng.toLowerCase().includes(lowerQuery) ||
+        stock.sector.toLowerCase().includes(lowerQuery) ||
+        stock.market.includes(query);
+      
+      const matchesSectorAlias = extraSectorKeywords.some(keyword => 
+        stock.sector.toLowerCase().includes(keyword.toLowerCase()) ||
+        stock.nameEng.toLowerCase().includes(keyword.toLowerCase()) ||
+        stock.name.toLowerCase().includes(keyword)
+      );
+      
+      return matchesBasic || matchesSectorAlias;
+    }).slice(0, limit);
 
     // 2. KIS API 연결 시 API 검색도 시도
     if (localResults.length < limit) {
