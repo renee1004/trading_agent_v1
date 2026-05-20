@@ -1,0 +1,92 @@
+[
+  {
+    "url": "https://apiportal.koreainvestment.com/apiservice-apiservice",
+    "name": "REST접근토큰발급(P)[인증-001] - 한국투자증권 오픈API 개발자센터",
+    "snippet": "본인 계좌에 필요한 인증 절차로, 인증을 통해 접근 토큰을 부여받아 오픈API 활용이 가능합니다. 1. 접근토큰(access_token)의 유효기간은 24시간 이며(1일 1회발급 ...",
+    "host_name": "apiportal.koreainvestment.com",
+    "rank": 0,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://apiportal.koreainvestment.com/apiservice",
+    "name": "API 문서 - 한국투자증권 오픈API 개발자센터",
+    "snippet": "한국투자 오픈API는 보안코드(appkey, appsecret)를 사용하여 인증합니다. REST 방식: 접근토큰(access_token) 발급. Websocket 방식: 실시간 접속키(approval_key) 발급.",
+    "host_name": "apiportal.koreainvestment.com",
+    "rank": 1,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://apiportal.koreainvestment.com/apiservice-apiservice?/oauth2/Approval",
+    "name": "WEBSOCKET실시간 (웹소켓) 접속키 발급[실시간-000]",
+    "snippet": "실시간 (웹소켓) 접속키 발급받으실 수 있는 API 입니다. 웹소켓 이용 시 해당 키를 appkey와 appsecret 대신 헤더에 넣어 API를 호출합니다. 접속키의 유효기간은 24시간 ...",
+    "host_name": "apiportal.koreainvestment.com",
+    "rank": 2,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://m.blog.naver.com/leebisu/222704181327",
+    "name": "한국투자증권 오픈API를 이용한 트레이딩 - 네이버 블로그",
+    "snippet": "본격적으로 API를 사용하기 위해서는 위해서 발급받은 APP Key와 APP Secret을 이용해 접근토큰과 해쉬키를 발급받아야 합니다. 접근토큰이 있어야 계좌에 ...",
+    "host_name": "m.blog.naver.com",
+    "rank": 3,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://apiportal.koreainvestment.com/apiservice-apiservice?/uapi/domestic-stock/v1/quotations/inquire-price",
+    "name": "REST주식현재가 시세[v1_국내주식 - 한국투자증권 오픈API 개발자센터",
+    "snippet": "주식 현재가 시세 API입니다. 실시간 시세를 원하신다면 웹소켓 API를 활용하세요. ※ 종목코드 마스터파일 파이썬 정제코드는 한국투자증권 Github 참고 부탁드립니다.",
+    "host_name": "apiportal.koreainvestment.com",
+    "rank": 4,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://seodeveloper.tistory.com/entry/Spring-Boot-Spring-Boot-%ED%95%9C%EA%B5%AD%ED%88%AC%EC%9E%90%EC%A6%9D%EA%B6%8C-Open-API-KIS-Developers-%ED%99%9C%EC%9A%A9%ED%95%98%EA%B8%B0-1-%EA%B1%B0%EB%9E%98%EB%9F%89%EC%88%9C%EC%9C%84v1%EA%B5%AD%EB%82%B4%EC%A3%BC%EC%8B%9D-047",
+    "name": "[Spring Boot] Spring Boot 한국투자증권 Open API (KIS Developers",
+    "snippet": "본인 계좌에 필요한 인증 절차로, 인증을 통해 접근 토큰을 부여받아 오픈API 활용이 가능합니다. '23.4.28 이후 지나치게 잦은 토큰 발급 요청건을 제어 ...",
+    "host_name": "seodeveloper.tistory.com",
+    "rank": 5,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://github.com/koreainvestment/open-trading-api/blob/main/README.md",
+    "name": "open-trading-api/README.md at main - GitHub",
+    "snippet": "한국투자증권 계좌 개설 및 ID 연결 · 한국투자증권 홈페이지 or 앱에서 Open API 서비스 신청 · 앱키(App Key), 앱시크릿(App Secret) 발급 · 모의투자 및 실전투자 앱키 ...",
+    "host_name": "github.com",
+    "rank": 6,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://apiportal.koreainvestment.com/apiservice-apiservice?/uapi/elw/v1/quotations/newly-listed",
+    "name": "[국내주식] ELW 시세 - 한국투자증권 오픈API 개발자센터",
+    "snippet": "OAuth 토큰이 필요한 API 경우 발급한 Access token 일반고객(Access token 유효 ... 한국투자증권 홈페이지에서 발급받은 appkey (절대 노출되지 않도록 주의해주세요.).",
+    "host_name": "apiportal.koreainvestment.com",
+    "rank": 7,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://wikidocs.net/159301",
+    "name": "01) 오픈API 서비스 신청 - 위키독스",
+    "snippet": "(1) 서비스 신청 · KIS Developers 우상단 API신청 버튼 클릭 · 한국투자증권 홈페이지 [서비스신청 > Open API > KIS Developers > KIS Developers 서비스 신청하기].",
+    "host_name": "wikidocs.net",
+    "rank": 8,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://velog.io/@5tmdhkfem/Project-%EA%B8%B0%EB%B3%B8%EC%84%B8%ED%8C%85-%EB%B0%8F-Access-Token-%EB%B0%9C%EA%B8%89%EB%B0%9B%EA%B8%B0",
+    "name": "[Project] 기본세팅 및 Access Token 발급받기 - velog",
+    "snippet": "1. 한국투자증권 주식계좌 만들기 · 2. KIS Developers에서 API 신청하기 · 3. 준비물 · 4. Access Token 발급받기. 4.1. yaml/xml 파일 생성. 4.2. Python ...",
+    "host_name": "velog.io",
+    "rank": 9,
+    "date": "",
+    "favicon": ""
+  }
+]

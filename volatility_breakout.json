@@ -1,0 +1,92 @@
+[
+  {
+    "url": "https://blog.naver.com/kgu3405/223620646122?viewType=pc",
+    "name": "[실험] 변동성 돌파 자동매매(1) :: 전략 알고리즘 공부 : 네이버 블로그",
+    "snippet": "자동매매 코드를 만들다보면 만드는 건 시간만 조금 들이면 되는데 문제는 알고리즘(=전략)이다. 세밀하게 값 조정 하는 게 쉽지 않고 종목과 시장 변수를 ...",
+    "host_name": "blog.naver.com",
+    "rank": 0,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.youtube.com/watch?v=aZKm7ouJ6zE",
+    "name": "래리 윌리엄스, 변동성 돌파, TQQQ, 트레이딩, 백테스트 - YouTube",
+    "snippet": "변동성지수 #vix #단타 #트레이딩 #매매법 00:00 변동성 돌파 인트로 00:34 변동성 돌파 전략이란?(래리 윌리엄스) 01:44 GPT 코딩으로 백테스트 구성 ...",
+    "host_name": "www.youtube.com",
+    "rank": 1,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.youtube.com/watch?v=EWu24kzlG0Y",
+    "name": "변동성 돌파 전략 자동매매 조건검색식 구현/키움 및 대신  - YouTube",
+    "snippet": "변동성 돌파 전략 자동매매 조건검색식 구현/키움 및 대신증권 자동매매 적용/시스템트레이딩 멤버 게시판 링크 ...",
+    "host_name": "www.youtube.com",
+    "rank": 2,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://tvextbot.github.io/posts/strategies/indicator_vbi",
+    "name": "변동성 돌파 기본 전략 - TVExtBot",
+    "snippet": "변동성 돌파 전략은 일일 단위로 일정 수준 이상의 범위를 뛰어넘는 강한 상승세를 돌파 신호로 상승하는 추세를 따라가며 일 단위로 빠르게 수익을 실현 ...",
+    "host_name": "tvextbot.github.io",
+    "rank": 3,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.youtube.com/watch?v=7My1dT4nmNU",
+    "name": "그냥 폭로합니다! 변동성 돌파 전략 진짜 제대로 수익률 백테스팅 하기",
+    "snippet": "알고리즘 트레이딩, 자동매매 등에서 항상 언급되는 변동성 돌파 전략, 우리는 직접 백테스팅 해보고 현실을 파악할 수가 있습니다.",
+    "host_name": "www.youtube.com",
+    "rank": 4,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://wikidocs.net/165349",
+    "name": "01) 코스닥 ETF150 변동성 돌파 전략 - 위키독스",
+    "snippet": "그래서 우리는 상대적으로 변동성이 큰 KODEX 코스닥 ETF150 (종목코드: 229200)을 사용하여 변동성 돌파 전략을 구현해보겠습니다. 마지막 편집일시 : 2022년 11월 11일 3 ...",
+    "host_name": "wikidocs.net",
+    "rank": 5,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://assetcoach.tistory.com/54",
+    "name": "래리 윌리엄스(Larry Williams)의 변동성 돌파 전략(Volatility Range",
+    "snippet": "현재 상황에서 강하게 형성된 상승세를 매수하고, 다음 날에 바로 매도하여 짧은 주기로 작은 수익을 확보하면서 운영하는 방식입니다. 이러한 방식이 ...",
+    "host_name": "assetcoach.tistory.com",
+    "rank": 6,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://nodol.tistory.com/24",
+    "name": "[주식투자] 엑셀로 간단한 변동성돌파 백테스트 해보기",
+    "snippet": "그럼 수익률을 계산해 보겠습니다. 매수신호가 발생했다면 수익률은 매도가격 / 매수가격입니다. 매수신호가 발생하지 않았다면 수익률은 1이겠죠?",
+    "host_name": "nodol.tistory.com",
+    "rank": 7,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://wellsw.tistory.com/132",
+    "name": "변동성 돌파 전략 - 비트코인 수익률 백테스트",
+    "snippet": "변동성 돌파 전략을 백테스트를 수행해서 수익률을 확인해 보겠습니다. 업비트의 open api를 사용해서 데이터를 다운로드 받고 비트코인의 수익률을 확인 ...",
+    "host_name": "wellsw.tistory.com",
+    "rank": 8,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://mproject2017.tistory.com/entry/%EB%B3%80%EB%8F%99%EC%84%B1-%EB%8F%8C%ED%8C%8C-%EC%A0%84%EB%9E%B5-%EB%8B%A8%EC%A0%90-%EC%A0%A0%ED%8F%AC%ED%8A%B8-%EB%B0%B1%ED%85%8C%EC%8A%A4%ED%8A%B8",
+    "name": "변동성 돌파 전략 단점 (feat.젠포트 백테스트) - 초보를 위한 주식투자",
+    "snippet": "전설적인 트레이더 래리 윌리엄스는 '전일 주가 변동폭을 기준으로 당일 특정 가격대에 대한 상승 돌파가 이뤄질 때 매수'하는 변동성 돌파 전략을 ...",
+    "host_name": "mproject2017.tistory.com",
+    "rank": 9,
+    "date": "",
+    "favicon": ""
+  }
+]

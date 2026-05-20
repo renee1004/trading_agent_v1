@@ -1,0 +1,92 @@
+[
+  {
+    "url": "https://www.youtube.com/watch?v=ErNEeS-8LmM",
+    "name": "Interactive Brokers TWS API Tutorial in Python - with Trading Bot",
+    "snippet": "Learn algorithmic trading at ATJ Research: https://www.atjresearch.com/get-started Download Link for Members: ...",
+    "host_name": "www.youtube.com",
+    "rank": 0,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://cran.r-project.org/web/packages/kisopenapi/kisopenapi.pdf",
+    "name": "[PDF] kisopenapi: Korea Investment & Securities (KIS) Open Trading API",
+    "snippet": "Description API Wrapper to use Korea Investment & Securities (KIS) trading system that provides various financial services like stock price.",
+    "host_name": "cran.r-project.org",
+    "rank": 1,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://pypi.org/project/korea-investment-stock",
+    "name": "korea-investment-stock - PyPI",
+    "snippet": "A simple, transparent wrapper around the Korea Investment Securities OpenAPI. This library handles API authentication and request formatting, giving you direct ...",
+    "host_name": "pypi.org",
+    "rank": 2,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.quantinsti.com/articles/build-trading-bot-interactive-brokers-python-chatgpt",
+    "name": "How to Make a Trading Bot with IBKR using Python and ChatGPT",
+    "snippet": "Learn how to build, test, and deploy a trading bot using Python and Interactive Brokers. Follow a clear process from idea to live execution.",
+    "host_name": "www.quantinsti.com",
+    "rank": 3,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://learn.microsoft.com/en-us/azure/bot-service/bot-builder-authentication?view=azure-bot-service-4.0",
+    "name": "Add authentication to a bot in Bot Framework SDK - Bot Service",
+    "snippet": "This article references two samples. One shows how to obtain an authentication token. The other is more complex and shows how to access Microsoft Graph on ...",
+    "host_name": "learn.microsoft.com",
+    "rank": 4,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.youtube.com/watch?v=IGV7KoSxYr8",
+    "name": "Automated Crypto Trading Bot with Python: Step-by-step Tutorial",
+    "snippet": "10% Off Trading Fees!* Register with my Bitget link: https://bonus.bitget.com/Robottraders *What You'll Learn in This Video* : I'll show ...",
+    "host_name": "www.youtube.com",
+    "rank": 5,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.interactivebrokers.com/campus/ibkr-api-page/oauth-1-0a-extended",
+    "name": "OAuth 1.0A Extended | IBKR API",
+    "snippet": "The OAuth implementation content shown below is built using Python 3.12. Clients looking to directly implement this content through Python will ...",
+    "host_name": "www.interactivebrokers.com",
+    "rank": 6,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://github.com/thevickypedia/PyTradingBot",
+    "name": "thevickypedia/PyTradingBot: Trading Bot API - GitHub",
+    "snippet": "PyTradingBot is a python based trading bot API based on FinViz screener fields, and Yahoo finance. Installation. pip install PyTradingBot ...",
+    "host_name": "github.com",
+    "rank": 7,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.youtube.com/watch?v=v4zQzHCh_jM",
+    "name": "How to build a Stock Trading Bot in less than 20 mins | Finazon API",
+    "snippet": "In this video, we learned how to build a Stock Trading bot using Finazon API in Python. Finazon is a Financial Data API provider.",
+    "host_name": "www.youtube.com",
+    "rank": 8,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.ibkrguides.com/orgportal/performanceandstatements/open-authorization.htm",
+    "name": "Open Authorization - Documentation",
+    "snippet": "PortfolioAnalyst uses Open Authorization (OAuth) with other participating financial institutions. This streamlined feature allows us to transfer ...",
+    "host_name": "www.ibkrguides.com",
+    "rank": 9,
+    "date": "",
+    "favicon": ""
+  }
+]

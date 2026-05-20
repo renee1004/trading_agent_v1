@@ -1,0 +1,117 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model KisConfig {
+  id            String   @id @default(cuid())
+  appKey        String
+  appSecret     String
+  accountNo     String
+  isDemo        Boolean  @default(true)
+  accessToken   String?
+  tokenExpiresAt DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model TradingStrategy {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  type        String   // COMPOSITE, VOLATILITY_BREAKOUT, SUPER_TREND, MEAN_REVERSION
+  parameters  String   // JSON string
+  isActive    Boolean  @default(false)
+  profitRate  Float?
+  winRate     Float?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model WatchlistItem {
+  id        String   @id @default(cuid())
+  stockCode String
+  stockName String
+  sector    String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+}
+
+model TradeHistory {
+  id           String   @id @default(cuid())
+  stockCode    String
+  stockName    String
+  tradeType    String   // BUY, SELL
+  quantity     Int
+  price        Float
+  totalAmount  Float
+  strategy     String?
+  profitLoss   Float?
+  profitRate   Float?
+  status       String   @default("PENDING") // PENDING, FILLED, CANCELLED, FAILED
+  orderNo      String?
+  signalReason String?
+  tradedAt     DateTime @default(now())
+  createdAt    DateTime @default(now())
+}
+
+model Position {
+  id          String   @id @default(cuid())
+  stockCode   String
+  stockName   String
+  quantity    Int
+  avgPrice    Float
+  currentPrice Float?
+  profitLoss  Float?
+  profitRate  Float?
+  strategy    String?
+  openedAt    DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model TradingSession {
+  id             String   @id @default(cuid())
+  status         String   @default("STOPPED") // RUNNING, STOPPED, PAUSED
+  strategyId     String?
+  startedAt      DateTime?
+  stoppedAt      DateTime?
+  totalProfit    Float    @default(0)
+  totalTrades    Int      @default(0)
+  winTrades      Int      @default(0)
+  lossTrades     Int      @default(0)
+  maxDrawdown    Float    @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model RiskConfig {
+  id                  String   @id @default(cuid())
+  maxPositionSize     Float    @default(0.1)   // Max 10% per position
+  maxDailyLoss        Float    @default(0.03)   // Max 3% daily loss
+  maxTotalLoss        Float    @default(0.1)    // Max 10% total loss
+  maxOpenPositions    Int      @default(5)
+  stopLossPercent     Float    @default(0.05)   // 5% stop loss
+  takeProfitPercent   Float    @default(0.15)   // 15% take profit
+  trailingStopPercent Float    @default(0.03)   // 3% trailing stop
+  isActive            Boolean  @default(true)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
+model MarketData {
+  id        String   @id @default(cuid())
+  stockCode String
+  date      String
+  open      Float
+  high      Float
+  low       Float
+  close     Float
+  volume    Int
+  createdAt DateTime @default(now())
+
+  @@unique([stockCode, date])
+}

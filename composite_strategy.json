@@ -1,0 +1,92 @@
+[
+  {
+    "url": "https://www.youtube.com/watch?v=y0Af50iB2iM",
+    "name": "[파이썬 오픈소스]비트코인 자동거래 프로그램 볼린저밴드 백",
+    "snippet": "[파이썬 오픈소스]비트코인 자동거래 프로그램 볼린저밴드 백테스트 수익률. 3.4K views · 4 years ago. #볼린저밴드 #바이낸스API #코인자동매매.",
+    "host_name": "www.youtube.com",
+    "rank": 0,
+    "date": "May 21, 2022",
+    "favicon": ""
+  },
+  {
+    "url": "https://m.blog.naver.com/dreamxpeed/223092556732",
+    "name": "MACD 기반 트레이딩 전략 비교 : 미국 주식 시장의 사례",
+    "snippet": "... 볼린저 밴드 전략은 모든 측면에서 가장 바람직하지 않은 전략입니다. 샤프 비율과 소르티노 비율이 가장 낮습니다. MACD&RSI 전략은 승률, 평균 ...\n그 결과 MACD 지표만 사용한 전략의 승률이 50% 미만인 것으로 나타났습니다. 그러나 MACD 지표와 자금 흐름 지수(MFI) 및 상대 강도 지수(RSI)와 같은 ...",
+    "host_name": "m.blog.naver.com",
+    "rank": 1,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://auto-trading.tistory.com/entry/%EB%B3%BC%EB%A6%B0%EC%A0%80-%EB%B0%B4%EB%93%9C-4%EA%B0%80%EC%A7%80-%ED%95%B5%EC%8B%AC-%EB%A7%A4%EB%A7%A4%EB%B2%95%ED%8C%8C%EC%9D%B4%EC%8D%AC-%EC%BD%94%EB%93%9C-%EC%98%88%EC%8B%9C-%EC%84%A4%EB%AA%85-%EC%84%A0%EB%AC%BC%EC%A3%BC%EC%8B%9D-%EC%9E%90%EB%8F%99%EB%A7%A4%EB%A7%A4%ED%94%84%EB%A1%9C%EA%B7%B8%EB%9E%A8-%EA%B3%B5%EC%9C%A0",
+    "name": "볼린저 밴드 4가지 핵심 매매법(파이썬 코드 예시 설명, 선물",
+    "snippet": "볼린저는 그의 저서 Bollinger on Bollinger Bands에서 이 밴드를 활용한 세 가지 핵심 매매 기법을 소개했으며, 이후 한 가지 변형 기법을 추가로 제안 ...",
+    "host_name": "auto-trading.tistory.com",
+    "rank": 2,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.instagram.com/p/DS4VLbTkRzs",
+    "name": "요즘 내가 파이썬으로 직접 만든 퀀트 자동매매 시스템 하나",
+    "snippet": "요즘 내가 파이썬으로 직접 만든 퀀트 자동매매 시스템 하나 공개했어. 감으로 매매하는 구조가 아니라, 데이터로 최적 전략을 고르는 백테스팅 ...",
+    "host_name": "www.instagram.com",
+    "rank": 3,
+    "date": "Jan 20, 2026",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.youtube.com/watch?v=iPnDUwM56YU",
+    "name": "I Tested Supertrend + MACD + RSI 153% Profit! (Full",
+    "snippet": "Supertrend + MACD + RSI Strategy | Backtest 299% Profit Using Python & Freqtrade. Quant Tactics•7.9K views · 20:36 · Go to channel Trader DNA ...",
+    "host_name": "www.youtube.com",
+    "rank": 4,
+    "date": "Mar 21, 2026",
+    "favicon": ""
+  },
+  {
+    "url": "https://anpigon.tistory.com/230",
+    "name": "(파이썬 자동매매) 볼린저 밴드 상승 돌파 전략 테스트하기",
+    "snippet": "볼린저 밴드 상승 돌파 전략 테스트하기. 당일 종가가 볼린저 밴드 상단을 돌파했을 때 매수하고, 볼린저 밴드 하단을 벗어나면 매도하는 전략이다. 이 ...",
+    "host_name": "anpigon.tistory.com",
+    "rank": 5,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.youtube.com/watch?v=jIT4G5dNOsA",
+    "name": "볼린저밴드 rsi 이동평균선 macd 보다 좋은 거래량 매매전략",
+    "snippet": "볼린저밴드 rsi 이동평균선 macd 보다 좋은 거래량 매매전략 완벽 정리! 통합본 다보고나면 투자고수된다... 816 views · 4 months ago.",
+    "host_name": "www.youtube.com",
+    "rank": 6,
+    "date": "Jan 20, 2026",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.patreon.com/posts/supertrend-macd-128741512",
+    "name": "Supertrend + MACD + RSI Strategy | Backtest 299% Profit",
+    "snippet": "In today's video, we're putting a powerful trading strategy to the test by combining Supertrend, MACD, and RSI. You'll see how we coded it i ...",
+    "host_name": "www.patreon.com",
+    "rank": 7,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.youtube.com/watch?v=71EA1u4K_Zk",
+    "name": "Backtest 299% Profit Using Python & Freqtrade",
+    "snippet": "In today's video, we're putting a powerful trading strategy to the test by combining Supertrend, MACD, and RSI. You'll see how we coded it ...",
+    "host_name": "www.youtube.com",
+    "rank": 8,
+    "date": "May 20, 2025",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.youtube.com/watch?v=qUrUORCldSk",
+    "name": "볼린저밴드 ? 맞습니다! 거기에 RSI와 MACD 그리고 이동",
+    "snippet": "볼린저밴드 ? 맞습니다! 거기에 RSI와 MACD 그리고 이동평균선까지 합쳐 만든 미친 결합지표?! #투자 #투자전략 #주식 #코인 #볼린저밴드 #리플 #비트코인.",
+    "host_name": "www.youtube.com",
+    "rank": 9,
+    "date": "May 20, 2025",
+    "favicon": ""
+  }
+]
