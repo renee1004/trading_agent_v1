@@ -46,3 +46,31 @@ Stage Summary:
 - 60+ 미국 대표 종목 검색 DB 구축 (Big Tech, 반도체, 소프트웨어, 금융, 헬스케어, ETF 등)
 - 해외주식 포지션 관리 (원화/달러 동시 표시, 환율 정보)
 - 5대 매매전략이 해외주식에도 동일하게 적용 가능 (OHLCV 기반)
+
+---
+Task ID: 3
+Agent: Main Agent
+Task: 국내/해외 시장별 전략 파라미터 차별화 구현
+
+Work Log:
+- types.ts에 MarketStrategyDefaults, MarketRiskDefaults 인터페이스 추가
+- market-defaults.ts 신규 작성 (시장별 전략 기본 파라미터 & 리스크 설정)
+- TradingEngine에 analyze() 진입점 추가 (market 파라미터에 따라 자동 최적화)
+- 5개 전략 메서드에 market 파라미터 추가 및 시장별 임계값 적용
+  - COMPOSITE: RSI 과매수 70→75(해외), 과매도 30→25(해외)
+  - VOLATILITY_BREAKOUT: k값 0.5→0.4(해외), 손절 3%→5%(해외)
+  - SUPER_TREND: ATR 주기 10→14(해외), 승수 3.0→4.0(해외)
+  - MEAN_REVERSION: RSI 과매수 70→80(해외), 과매도 30→20(해외)
+  - MOMENTUM: 거래량임계값 2.0→1.5배(해외), 연속일 2→3일(해외)
+- 전략 가중치 차별화: 국내 변동성돌파 20% / 해외 SuperTrend 30%
+- RiskManager에 market 파라미터 추가 및 시장별 차별화
+  - 해외: 포지션 10%→7%, 손절 5%→7%, 익절 15%→20%
+  - 해외: 환율 버퍼 1.5% 추가 (포지션 계산 & 손절가 반영)
+  - RiskManager.createForMarket() 팩토리 메서드 추가
+- 빌드 테스트 성공
+
+Stage Summary:
+- 국내/해외 동일 전략 구조 + 시장별 최적화 파라미터 자동 적용
+- 핵심 차이: 상하한가 유무 → 손절/익절 폭, RSI 임계값, ATR 승수, 전략 가중치
+- 미국 시장 특성 반영: 추세 지속력 강함→SuperTrend 가중치↑, 상하한가 없음→손절폭↑
+- 한국 시장 특성 반영: 변동성돌파 검증→가중치↑, 상하한가→타이트 손절

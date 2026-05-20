@@ -205,6 +205,77 @@ export interface StrategyParameters {
   trailingStop?: number;
 }
 
+// 시장별 전략 기본 파라미터 (국내 vs 해외 차별화)
+export interface MarketStrategyDefaults {
+  // === 복합 지표 전략 (COMPOSITE) ===
+  composite: {
+    atrPeriod: number;
+    atrMultiplier: number;
+    rsiPeriod: number;
+    rsiOverbought: number;    // 국내: 70, 해외: 75 (더 높은 변동성 수용)
+    rsiOversold: number;      // 국내: 30, 해외: 25 (더 깊은 과매도 대기)
+    macdFast: number;
+    macdSlow: number;
+    macdSignal: number;
+    bbPeriod: number;
+    bbStdDev: number;         // 국내: 2.0, 해외: 2.5 (변동성 더 큼)
+    maShort: number;
+    maLong: number;
+  };
+  // === 변동성 돌파 전략 (VOLATILITY_BREAKOUT) ===
+  volatilityBreakout: {
+    volatilityK: number;      // 국내: 0.5, 해외: 0.4 (미국은 더 보수적)
+    stopLoss: number;         // 국내: 3%, 해외: 5% (상하한가 없음)
+    takeProfit: number;       // 국내: 10%, 해외: 15%
+    minVolumeRatio: number;   // 최소 거래량 비율 (해외는 거래량 큼)
+  };
+  // === SuperTrend 전략 ===
+  superTrend: {
+    atrPeriod: number;        // 국내: 10, 해외: 14 (더 긴 주기 안정성)
+    atrMultiplier: number;    // 국내: 3.0, 해외: 4.0 (변동성 더 큼)
+    rsiPeriod: number;
+    macdFast: number;
+    macdSlow: number;
+    macdSignal: number;
+  };
+  // === 평균 회귀 전략 (MEAN_REVERSION) ===
+  meanReversion: {
+    bbPeriod: number;
+    bbStdDev: number;         // 국내: 2.0, 해외: 2.5
+    rsiPeriod: number;
+    rsiOverbought: number;    // 국내: 70, 해외: 80 (미국은 추세 지속력 강함)
+    rsiOversold: number;      // 국내: 30, 해외: 20
+  };
+  // === 모멘텀 전략 (MOMENTUM) ===
+  momentum: {
+    rsiPeriod: number;
+    maShort: number;
+    maLong: number;
+    volumeSpikeThreshold: number; // 국내: 2.0배, 해외: 1.5배 (미국은 기본 거래량 큼)
+    minConsecutiveDays: number;   // 연속 상승일 최소 조건
+  };
+  // === 전략 가중치 ===
+  strategyWeights: {
+    COMPOSITE: number;
+    SUPER_TREND: number;
+    VOLATILITY_BREAKOUT: number;
+    MEAN_REVERSION: number;
+    MOMENTUM: number;
+  };
+}
+
+// 시장별 리스크 기본 설정
+export interface MarketRiskDefaults {
+  maxPositionSize: number;    // 국내: 10%, 해외: 7% (환율리스크 추가)
+  maxDailyLoss: number;       // 국내: 3%, 해외: 4% (변동성 더 큼)
+  maxTotalLoss: number;       // 국내: 10%, 해외: 12%
+  maxOpenPositions: number;   // 국내: 5, 해외: 4 (집중 관리)
+  stopLossPercent: number;    // 국내: 5%, 해외: 7% (상하한가 없음)
+  takeProfitPercent: number;  // 국내: 15%, 해외: 20% (더 큰 움직임)
+  trailingStopPercent: number;// 국내: 3%, 해외: 5%
+  exchangeRateBuffer: number; // 해외만: 환율 변동 버퍼 (1~2%)
+}
+
 export interface RiskConfig {
   maxPositionSize: number;
   maxDailyLoss: number;

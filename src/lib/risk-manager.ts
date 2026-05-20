@@ -1,16 +1,28 @@
 // 리스크 관리 모듈
 // 포지션 사이즈, 손절, 익절, 최대 손실 등 관리
+// 시장별(DOMESTIC/OVERSEAS) 차별화된 리스크 파라미터 적용
 
-import { RiskConfig, TradingSignal, BalanceItem } from './types';
+import { RiskConfig, TradingSignal, BalanceItem, MarketType } from './types';
+import { getMarketRiskConfig, OVERSEAS_RISK_DEFAULTS } from './market-defaults';
 
 export class RiskManager {
   private config: RiskConfig;
+  private market: MarketType;
   private dailyPnL: number = 0;
   private totalPnL: number = 0;
   private dailyStartDate: string = '';
 
-  constructor(config: RiskConfig) {
+  constructor(config: RiskConfig, market: MarketType = 'DOMESTIC') {
     this.config = config;
+    this.market = market;
+  }
+
+  /**
+   * 시장별 기본 리스크 설정으로 RiskManager 생성
+   */
+  static createForMarket(market: MarketType): RiskManager {
+    const config = getMarketRiskConfig(market);
+    return new RiskManager(config, market);
   }
 
   /**
@@ -78,14 +90,21 @@ export class RiskManager {
 
   /**
    * 포지션 사이즈 계산 (Kelly Criterion 기반 보수적 적용)
+   * 해외주식: 환율 버퍼 차감 후 계산
    */
   calculatePositionSize(
     accountBalance: number,
     price: number,
     confidence: number
   ): number {
+    // 해외주식은 환율 버퍼만큼 포지션 축소
+    const exchangeBuffer = this.market === 'OVERSEAS' 
+      ? OVERSEAS_RISK_DEFAULTS.exchangeRateBuffer 
+      : 0;
+    const effectiveBalance = accountBalance * (1 - exchangeBuffer);
+    
     // 기본 포지션 비율 = 최대 포지션 비율 * 신뢰도 비율
-    const maxAmount = accountBalance * this.config.maxPositionSize;
+    const maxAmount = effectiveBalance * this.config.maxPositionSize;
     const confidenceFactor = confidence / 100;
     const positionAmount = maxAmount * confidenceFactor;
     
@@ -97,6 +116,7 @@ export class RiskManager {
 
   /**
    * 손절가 계산
+   * 해외주식은 상하한가가 없으므로 손절 폭을 더 넓게 설정
    */
   calculateStopLoss(entryPrice: number, strategy: string = 'default'): number {
     let stopLossPercent = this.config.stopLossPercent;
@@ -104,40 +124,46 @@ export class RiskManager {
     // 전략별 손절 폭 조정
     switch (strategy) {
       case 'VOLATILITY_BREAKOUT':
-        stopLossPercent = 0.03; // 변동성 돌파는 타이트
+        stopLossPercent = this.market === 'OVERSEAS' ? 0.05 : 0.03;
         break;
       case 'SUPER_TREND':
-        stopLossPercent = 0.05; // 추세 추종은 넉넉히
+        stopLossPercent = this.market === 'OVERSEAS' ? 0.07 : 0.05;
         break;
       case 'MEAN_REVERSION':
-        stopLossPercent = 0.04;
+        stopLossPercent = this.market === 'OVERSEAS' ? 0.06 : 0.04;
         break;
       case 'COMPOSITE':
-        stopLossPercent = 0.05;
+        stopLossPercent = this.market === 'OVERSEAS' ? 0.07 : 0.05;
         break;
     }
 
-    return Math.floor(entryPrice * (1 - stopLossPercent));
+    // 해외주식: 환율 버퍼만큼 손절가 추가 하향
+    const exchangeBuffer = this.market === 'OVERSEAS' 
+      ? OVERSEAS_RISK_DEFAULTS.exchangeRateBuffer 
+      : 0;
+    
+    return Math.floor(entryPrice * (1 - stopLossPercent - exchangeBuffer));
   }
 
   /**
    * 익절가 계산
+   * 해외주식은 변동성이 커서 익절 목표를 더 높게 설정
    */
   calculateTakeProfit(entryPrice: number, strategy: string = 'default'): number {
     let takeProfitPercent = this.config.takeProfitPercent;
     
     switch (strategy) {
       case 'VOLATILITY_BREAKOUT':
-        takeProfitPercent = 0.10;
+        takeProfitPercent = this.market === 'OVERSEAS' ? 0.15 : 0.10;
         break;
       case 'SUPER_TREND':
-        takeProfitPercent = 0.20;
+        takeProfitPercent = this.market === 'OVERSEAS' ? 0.25 : 0.20;
         break;
       case 'MEAN_REVERSION':
-        takeProfitPercent = 0.08;
+        takeProfitPercent = this.market === 'OVERSEAS' ? 0.12 : 0.08;
         break;
       case 'COMPOSITE':
-        takeProfitPercent = 0.15;
+        takeProfitPercent = this.market === 'OVERSEAS' ? 0.20 : 0.15;
         break;
     }
 

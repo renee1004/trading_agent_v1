@@ -1,15 +1,51 @@
 // AI 매매전략 엔진
 // 복합 지표 기반 최적 수익률 전략
 // SuperTrend + MACD + RSI + Bollinger Bands + 이동평균선 조합
+// 국내/해외 시장별 최적화 파라미터 자동 적용
 
-import { StockCandle, TradingSignal, StrategyParameters } from './types';
+import { StockCandle, TradingSignal, StrategyParameters, MarketType } from './types';
 import {
   calculateAllIndicators,
   calculateVolatilityBreakoutLevel,
   getLastValidValue,
 } from './indicators';
+import { getMarketDefaults } from './market-defaults';
 
 export class TradingEngine {
+  /**
+   * 시장별 최적화된 파라미터로 전략 분석 (진입점)
+   * market 파라미터에 따라 자동으로 최적의 파라미터 적용
+   */
+  static analyze(
+    candles: StockCandle[],
+    stockCode: string,
+    stockName: string,
+    strategy: string = 'ALL',
+    market: MarketType = 'DOMESTIC',
+    userParams: StrategyParameters = {}
+  ): TradingSignal {
+    // 시장별 기본 파라미터 가져오기
+    const marketDefaults = getMarketDefaults(market);
+    
+    // 사용자 파라미터가 있으면 기본값 위에 오버라이드
+    const params = { ...marketDefaults.strategy.composite, ...userParams };
+
+    switch (strategy) {
+      case 'COMPOSITE':
+        return TradingEngine.analyzeComposite(candles, stockCode, stockName, params, market);
+      case 'VOLATILITY_BREAKOUT':
+        return TradingEngine.analyzeVolatilityBreakout(candles, stockCode, stockName, params, market);
+      case 'SUPER_TREND':
+        return TradingEngine.analyzeSuperTrend(candles, stockCode, stockName, params, market);
+      case 'MEAN_REVERSION':
+        return TradingEngine.analyzeMeanReversion(candles, stockCode, stockName, params, market);
+      case 'MOMENTUM':
+        return TradingEngine.analyzeMomentum(candles, stockCode, stockName, params, market);
+      case 'ALL':
+      default:
+        return TradingEngine.analyzeAllStrategies(candles, stockCode, stockName, params, market);
+    }
+  }
   /**
    * === 전략 1: 복합 지표 전략 (COMPOSITE) ===
    * 수익률 높은 전략 - 2025년 트렌드 기반
@@ -32,20 +68,29 @@ export class TradingEngine {
     candles: StockCandle[],
     stockCode: string,
     stockName: string,
-    params: StrategyParameters = {}
+    params: StrategyParameters = {},
+    market: MarketType = 'DOMESTIC'
   ): TradingSignal {
-    const indicators = calculateAllIndicators(candles, {
-      rsiPeriod: params.rsiPeriod || 14,
-      macdFast: params.macdFast || 12,
-      macdSlow: params.macdSlow || 26,
-      macdSignal: params.macdSignal || 9,
-      bbPeriod: params.bbPeriod || 20,
-      bbStdDev: params.bbStdDev || 2,
-      atrPeriod: params.atrPeriod || 10,
-      atrMultiplier: params.atrMultiplier || 3,
-      maShort: params.maShort || 5,
-      maLong: params.maLong || 20,
-    });
+    // 시장별 기본 파라미터 적용
+    const marketDefaults = getMarketDefaults(market).strategy.composite;
+    const effectiveParams = {
+      rsiPeriod: params.rsiPeriod || marketDefaults.rsiPeriod,
+      macdFast: params.macdFast || marketDefaults.macdFast,
+      macdSlow: params.macdSlow || marketDefaults.macdSlow,
+      macdSignal: params.macdSignal || marketDefaults.macdSignal,
+      bbPeriod: params.bbPeriod || marketDefaults.bbPeriod,
+      bbStdDev: params.bbStdDev || marketDefaults.bbStdDev,
+      atrPeriod: params.atrPeriod || marketDefaults.atrPeriod,
+      atrMultiplier: params.atrMultiplier || marketDefaults.atrMultiplier,
+      maShort: params.maShort || marketDefaults.maShort,
+      maLong: params.maLong || marketDefaults.maLong,
+    };
+    
+    // 시장별 RSI 임계값
+    const rsiOverbought = market === 'OVERSEAS' ? 75 : 70;
+    const rsiOversold = market === 'OVERSEAS' ? 25 : 30;
+
+    const indicators = calculateAllIndicators(candles, effectiveParams);
 
     const len = candles.length;
     if (len < 30) {
@@ -107,22 +152,22 @@ export class TradingEngine {
       }
     }
 
-    // 3. RSI 분석
+    // 3. RSI 분석 (시장별 임계값 적용)
     const rsi = indicators.rsi[len - 1];
     
     if (!isNaN(rsi)) {
       indicatorValues['rsi'] = rsi;
       
-      if (rsi < 30) {
+      if (rsi < rsiOversold) {
         buyScore += 25; // 과매도 구간
         reasons.push(`RSI 과매도(${rsi.toFixed(1)})`);
       } else if (rsi < 50) {
         buyScore += 15; // 반등 가능 구간
         if (rsi > 40) reasons.push(`RSI 반등(${rsi.toFixed(1)})`);
-      } else if (rsi > 70) {
+      } else if (rsi > rsiOverbought) {
         sellScore += 25; // 과매수 구간
         reasons.push(`RSI 과매수(${rsi.toFixed(1)})`);
-      } else if (rsi > 60) {
+      } else if (rsi > rsiOverbought - 10) {
         sellScore += 10;
       }
     }
@@ -242,9 +287,13 @@ export class TradingEngine {
     candles: StockCandle[],
     stockCode: string,
     stockName: string,
-    params: StrategyParameters = {}
+    params: StrategyParameters = {},
+    market: MarketType = 'DOMESTIC'
   ): TradingSignal {
-    const k = params.volatilityK || 0.5;
+    // 시장별 k값: 국내 0.5 (표준), 해외 0.4 (보수적)
+    const k = params.volatilityK || (market === 'OVERSEAS' ? 0.4 : 0.5);
+    // 시장별 손절/익절: 해외는 더 넉넉하게
+    const defaultStopLoss = market === 'OVERSEAS' ? 0.05 : 0.03;
     const len = candles.length;
 
     if (len < 3) {
@@ -317,8 +366,8 @@ export class TradingEngine {
       };
     }
 
-    // 매도 조건 (보유 중인 경우)
-    if (todayClose < yesterdayClose * (1 - (params.stopLoss || 0.03))) {
+    // 매도 조건 (보유 중인 경우) - 시장별 손절 폭 적용
+    if (todayClose < yesterdayClose * (1 - (params.stopLoss || defaultStopLoss))) {
       return {
         stockCode,
         stockName,
@@ -354,15 +403,18 @@ export class TradingEngine {
     candles: StockCandle[],
     stockCode: string,
     stockName: string,
-    params: StrategyParameters = {}
+    params: StrategyParameters = {},
+    market: MarketType = 'DOMESTIC'
   ): TradingSignal {
+    // 시장별 SuperTrend 파라미터: 해외는 더 긴 주기 + 더 큰 승수
+    const stDefaults = getMarketDefaults(market).strategy.superTrend;
     const indicators = calculateAllIndicators(candles, {
-      atrPeriod: params.atrPeriod || 10,
-      atrMultiplier: params.atrMultiplier || 3,
-      rsiPeriod: params.rsiPeriod || 14,
-      macdFast: params.macdFast || 12,
-      macdSlow: params.macdSlow || 26,
-      macdSignal: params.macdSignal || 9,
+      atrPeriod: params.atrPeriod || stDefaults.atrPeriod,
+      atrMultiplier: params.atrMultiplier || stDefaults.atrMultiplier,
+      rsiPeriod: params.rsiPeriod || stDefaults.rsiPeriod,
+      macdFast: params.macdFast || stDefaults.macdFast,
+      macdSlow: params.macdSlow || stDefaults.macdSlow,
+      macdSignal: params.macdSignal || stDefaults.macdSignal,
     });
 
     const len = candles.length;
@@ -468,12 +520,17 @@ export class TradingEngine {
     candles: StockCandle[],
     stockCode: string,
     stockName: string,
-    params: StrategyParameters = {}
+    params: StrategyParameters = {},
+    market: MarketType = 'DOMESTIC'
   ): TradingSignal {
+    // 시장별 평균 회귀 파라미터
+    const mrDefaults = getMarketDefaults(market).strategy.meanReversion;
+    const rsiOverbought = mrDefaults.rsiOverbought;
+    const rsiOversold = mrDefaults.rsiOversold;
     const indicators = calculateAllIndicators(candles, {
-      bbPeriod: params.bbPeriod || 20,
-      bbStdDev: params.bbStdDev || 2,
-      rsiPeriod: params.rsiPeriod || 14,
+      bbPeriod: params.bbPeriod || mrDefaults.bbPeriod,
+      bbStdDev: params.bbStdDev || mrDefaults.bbStdDev,
+      rsiPeriod: params.rsiPeriod || mrDefaults.rsiPeriod,
     });
 
     const len = candles.length;
@@ -496,16 +553,16 @@ export class TradingEngine {
 
     const reasons: string[] = [];
 
-    // 매수: 하단 터치 + RSI 과매도 반등
+    // 매수: 하단 터치 + RSI 과매도 반등 (시장별 임계값)
     if (!isNaN(bbLower) && lastClose <= bbLower * 1.01) {
       let confidence = 55;
       reasons.push('BB 하단 터치');
 
-      if (!isNaN(rsi) && rsi < 30) {
+      if (!isNaN(rsi) && rsi < rsiOversold) {
         confidence += 20;
         reasons.push(`RSI 과매도(${rsi.toFixed(1)})`);
       }
-      if (!isNaN(rsi) && !isNaN(prevRsi) && rsi > prevRsi && rsi < 40) {
+      if (!isNaN(rsi) && !isNaN(prevRsi) && rsi > prevRsi && rsi < rsiOversold + 10) {
         confidence += 10;
         reasons.push('RSI 반등 시작');
       }
@@ -523,12 +580,12 @@ export class TradingEngine {
       };
     }
 
-    // 매도: 상단 터치 + RSI 과매수
+    // 매도: 상단 터치 + RSI 과매수 (시장별 임계값)
     if (!isNaN(bbUpper) && lastClose >= bbUpper * 0.99) {
       let confidence = 55;
       reasons.push('BB 상단 터치');
 
-      if (!isNaN(rsi) && rsi > 70) {
+      if (!isNaN(rsi) && rsi > rsiOverbought) {
         confidence += 20;
         reasons.push(`RSI 과매수(${rsi.toFixed(1)})`);
       }
@@ -568,12 +625,17 @@ export class TradingEngine {
     candles: StockCandle[],
     stockCode: string,
     stockName: string,
-    params: StrategyParameters = {}
+    params: StrategyParameters = {},
+    market: MarketType = 'DOMESTIC'
   ): TradingSignal {
+    // 시장별 모멘텀 파라미터
+    const momDefaults = getMarketDefaults(market).strategy.momentum;
+    const volumeSpikeThreshold = momDefaults.volumeSpikeThreshold;
+    const minConsecutiveDays = momDefaults.minConsecutiveDays;
     const indicators = calculateAllIndicators(candles, {
-      rsiPeriod: params.rsiPeriod || 14,
-      maShort: params.maShort || 5,
-      maLong: params.maLong || 20,
+      rsiPeriod: params.rsiPeriod || momDefaults.rsiPeriod,
+      maShort: params.maShort || momDefaults.maShort,
+      maLong: params.maLong || momDefaults.maLong,
     });
 
     const len = candles.length;
@@ -604,8 +666,8 @@ export class TradingEngine {
 
     const reasons: string[] = [];
 
-    // 거래량 폭증 + 가격 상승 = 세력 매집 가능성
-    if (volumeRatio > 2.0 && lastClose > candles[len - 2].close) {
+    // 거래량 폭증 + 가격 상승 = 세력 매집 가능성 (시장별 임계값)
+    if (volumeRatio > volumeSpikeThreshold && lastClose > candles[len - 2].close) {
       let confidence = 60;
       reasons.push(`거래량 폭증 (${volumeRatio.toFixed(1)}배)`);
 
@@ -618,9 +680,9 @@ export class TradingEngine {
         reasons.push('상승 추세');
       }
 
-      // 연속 상승일 확인
-      const recentCloses = candles.slice(-3).map(c => c.close);
-      if (recentCloses.every((c, i) => i === 0 || c > recentCloses[i - 1])) {
+      // 연속 상승일 확인 (시장별 최소 일수)
+      const recentCloses = candles.slice(-minConsecutiveDays - 1).map(c => c.close);
+      if (recentCloses.length >= minConsecutiveDays && recentCloses.every((c, i) => i === 0 || c > recentCloses[i - 1])) {
         confidence += 5;
         reasons.push('연속 상승');
       }
@@ -638,8 +700,9 @@ export class TradingEngine {
       };
     }
 
-    // 거래량 감소 + 하락 = 매도 신호
-    if (volumeRatio < 0.5 && lastClose < candles[len - 2].close) {
+    // 거래량 감소 + 하락 = 매도 신호 (해외는 임계값 다름)
+    const volumeLowThreshold = market === 'OVERSEAS' ? 0.6 : 0.5;
+    if (volumeRatio < volumeLowThreshold && lastClose < candles[len - 2].close) {
       return {
         stockCode,
         stockName,
@@ -674,25 +737,21 @@ export class TradingEngine {
     candles: StockCandle[],
     stockCode: string,
     stockName: string,
-    params: StrategyParameters = {}
+    params: StrategyParameters = {},
+    market: MarketType = 'DOMESTIC'
   ): TradingSignal {
-    // 각 전략별 분석
-    const composite = TradingEngine.analyzeComposite(candles, stockCode, stockName, params);
-    const volatility = TradingEngine.analyzeVolatilityBreakout(candles, stockCode, stockName, params);
-    const superTrend = TradingEngine.analyzeSuperTrend(candles, stockCode, stockName, params);
-    const meanReversion = TradingEngine.analyzeMeanReversion(candles, stockCode, stockName, params);
-    const momentum = TradingEngine.analyzeMomentum(candles, stockCode, stockName, params);
+    // 각 전략별 분석 (시장별 파라미터 자동 적용)
+    const composite = TradingEngine.analyzeComposite(candles, stockCode, stockName, params, market);
+    const volatility = TradingEngine.analyzeVolatilityBreakout(candles, stockCode, stockName, params, market);
+    const superTrend = TradingEngine.analyzeSuperTrend(candles, stockCode, stockName, params, market);
+    const meanReversion = TradingEngine.analyzeMeanReversion(candles, stockCode, stockName, params, market);
+    const momentum = TradingEngine.analyzeMomentum(candles, stockCode, stockName, params, market);
 
     const signals = [composite, volatility, superTrend, meanReversion, momentum];
     
-    // 전략별 가중치 (리서치 기반)
-    const weights: Record<string, number> = {
-      'COMPOSITE': 0.35,        // 복합 지표 전략 - 가장 높은 가중치
-      'SUPER_TREND': 0.25,      // SuperTrend - 검증된 수익률
-      'VOLATILITY_BREAKOUT': 0.15, // 변동성 돌파 - 데이트레이딩
-      'MEAN_REVERSION': 0.15,   // 평균 회귀 - 횡보장
-      'MOMENTUM': 0.10,         // 모멘텀 - 보조
-    };
+    // 시장별 전략 가중치 (리서치 기반)
+    // 국내: 변동성돌파 가중치 높음 | 해외: SuperTrend 가중치 높음
+    const weights = getMarketDefaults(market).strategy.strategyWeights;
 
     let buyScore = 0;
     let sellScore = 0;
