@@ -23,7 +23,7 @@ import {
   Settings, Activity, BarChart3, Shield, Zap, Bot,
   Wallet, ArrowUpRight, ArrowDownRight, Clock, Eye,
   Plus, Trash2, CheckCircle, XCircle, AlertTriangle,
-  LineChart, CandlestickChart, Target, Coins
+  LineChart, CandlestickChart, Target, Coins, Search, Star
 } from 'lucide-react';
 
 // 타입 정의
@@ -73,6 +73,21 @@ interface StrategyData {
   isActive: boolean;
   profitRate: number;
   winRate: number;
+}
+
+interface WatchlistItem {
+  id: string;
+  stockCode: string;
+  stockName: string;
+  sector: string | null;
+  isActive: boolean;
+}
+
+interface SearchResult {
+  code: string;
+  name: string;
+  sector: string;
+  market: string;
 }
 
 // 금액 포맷
@@ -151,6 +166,13 @@ export default function TradingDashboard() {
     trailingStop: 3,
   });
 
+  // 종목 검색/관심종목 상태
+  const [showSearchDialog, setShowSearchDialog] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [watchlist, setWatchlist] = useState<WatchlistItem[]>([]);
+
   // 데이터 로드
   const loadDashboardData = useCallback(async () => {
     try {
@@ -200,10 +222,75 @@ export default function TradingDashboard() {
           setTradingStatus(statusData.data.status || 'STOPPED');
         }
       }
+
+      // 관심종목
+      const watchlistRes = await fetch('/api/watchlist');
+      if (watchlistRes.ok) {
+        const watchlistData = await watchlistRes.json();
+        if (watchlistData.success) {
+          setWatchlist(watchlistData.data || []);
+        }
+      }
     } catch (error) {
       console.error('데이터 로드 실패:', error);
     }
   }, [selectedStrategy]);
+
+  // 종목 검색
+  const searchStocks = useCallback(async (query: string) => {
+    if (!query || query.length < 1) {
+      setSearchResults([]);
+      return;
+    }
+    setIsSearching(true);
+    try {
+      const res = await fetch(`/api/kis/search?q=${encodeURIComponent(query)}&limit=30`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success) {
+          setSearchResults(data.data || []);
+        }
+      }
+    } catch (error) {
+      console.error('종목 검색 실패:', error);
+    }
+    setIsSearching(false);
+  }, []);
+
+  // 관심종목 추가
+  const addToWatchlist = async (stock: SearchResult) => {
+    try {
+      const res = await fetch('/api/watchlist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          stockCode: stock.code,
+          stockName: stock.name,
+          sector: stock.sector,
+        }),
+      });
+      if (res.ok) {
+        await loadDashboardData();
+      }
+    } catch (error) {
+      console.error('관심종목 추가 실패:', error);
+    }
+  };
+
+  // 관심종목 삭제
+  const removeFromWatchlist = async (id: string) => {
+    try {
+      await fetch(`/api/watchlist?id=${id}`, { method: 'DELETE' });
+      await loadDashboardData();
+    } catch (error) {
+      console.error('관심종목 삭제 실패:', error);
+    }
+  };
+
+  // 관심종목에 이미 있는지 확인
+  const isInWatchlist = (code: string) => {
+    return watchlist.some(item => item.stockCode === code);
+  };
 
   // 초기 로드 및 자동 새로고침
   useEffect(() => {
@@ -414,9 +501,10 @@ export default function TradingDashboard() {
       {/* 메인 컨텐츠 */}
       <main className="container px-4 py-6">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="dashboard"><Activity className="h-4 w-4 mr-1 sm:mr-2" /><span className="hidden sm:inline">대시보드</span></TabsTrigger>
             <TabsTrigger value="signals"><Zap className="h-4 w-4 mr-1 sm:mr-2" /><span className="hidden sm:inline">매매신호</span></TabsTrigger>
+            <TabsTrigger value="watchlist"><Star className="h-4 w-4 mr-1 sm:mr-2" /><span className="hidden sm:inline">관심종목</span></TabsTrigger>
             <TabsTrigger value="positions"><Wallet className="h-4 w-4 mr-1 sm:mr-2" /><span className="hidden sm:inline">포지션</span></TabsTrigger>
             <TabsTrigger value="strategy"><BarChart3 className="h-4 w-4 mr-1 sm:mr-2" /><span className="hidden sm:inline">전략</span></TabsTrigger>
             <TabsTrigger value="risk"><Shield className="h-4 w-4 mr-1 sm:mr-2" /><span className="hidden sm:inline">리스크</span></TabsTrigger>
@@ -788,6 +876,266 @@ export default function TradingDashboard() {
                 </ScrollArea>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* ===== 관심종목 탭 ===== */}
+          <TabsContent value="watchlist" className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-bold">관심종목 관리</h2>
+                <p className="text-sm text-muted-foreground">
+                  종목을 검색하여 관심종목에 추가하고 AI 매매 신호를 받으세요
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Dialog open={showSearchDialog} onOpenChange={setShowSearchDialog}>
+                  <DialogTrigger asChild>
+                    <Button className="bg-emerald-600 hover:bg-emerald-700">
+                      <Search className="h-4 w-4 mr-2" />
+                      종목 검색 추가
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-[540px]">
+                    <DialogHeader>
+                      <DialogTitle>종목 검색</DialogTitle>
+                      <DialogDescription>
+                        종목명 또는 종목코드로 검색하여 관심종목에 추가하세요
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-2">
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input 
+                          placeholder="종목명 또는 종목코드 입력 (예: 삼성전자, 005930, 반도체)"
+                          value={searchQuery}
+                          onChange={(e) => {
+                            setSearchQuery(e.target.value);
+                            searchStocks(e.target.value);
+                          }}
+                          className="pl-9"
+                          autoFocus
+                        />
+                        {isSearching && <RefreshCw className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />}
+                      </div>
+                      
+                      {/* 검색 결과 */}
+                      <ScrollArea className="h-[350px]">
+                        {searchResults.length > 0 ? (
+                          <div className="space-y-1">
+                            {searchResults.map((stock) => {
+                              const alreadyAdded = isInWatchlist(stock.code);
+                              return (
+                                <div 
+                                  key={stock.code}
+                                  className="flex items-center justify-between rounded-lg border p-3 hover:bg-muted/50 transition-colors"
+                                >
+                                  <div className="flex items-center gap-3">
+                                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
+                                      <span className="text-xs font-bold text-muted-foreground">{stock.code.slice(-4)}</span>
+                                    </div>
+                                    <div>
+                                      <div className="font-medium">{stock.name}</div>
+                                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                        <span>{stock.code}</span>
+                                        <Badge variant="outline" className="text-xs py-0">{stock.sector}</Badge>
+                                        <Badge variant="outline" className="text-xs py-0">{stock.market}</Badge>
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <Button 
+                                    size="sm" 
+                                    variant={alreadyAdded ? "secondary" : "default"}
+                                    disabled={alreadyAdded}
+                                    onClick={() => addToWatchlist(stock)}
+                                    className={alreadyAdded ? '' : 'bg-emerald-600 hover:bg-emerald-700'}
+                                  >
+                                    {alreadyAdded ? (
+                                      <>
+                                        <CheckCircle className="h-4 w-4 mr-1" />
+                                        추가됨
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Plus className="h-4 w-4 mr-1" />
+                                        추가
+                                      </>
+                                    )}
+                                  </Button>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ) : searchQuery.length > 0 ? (
+                          <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+                            <Search className="h-12 w-12 mb-3 opacity-20" />
+                            <p className="text-sm">검색 결과가 없습니다</p>
+                            <p className="text-xs mt-1">다른 검색어로 시도해보세요</p>
+                          </div>
+                        ) : (
+                          <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+                            <Search className="h-12 w-12 mb-3 opacity-20" />
+                            <p className="text-sm">종목명, 종목코드, 섹터명으로 검색</p>
+                            <div className="flex flex-wrap gap-2 mt-4 max-w-[400px] justify-center">
+                              {['삼성', '반도체', '2차전지', '카카오', '005930', 'ETF', '방산', '바이오'].map(keyword => (
+                                <Button 
+                                  key={keyword}
+                                  size="sm" 
+                                  variant="outline"
+                                  onClick={() => {
+                                    setSearchQuery(keyword);
+                                    searchStocks(keyword);
+                                  }}
+                                  className="text-xs"
+                                >
+                                  {keyword}
+                                </Button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </ScrollArea>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </div>
+            </div>
+
+            {/* 관심종목 통계 */}
+            <div className="grid gap-4 md:grid-cols-3">
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center gap-3">
+                    <div className="rounded-full bg-amber-100 p-3 dark:bg-amber-900">
+                      <Star className="h-6 w-6 text-amber-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">관심종목 수</p>
+                      <p className="text-2xl font-bold">{watchlist.length}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center gap-3">
+                    <div className="rounded-full bg-emerald-100 p-3 dark:bg-emerald-900">
+                      <TrendingUp className="h-6 w-6 text-emerald-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">매수 신호 종목</p>
+                      <p className="text-2xl font-bold text-emerald-600">
+                        {signals.filter(s => s.signalType === 'BUY' && watchlist.some(w => w.stockCode === s.stockCode)).length}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center gap-3">
+                    <div className="rounded-full bg-violet-100 p-3 dark:bg-violet-900">
+                      <Activity className="h-6 w-6 text-violet-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">섹터 수</p>
+                      <p className="text-2xl font-bold">
+                        {new Set(watchlist.map(w => w.sector).filter(Boolean)).size}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* 관심종목 리스트 */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-base">관심종목 목록</CardTitle>
+                    <CardDescription>AI 분석 대상 종목 — 관심종목에 추가된 종목만 자동매매 분석에 포함됩니다</CardDescription>
+                  </div>
+                  <Badge variant="outline">{watchlist.length}종목</Badge>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {watchlist.length > 0 ? (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>종목코드</TableHead>
+                        <TableHead>종목명</TableHead>
+                        <TableHead>섹터</TableHead>
+                        <TableHead className="text-center">AI 신호</TableHead>
+                        <TableHead className="text-right">관리</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {watchlist.map((item) => {
+                        const signal = signals.find(s => s.stockCode === item.stockCode);
+                        return (
+                          <TableRow key={item.id}>
+                            <TableCell className="font-mono text-sm">{item.stockCode}</TableCell>
+                            <TableCell className="font-medium">{item.stockName}</TableCell>
+                            <TableCell>
+                              <Badge variant="outline" className="text-xs">{item.sector || '-'}</Badge>
+                            </TableCell>
+                            <TableCell className="text-center">
+                              {signal ? (
+                                <SignalBadge type={signal.signalType} />
+                              ) : (
+                                <Badge variant="secondary" className="text-xs">분석 대기</Badge>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <Button 
+                                size="sm" 
+                                variant="ghost" 
+                                className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                                onClick={() => removeFromWatchlist(item.id)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+                    <Star className="h-12 w-12 mb-3 opacity-20" />
+                    <p className="text-sm">관심종목이 없습니다</p>
+                    <p className="text-xs mt-1">위의 "종목 검색 추가" 버튼으로 종목을 추가하세요</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* 섹터별 분포 */}
+            {watchlist.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">섹터별 분포</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex flex-wrap gap-3">
+                    {Object.entries(
+                      watchlist.reduce((acc, item) => {
+                        const sector = item.sector || '기타';
+                        acc[sector] = (acc[sector] || 0) + 1;
+                        return acc;
+                      }, {} as Record<string, number>)
+                    ).sort((a, b) => b[1] - a[1]).map(([sector, count]) => (
+                      <div key={sector} className="flex items-center gap-2 rounded-lg border px-3 py-2">
+                        <Badge variant="outline">{sector}</Badge>
+                        <span className="text-sm font-medium">{count}</span>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
 
           {/* ===== 포지션 탭 ===== */}
