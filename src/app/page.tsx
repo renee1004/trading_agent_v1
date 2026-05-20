@@ -23,7 +23,8 @@ import {
   Settings, Activity, BarChart3, Shield, Zap, Bot,
   Wallet, ArrowUpRight, ArrowDownRight, Clock, Eye,
   Plus, Trash2, CheckCircle, XCircle, AlertTriangle,
-  LineChart, CandlestickChart, Target, Coins, Search, Star, Globe
+  LineChart, CandlestickChart, Target, Coins, Search, Star, Globe,
+  RotateCw, Terminal, CircleDot
 } from 'lucide-react';
 
 // 타입 정의
@@ -198,6 +199,30 @@ export default function TradingDashboard() {
   const [isSearching, setIsSearching] = useState(false);
   const [watchlist, setWatchlist] = useState<WatchlistItem[]>([]);
 
+  // 에이전트 상태
+  const [agentStatus, setAgentStatus] = useState<{
+    isRunning: boolean;
+    lastCycleTime: string | null;
+    totalCycles: number;
+    totalTrades: number;
+    lastCycleSummary: {
+      stocksAnalyzed: number;
+      signalsGenerated: number;
+      ordersPlaced: number;
+      positionsMonitored: number;
+      exitsExecuted: number;
+    } | null;
+  } | null>(null);
+  const [agentLogs, setAgentLogs] = useState<Array<{
+    id: string;
+    timestamp: string;
+    type: string;
+    market: string;
+    message: string;
+  }>>([]);
+  const [isRunningCycle, setIsRunningCycle] = useState(false);
+  const [autoCycleEnabled, setAutoCycleEnabled] = useState(false);
+
   // 해외주식 상태
   const [marketType, setMarketType] = useState<'DOMESTIC' | 'OVERSEAS'>('DOMESTIC');
   const [overseasPositions, setOverseasPositions] = useState<OverseasPositionData[]>([]);
@@ -367,51 +392,104 @@ export default function TradingDashboard() {
     return watchlist.some(item => item.stockCode === code);
   };
 
+  // 에이전트 상태 로드
+  const loadAgentStatus = useCallback(async () => {
+    try {
+      const res = await fetch('/api/agent/status');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success) {
+          setAgentStatus(data.data);
+          setAgentLogs(data.data.recentLogs || []);
+          setTradingStatus(data.data.isRunning ? 'RUNNING' : 'STOPPED');
+        }
+      }
+    } catch (error) {
+      console.error('에이전트 상태 로드 실패:', error);
+    }
+  }, []);
+
   // 초기 로드 및 자동 새로고침
   useEffect(() => {
     let mounted = true;
     const fetchData = async () => {
       if (!mounted) return;
-      await Promise.all([loadDashboardData(), loadOverseasData()]);
+      await Promise.all([loadDashboardData(), loadOverseasData(), loadAgentStatus()]);
     };
     fetchData();
     const interval = setInterval(fetchData, 30000);
     return () => { mounted = false; clearInterval(interval); };
-  }, [selectedStrategy, loadDashboardData, loadOverseasData]);
+  }, [selectedStrategy, loadDashboardData, loadOverseasData, loadAgentStatus]);
 
-  // 자동매매 시작
+  // 자동 사이클: 에이전트 실행 중 + 자동사이클 활성화 시 60초마다 실행
+  useEffect(() => {
+    if (!autoCycleEnabled || tradingStatus !== 'RUNNING') return;
+    const cycleInterval = setInterval(async () => {
+      try {
+        setIsRunningCycle(true);
+        await fetch('/api/agent/run', { method: 'POST' });
+        await loadAgentStatus();
+        await loadDashboardData();
+      } catch (error) {
+        console.error('자동 사이클 실행 실패:', error);
+      } finally {
+        setIsRunningCycle(false);
+      }
+    }, 60000); // 60초마다
+    return () => clearInterval(cycleInterval);
+  }, [autoCycleEnabled, tradingStatus, loadAgentStatus, loadDashboardData]);
+
+  // 에이전트 시작
   const startTrading = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch('/api/trading/status', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'START', strategyId: selectedStrategy }),
-      });
+      const res = await fetch('/api/agent/start', { method: 'POST' });
       const data = await res.json();
       if (data.success) {
         setTradingStatus('RUNNING');
+        await loadAgentStatus();
       }
     } catch (error) {
-      console.error('자동매매 시작 실패:', error);
+      console.error('에이전트 시작 실패:', error);
     }
     setIsLoading(false);
   };
 
-  // 자동매매 중지
+  // 에이전트 중지
   const stopTrading = async () => {
     setIsLoading(true);
+    setAutoCycleEnabled(false);
     try {
-      await fetch('/api/trading/status', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'STOP' }),
-      });
-      setTradingStatus('STOPPED');
+      const res = await fetch('/api/agent/stop', { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        setTradingStatus('STOPPED');
+        await loadAgentStatus();
+      }
     } catch (error) {
-      console.error('자동매매 중지 실패:', error);
+      console.error('에이전트 중지 실패:', error);
     }
     setIsLoading(false);
+  };
+
+  // 수동 1사이클 실행
+  const runOneCycle = async () => {
+    setIsRunningCycle(true);
+    try {
+      // 아직 시작 안했으면 먼저 시작
+      if (tradingStatus !== 'RUNNING') {
+        await startTrading();
+      }
+      const res = await fetch('/api/agent/run', { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        await loadAgentStatus();
+        await loadDashboardData();
+      }
+    } catch (error) {
+      console.error('사이클 실행 실패:', error);
+    }
+    setIsRunningCycle(false);
   };
 
   // KIS 설정 저장
@@ -578,10 +656,10 @@ export default function TradingDashboard() {
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className="grid w-full grid-cols-7">
             <TabsTrigger value="dashboard"><Activity className="h-4 w-4 mr-1 sm:mr-2" /><span className="hidden sm:inline">대시보드</span></TabsTrigger>
+            <TabsTrigger value="agent"><Bot className="h-4 w-4 mr-1 sm:mr-2" /><span className="hidden sm:inline">에이전트</span></TabsTrigger>
             <TabsTrigger value="signals"><Zap className="h-4 w-4 mr-1 sm:mr-2" /><span className="hidden sm:inline">매매신호</span></TabsTrigger>
             <TabsTrigger value="watchlist"><Star className="h-4 w-4 mr-1 sm:mr-2" /><span className="hidden sm:inline">관심종목</span></TabsTrigger>
             <TabsTrigger value="overseas"><Globe className="h-4 w-4 mr-1 sm:mr-2" /><span className="hidden sm:inline">해외주식</span></TabsTrigger>
-            <TabsTrigger value="positions"><Wallet className="h-4 w-4 mr-1 sm:mr-2" /><span className="hidden sm:inline">포지션</span></TabsTrigger>
             <TabsTrigger value="strategy"><BarChart3 className="h-4 w-4 mr-1 sm:mr-2" /><span className="hidden sm:inline">전략</span></TabsTrigger>
             <TabsTrigger value="risk"><Shield className="h-4 w-4 mr-1 sm:mr-2" /><span className="hidden sm:inline">리스크</span></TabsTrigger>
           </TabsList>
@@ -1512,76 +1590,226 @@ export default function TradingDashboard() {
             </Card>
           </TabsContent>
 
-          {/* ===== 포지션 탭 ===== */}
-          <TabsContent value="positions" className="space-y-6">
+          {/* ===== 에이전트 탭 ===== */}
+          <TabsContent value="agent" className="space-y-6">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-xl font-bold">포지션 관리</h2>
-                <p className="text-sm text-muted-foreground">현재 보유 및 거래 내역 관리</p>
+                <h2 className="text-xl font-bold">AI 자동매매 에이전트</h2>
+                <p className="text-sm text-muted-foreground">
+                  시그널 분석 → 리스크 체크 → 자동 주문 → 포지션 모니터링
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button 
+                  onClick={runOneCycle} 
+                  disabled={isRunningCycle}
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  <RotateCw className={`h-4 w-4 mr-1 ${isRunningCycle ? 'animate-spin' : ''}`} />
+                  1사이클 실행
+                </Button>
+                <div className="flex items-center gap-2 rounded-lg border px-3 py-2">
+                  <Switch 
+                    checked={autoCycleEnabled} 
+                    onCheckedChange={(checked) => {
+                      setAutoCycleEnabled(checked);
+                      if (checked && tradingStatus !== 'RUNNING') {
+                        startTrading();
+                      }
+                    }} 
+                  />
+                  <Label className="text-sm">자동실행 (60초)</Label>
+                </div>
               </div>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-3">
-              <Card>
+            {/* 에이전트 상태 카드 */}
+            <div className="grid gap-4 md:grid-cols-4">
+              <Card className={tradingStatus === 'RUNNING' ? 'border-emerald-200 bg-emerald-50/50 dark:bg-emerald-950/20 dark:border-emerald-800' : ''}>
                 <CardContent className="pt-6">
-                  <p className="text-sm text-muted-foreground">총 평가금액</p>
-                  <p className="text-2xl font-bold">{formatMoney(positions.reduce((s, p) => s + p.evaluationAmount, 0))}원</p>
+                  <div className="flex items-center gap-3">
+                    <div className={`rounded-full p-3 ${tradingStatus === 'RUNNING' ? 'bg-emerald-100 dark:bg-emerald-900' : 'bg-gray-100 dark:bg-gray-800'}`}>
+                      <Bot className={`h-6 w-6 ${tradingStatus === 'RUNNING' ? 'text-emerald-600' : 'text-gray-600'}`} />
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">에이전트 상태</p>
+                      <p className={`text-2xl font-bold ${tradingStatus === 'RUNNING' ? 'text-emerald-600' : tradingStatus === 'PAUSED' ? 'text-amber-600' : 'text-gray-600'}`}>
+                        {tradingStatus === 'RUNNING' ? '실행 중' : tradingStatus === 'PAUSED' ? '일시정지' : '대기'}
+                      </p>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
               <Card>
                 <CardContent className="pt-6">
-                  <p className="text-sm text-muted-foreground">총 평가손익</p>
-                  <p className={`text-2xl font-bold ${positions.reduce((s, p) => s + p.profitLoss, 0) >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                    {formatMoney(positions.reduce((s, p) => s + p.profitLoss, 0))}원
-                  </p>
+                  <div className="flex items-center gap-3">
+                    <div className="rounded-full bg-blue-100 p-3 dark:bg-blue-900">
+                      <RefreshCw className="h-6 w-6 text-blue-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">실행 사이클</p>
+                      <p className="text-2xl font-bold">{agentStatus?.totalCycles || 0}회</p>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
               <Card>
                 <CardContent className="pt-6">
-                  <p className="text-sm text-muted-foreground">보유 종목 수</p>
-                  <p className="text-2xl font-bold">{positions.length}개</p>
+                  <div className="flex items-center gap-3">
+                    <div className="rounded-full bg-violet-100 p-3 dark:bg-violet-900">
+                      <Zap className="h-6 w-6 text-violet-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">총 주문 건수</p>
+                      <p className="text-2xl font-bold">{agentStatus?.totalTrades || 0}건</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center gap-3">
+                    <div className="rounded-full bg-amber-100 p-3 dark:bg-amber-900">
+                      <Clock className="h-6 w-6 text-amber-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">마지막 실행</p>
+                      <p className="text-lg font-bold">
+                        {agentStatus?.lastCycleTime 
+                          ? new Date(agentStatus.lastCycleTime).toLocaleTimeString('ko-KR')
+                          : '-'
+                        }
+                      </p>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
             </div>
 
+            {/* 마지막 사이클 결과 */}
+            {agentStatus?.lastCycleSummary && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">마지막 사이클 결과</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid gap-4 grid-cols-5 text-center">
+                    <div>
+                      <p className="text-2xl font-bold text-blue-600">{agentStatus.lastCycleSummary.stocksAnalyzed}</p>
+                      <p className="text-xs text-muted-foreground">분석 종목</p>
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold text-emerald-600">{agentStatus.lastCycleSummary.signalsGenerated}</p>
+                      <p className="text-xs text-muted-foreground">발생 신호</p>
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold text-violet-600">{agentStatus.lastCycleSummary.ordersPlaced}</p>
+                      <p className="text-xs text-muted-foreground">실행 주문</p>
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold text-amber-600">{agentStatus.lastCycleSummary.positionsMonitored}</p>
+                      <p className="text-xs text-muted-foreground">모니터링 포지션</p>
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold text-red-600">{agentStatus.lastCycleSummary.exitsExecuted}</p>
+                      <p className="text-xs text-muted-foreground">자동 청산</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* 에이전트 작동 원리 */}
             <Card>
               <CardHeader>
-                <CardTitle>보유 포지션 상세</CardTitle>
+                <CardTitle className="text-base">에이전트 작동 원리</CardTitle>
+                <CardDescription>1사이클 실행 시 아래 순서로 자동 매매가 진행됩니다</CardDescription>
               </CardHeader>
               <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>종목</TableHead>
-                      <TableHead className="text-right">수량</TableHead>
-                      <TableHead className="text-right">매입가</TableHead>
-                      <TableHead className="text-right">현재가</TableHead>
-                      <TableHead className="text-right">평가금</TableHead>
-                      <TableHead className="text-right">손익</TableHead>
-                      <TableHead className="text-right">수익률</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {positions.map((pos) => (
-                      <TableRow key={pos.stockCode}>
-                        <TableCell>
-                          <div className="font-medium">{pos.stockName}</div>
-                          <div className="text-xs text-muted-foreground">{pos.stockCode}</div>
-                        </TableCell>
-                        <TableCell className="text-right">{pos.quantity}주</TableCell>
-                        <TableCell className="text-right">{formatFullMoney(pos.avgPrice)}원</TableCell>
-                        <TableCell className="text-right">{formatFullMoney(pos.currentPrice)}원</TableCell>
-                        <TableCell className="text-right">{formatMoney(pos.evaluationAmount)}원</TableCell>
-                        <TableCell className={`text-right ${pos.profitLoss >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                          {formatMoney(pos.profitLoss)}원
-                        </TableCell>
-                        <TableCell className={`text-right font-medium ${pos.profitRate >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                          {pos.profitRate >= 0 ? '+' : ''}{pos.profitRate.toFixed(2)}%
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                <div className="grid gap-3 md:grid-cols-4">
+                  <div className="flex flex-col items-center rounded-lg border p-4 text-center">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900 mb-2">
+                      <span className="text-lg font-bold text-blue-600">1</span>
+                    </div>
+                    <p className="font-medium text-sm">데이터 수집</p>
+                    <p className="text-xs text-muted-foreground mt-1">KIS API에서 실시간 캔들 데이터 조회</p>
+                  </div>
+                  <div className="flex flex-col items-center rounded-lg border p-4 text-center">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-violet-100 dark:bg-violet-900 mb-2">
+                      <span className="text-lg font-bold text-violet-600">2</span>
+                    </div>
+                    <p className="font-medium text-sm">AI 시그널 분석</p>
+                    <p className="text-xs text-muted-foreground mt-1">5대 전략 가중평균으로 매수/매도 판단</p>
+                  </div>
+                  <div className="flex flex-col items-center rounded-lg border p-4 text-center">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900 mb-2">
+                      <span className="text-lg font-bold text-amber-600">3</span>
+                    </div>
+                    <p className="font-medium text-sm">리스크 체크</p>
+                    <p className="text-xs text-muted-foreground mt-1">손실한도, 포지션 수, 신뢰도 검증</p>
+                  </div>
+                  <div className="flex flex-col items-center rounded-lg border p-4 text-center">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900 mb-2">
+                      <span className="text-lg font-bold text-emerald-600">4</span>
+                    </div>
+                    <p className="font-medium text-sm">자동 주문 실행</p>
+                    <p className="text-xs text-muted-foreground mt-1">KIS API로 매수/매도 주문 + 포지션 모니터링</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* 실시간 에이전트 로그 */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-base">에이전트 실행 로그</CardTitle>
+                    <CardDescription>자동매매 에이전트의 실시간 작업 기록</CardDescription>
+                  </div>
+                  <Badge variant="outline" className="text-xs">
+                    {agentLogs.length}건
+                    {isRunningCycle && ' · 실행 중...'}
+                  </Badge>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <ScrollArea className="h-[400px]">
+                  {agentLogs.length > 0 ? (
+                    <div className="space-y-2 font-mono text-sm">
+                      {agentLogs.map((log) => (
+                        <div 
+                          key={log.id}
+                          className={`flex items-start gap-2 rounded-md px-3 py-2 ${
+                            log.type === 'ERROR' ? 'bg-red-50 dark:bg-red-950/20' :
+                            log.type === 'TRADE' ? 'bg-violet-50 dark:bg-violet-950/20' :
+                            log.type === 'SIGNAL' ? 'bg-emerald-50 dark:bg-emerald-950/20' :
+                            log.type === 'EXIT' ? 'bg-amber-50 dark:bg-amber-950/20' :
+                            log.type === 'RISK' ? 'bg-orange-50 dark:bg-orange-950/20' :
+                            'bg-muted/30'
+                          }`}
+                        >
+                          <span className="text-xs text-muted-foreground whitespace-nowrap">
+                            {new Date(log.timestamp).toLocaleTimeString('ko-KR')}
+                          </span>
+                          <Badge variant="outline" className="text-xs py-0 px-1 shrink-0">
+                            {log.type}
+                          </Badge>
+                          <Badge variant="outline" className="text-xs py-0 px-1 shrink-0">
+                            {log.market === 'DOMESTIC' ? '국내' : '해외'}
+                          </Badge>
+                          <span className="text-xs">{log.message}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+                      <Terminal className="h-12 w-12 mb-3 opacity-20" />
+                      <p className="text-sm">아직 실행 로그가 없습니다</p>
+                      <p className="text-xs mt-1">에이전트를 시작하고 사이클을 실행하세요</p>
+                    </div>
+                  )}
+                </ScrollArea>
               </CardContent>
             </Card>
           </TabsContent>
