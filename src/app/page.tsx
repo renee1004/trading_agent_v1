@@ -23,7 +23,7 @@ import {
   Settings, Activity, BarChart3, Shield, Zap, Bot,
   Wallet, ArrowUpRight, ArrowDownRight, Clock, Eye,
   Plus, Trash2, CheckCircle, XCircle, AlertTriangle,
-  LineChart, CandlestickChart, Target, Coins, Search, Star
+  LineChart, CandlestickChart, Target, Coins, Search, Star, Globe
 } from 'lucide-react';
 
 // 타입 정의
@@ -86,6 +86,31 @@ interface WatchlistItem {
 interface SearchResult {
   code: string;
   name: string;
+  sector: string;
+  market: string;
+}
+
+interface OverseasPositionData {
+  stockCode: string;
+  stockName: string;
+  exchangeCode: string;
+  exchangeName: string;
+  quantity: number;
+  avgPrice: number;
+  currentPrice: number;
+  profitLoss: number;
+  profitRate: number;
+  evaluationAmount: number;
+  foreignEvaluation: number;
+  exchangeRate: number;
+  currency: string;
+}
+
+interface OverseasSearchResult {
+  code: string;
+  name: string;
+  nameEng: string;
+  exchangeCode: string;
   sector: string;
   market: string;
 }
@@ -173,6 +198,17 @@ export default function TradingDashboard() {
   const [isSearching, setIsSearching] = useState(false);
   const [watchlist, setWatchlist] = useState<WatchlistItem[]>([]);
 
+  // 해외주식 상태
+  const [marketType, setMarketType] = useState<'DOMESTIC' | 'OVERSEAS'>('DOMESTIC');
+  const [overseasPositions, setOverseasPositions] = useState<OverseasPositionData[]>([]);
+  const [overseasBalance, setOverseasBalance] = useState(30000000);
+  const [overseasProfitRate, setOverseasProfitRate] = useState(5.2);
+  const [overseasAvailable, setOverseasAvailable] = useState(15000000);
+  const [overseasSearchResults, setOverseasSearchResults] = useState<OverseasSearchResult[]>([]);
+  const [isOverseasSearching, setIsOverseasSearching] = useState(false);
+  const [overseasSearchQuery, setOverseasSearchQuery] = useState('');
+  const [showOverseasSearchDialog, setShowOverseasSearchDialog] = useState(false);
+
   // 데이터 로드
   const loadDashboardData = useCallback(async () => {
     try {
@@ -236,6 +272,24 @@ export default function TradingDashboard() {
     }
   }, [selectedStrategy]);
 
+  // 해외주식 데이터 로드
+  const loadOverseasData = useCallback(async () => {
+    try {
+      const balanceRes = await fetch('/api/kis/overseas/balance');
+      if (balanceRes.ok) {
+        const balanceData = await balanceRes.json();
+        if (balanceData.success) {
+          setOverseasBalance(balanceData.data.totalDeposit);
+          setOverseasProfitRate(balanceData.data.totalProfitRate);
+          setOverseasAvailable(balanceData.data.availableAmount);
+          setOverseasPositions(balanceData.data.positions || []);
+        }
+      }
+    } catch (error) {
+      console.error('해외주식 데이터 로드 실패:', error);
+    }
+  }, []);
+
   // 종목 검색
   const searchStocks = useCallback(async (query: string) => {
     if (!query || query.length < 1) {
@@ -255,6 +309,27 @@ export default function TradingDashboard() {
       console.error('종목 검색 실패:', error);
     }
     setIsSearching(false);
+  }, []);
+
+  // 해외주식 검색
+  const searchOverseasStocks = useCallback(async (query: string) => {
+    if (!query || query.length < 1) {
+      setOverseasSearchResults([]);
+      return;
+    }
+    setIsOverseasSearching(true);
+    try {
+      const res = await fetch(`/api/kis/overseas/search?q=${encodeURIComponent(query)}&limit=30`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success) {
+          setOverseasSearchResults(data.data || []);
+        }
+      }
+    } catch (error) {
+      console.error('해외주식 검색 실패:', error);
+    }
+    setIsOverseasSearching(false);
   }, []);
 
   // 관심종목 추가
@@ -297,12 +372,12 @@ export default function TradingDashboard() {
     let mounted = true;
     const fetchData = async () => {
       if (!mounted) return;
-      await loadDashboardData();
+      await Promise.all([loadDashboardData(), loadOverseasData()]);
     };
     fetchData();
     const interval = setInterval(fetchData, 30000);
     return () => { mounted = false; clearInterval(interval); };
-  }, [selectedStrategy, loadDashboardData]);
+  }, [selectedStrategy, loadDashboardData, loadOverseasData]);
 
   // 자동매매 시작
   const startTrading = async () => {
@@ -501,10 +576,11 @@ export default function TradingDashboard() {
       {/* 메인 컨텐츠 */}
       <main className="container px-4 py-6">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-6">
+          <TabsList className="grid w-full grid-cols-7">
             <TabsTrigger value="dashboard"><Activity className="h-4 w-4 mr-1 sm:mr-2" /><span className="hidden sm:inline">대시보드</span></TabsTrigger>
             <TabsTrigger value="signals"><Zap className="h-4 w-4 mr-1 sm:mr-2" /><span className="hidden sm:inline">매매신호</span></TabsTrigger>
             <TabsTrigger value="watchlist"><Star className="h-4 w-4 mr-1 sm:mr-2" /><span className="hidden sm:inline">관심종목</span></TabsTrigger>
+            <TabsTrigger value="overseas"><Globe className="h-4 w-4 mr-1 sm:mr-2" /><span className="hidden sm:inline">해외주식</span></TabsTrigger>
             <TabsTrigger value="positions"><Wallet className="h-4 w-4 mr-1 sm:mr-2" /><span className="hidden sm:inline">포지션</span></TabsTrigger>
             <TabsTrigger value="strategy"><BarChart3 className="h-4 w-4 mr-1 sm:mr-2" /><span className="hidden sm:inline">전략</span></TabsTrigger>
             <TabsTrigger value="risk"><Shield className="h-4 w-4 mr-1 sm:mr-2" /><span className="hidden sm:inline">리스크</span></TabsTrigger>
@@ -1136,6 +1212,298 @@ export default function TradingDashboard() {
                 </CardContent>
               </Card>
             )}
+          </TabsContent>
+
+          {/* ===== 해외주식 탭 ===== */}
+          <TabsContent value="overseas" className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-bold">해외주식 (미국)</h2>
+                <p className="text-sm text-muted-foreground">
+                  미국 나스닥/뉴욕거래소 종목 AI 매매 신호 및 포지션 관리
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Dialog open={showOverseasSearchDialog} onOpenChange={setShowOverseasSearchDialog}>
+                  <DialogTrigger asChild>
+                    <Button className="bg-blue-600 hover:bg-blue-700">
+                      <Search className="h-4 w-4 mr-2" />
+                      미국종목 검색
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-[540px]">
+                    <DialogHeader>
+                      <DialogTitle>미국 종목 검색</DialogTitle>
+                      <DialogDescription>
+                        티커 또는 종목명으로 검색하여 관심종목에 추가하세요
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-2">
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          placeholder="티커 또는 종목명 (예: AAPL, 애플, NVIDIA, 반도체)"
+                          value={overseasSearchQuery}
+                          onChange={(e) => {
+                            setOverseasSearchQuery(e.target.value);
+                            searchOverseasStocks(e.target.value);
+                          }}
+                          className="pl-9"
+                          autoFocus
+                        />
+                        {isOverseasSearching && <RefreshCw className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />}
+                      </div>
+
+                      <ScrollArea className="h-[350px]">
+                        {overseasSearchResults.length > 0 ? (
+                          <div className="space-y-1">
+                            {overseasSearchResults.map((stock) => (
+                              <div
+                                key={`${stock.code}-${stock.exchangeCode}`}
+                                className="flex items-center justify-between rounded-lg border p-3 hover:bg-muted/50 transition-colors"
+                              >
+                                <div className="flex items-center gap-3">
+                                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-950">
+                                    <span className="text-xs font-bold text-blue-600">{stock.code.slice(0, 2)}</span>
+                                  </div>
+                                  <div>
+                                    <div className="font-medium">{stock.name}</div>
+                                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                      <span className="font-mono">{stock.code}</span>
+                                      <Badge variant="outline" className="text-xs py-0">{stock.sector}</Badge>
+                                      <Badge variant="outline" className="text-xs py-0 text-blue-600">{stock.market}</Badge>
+                                    </div>
+                                  </div>
+                                </div>
+                                <Button
+                                  size="sm"
+                                  variant="default"
+                                  className="bg-blue-600 hover:bg-blue-700"
+                                  onClick={async () => {
+                                    try {
+                                      await fetch('/api/watchlist', {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({
+                                          stockCode: `${stock.exchangeCode}:${stock.code}`,
+                                          stockName: `[미] ${stock.name}`,
+                                          sector: stock.sector,
+                                        }),
+                                      });
+                                      await loadDashboardData();
+                                    } catch (error) {
+                                      console.error('관심종목 추가 실패:', error);
+                                    }
+                                  }}
+                                >
+                                  <Plus className="h-3 w-3 mr-1" />
+                                  추가
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        ) : overseasSearchQuery ? (
+                          <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+                            <Search className="h-12 w-12 mb-3 opacity-20" />
+                            <p className="text-sm">검색 결과가 없습니다</p>
+                          </div>
+                        ) : (
+                          <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+                            <Globe className="h-12 w-12 mb-3 opacity-20" />
+                            <p className="text-sm">티커 또는 종목명을 입력하세요</p>
+                            <div className="mt-3 flex flex-wrap gap-2 justify-center">
+                              {['AAPL', 'NVDA', 'TSLA', 'MSFT', 'GOOGL', 'AMZN'].map(ticker => (
+                                <Button
+                                  key={ticker}
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => {
+                                    setOverseasSearchQuery(ticker);
+                                    searchOverseasStocks(ticker);
+                                  }}
+                                >
+                                  {ticker}
+                                </Button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </ScrollArea>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </div>
+            </div>
+
+            {/* 해외주식 요약 카드 */}
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">해외 예수금</CardTitle>
+                  <Coins className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{formatMoney(overseasBalance)}원</div>
+                  <p className="text-xs text-muted-foreground">
+                    출금가능: {formatMoney(overseasAvailable)}원
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">해외 수익률</CardTitle>
+                  <LineChart className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className={`text-2xl font-bold ${overseasProfitRate >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                    {overseasProfitRate >= 0 ? '+' : ''}{overseasProfitRate.toFixed(1)}%
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    환율: 1,330 KRW/USD
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">보유 종목</CardTitle>
+                  <Globe className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{overseasPositions.length}개</div>
+                  <p className="text-xs text-muted-foreground">
+                    나스닥/뉴욕/아멕스
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">해외 평가금액</CardTitle>
+                  <Wallet className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    {formatMoney(overseasPositions.reduce((sum, p) => sum + p.evaluationAmount, 0))}원
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {formatMoney(overseasPositions.reduce((sum, p) => sum + p.foreignEvaluation, 0))} USD
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* 해외주식 포지션 테이블 */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-base">미국 주식 포지션</CardTitle>
+                    <CardDescription>나스닥/뉴욕/아멕스 보유 종목</CardDescription>
+                  </div>
+                  <Button size="sm" variant="outline" onClick={async () => { await loadOverseasData(); }}>
+                    <RefreshCw className="h-3 w-3 mr-1" />
+                    새로고침
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <ScrollArea className="h-[400px]">
+                  {overseasPositions.length > 0 ? (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>종목</TableHead>
+                          <TableHead>거래소</TableHead>
+                          <TableHead className="text-right">수량</TableHead>
+                          <TableHead className="text-right">평균단가</TableHead>
+                          <TableHead className="text-right">현재가</TableHead>
+                          <TableHead className="text-right">평가금액</TableHead>
+                          <TableHead className="text-right">수익률</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {overseasPositions.map((pos) => (
+                          <TableRow key={`${pos.stockCode}-${pos.exchangeCode}`}>
+                            <TableCell>
+                              <div className="font-medium">{pos.stockName}</div>
+                              <div className="text-xs text-muted-foreground font-mono">{pos.stockCode}</div>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="outline" className="text-xs text-blue-600">{pos.exchangeName}</Badge>
+                            </TableCell>
+                            <TableCell className="text-right">{pos.quantity}주</TableCell>
+                            <TableCell className="text-right">${pos.avgPrice.toFixed(2)}</TableCell>
+                            <TableCell className="text-right font-medium">${pos.currentPrice.toFixed(2)}</TableCell>
+                            <TableCell className="text-right">{formatMoney(pos.evaluationAmount)}원</TableCell>
+                            <TableCell className="text-right">
+                              <span className={pos.profitRate >= 0 ? 'text-emerald-600' : 'text-red-600'}>
+                                {pos.profitRate >= 0 ? '+' : ''}{pos.profitRate.toFixed(1)}%
+                              </span>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+                      <Globe className="h-12 w-12 mb-3 opacity-20" />
+                      <p className="text-sm">해외주식 포지션이 없습니다</p>
+                      <p className="text-xs mt-1">미국종목 검색으로 종목을 추가해보세요</p>
+                    </div>
+                  )}
+                </ScrollArea>
+              </CardContent>
+            </Card>
+
+            {/* 인기 미국 종목 빠른 추가 */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">인기 미국 종목</CardTitle>
+                <CardDescription>클릭하여 시세를 확인하거나 관심종목에 추가</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                  {[
+                    { code: 'AAPL', name: '애플', exchange: 'NAS' },
+                    { code: 'NVDA', name: '엔비디아', exchange: 'NAS' },
+                    { code: 'MSFT', name: '마이크로소프트', exchange: 'NAS' },
+                    { code: 'GOOGL', name: '알파벳', exchange: 'NAS' },
+                    { code: 'AMZN', name: '아마존', exchange: 'NAS' },
+                    { code: 'TSLA', name: '테슬라', exchange: 'NAS' },
+                    { code: 'META', name: '메타', exchange: 'NAS' },
+                    { code: 'NFLX', name: '넷플릭스', exchange: 'NAS' },
+                    { code: 'AMD', name: 'AMD', exchange: 'NAS' },
+                    { code: 'AVGO', name: '브로드컴', exchange: 'NAS' },
+                    { code: 'JPM', name: 'JP모건', exchange: 'NYS' },
+                    { code: 'SPY', name: 'S&P500 ETF', exchange: 'AMS' },
+                  ].map((stock) => (
+                    <Button
+                      key={stock.code}
+                      variant="outline"
+                      className="h-auto py-3 flex flex-col items-center gap-1 hover:bg-blue-50 dark:hover:bg-blue-950"
+                      onClick={async () => {
+                        try {
+                          const res = await fetch(`/api/kis/overseas/price?code=${stock.code}&exchange=${stock.exchange}`);
+                          if (res.ok) {
+                            const data = await res.json();
+                            if (data.success) {
+                              alert(`${data.data.stockName} (${data.data.stockCode})\n현재가: $${data.data.currentPrice}\n등락률: ${data.data.changeRate}%`);
+                            }
+                          }
+                        } catch {
+                          alert('시세 조회 실패');
+                        }
+                      }}
+                    >
+                      <span className="font-mono text-sm font-bold">{stock.code}</span>
+                      <span className="text-xs text-muted-foreground">{stock.name}</span>
+                    </Button>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* ===== 포지션 탭 ===== */}

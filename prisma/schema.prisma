@@ -33,12 +33,14 @@ model TradingStrategy {
 }
 
 model WatchlistItem {
-  id        String   @id @default(cuid())
-  stockCode String
-  stockName String
-  sector    String?
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
+  id           String   @id @default(cuid())
+  stockCode    String
+  stockName    String
+  sector       String?
+  market       String   @default("DOMESTIC") // DOMESTIC, OVERSEAS
+  exchangeCode String?  // NAS, NYS, AMS (해외주식용)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
 }
 
 model TradeHistory {
@@ -55,22 +57,28 @@ model TradeHistory {
   status       String   @default("PENDING") // PENDING, FILLED, CANCELLED, FAILED
   orderNo      String?
   signalReason String?
+  market       String   @default("DOMESTIC") // DOMESTIC, OVERSEAS
+  exchangeCode String?  // NAS, NYS, AMS
+  currency     String   @default("KRW")
   tradedAt     DateTime @default(now())
   createdAt    DateTime @default(now())
 }
 
 model Position {
-  id          String   @id @default(cuid())
-  stockCode   String
-  stockName   String
-  quantity    Int
-  avgPrice    Float
+  id           String   @id @default(cuid())
+  stockCode    String
+  stockName    String
+  quantity     Int
+  avgPrice     Float
   currentPrice Float?
-  profitLoss  Float?
-  profitRate  Float?
-  strategy    String?
-  openedAt    DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  profitLoss   Float?
+  profitRate   Float?
+  strategy     String?
+  market       String   @default("DOMESTIC") // DOMESTIC, OVERSEAS
+  exchangeCode String?  // NAS, NYS, AMS
+  currency     String   @default("KRW")
+  openedAt     DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }
 
 model TradingSession {
@@ -103,15 +111,19 @@ model RiskConfig {
 }
 
 model MarketData {
-  id        String   @id @default(cuid())
-  stockCode String
-  date      String
-  open      Float
-  high      Float
-  low       Float
-  close     Float
-  volume    Int
-  createdAt DateTime @default(now())
+  id           String   @id @default(cuid())
+  stockCode    String
+  date         String
+  open         Float
+  high         Float
+  low          Float
+  close        Float
+  volume       Int
+  market       String   @default("DOMESTIC") // DOMESTIC, OVERSEAS
+  exchangeCode String?  // NAS, NYS, AMS
+  currency     String   @default("KRW")
+  exchangeRate Float?   // 해외주식 환율
+  createdAt    DateTime @default(now())
 
   @@unique([stockCode, date])
 }

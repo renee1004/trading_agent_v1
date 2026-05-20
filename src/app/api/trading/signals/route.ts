@@ -1,4 +1,5 @@
 // 매매 신호 분석 라우트
+// 국내주식 + 해외주식 지원
 
 import { NextRequest, NextResponse } from 'next/server';
 import { KisApiClient } from '@/lib/kis-api';
@@ -12,11 +13,15 @@ export async function POST(request: NextRequest) {
       stockCode, 
       stockName, 
       strategy = 'ALL',
+      market = 'DOMESTIC',
+      exchangeCode,
       params = {} 
     }: {
       stockCode: string;
       stockName: string;
       strategy?: string;
+      market?: string;
+      exchangeCode?: string;
       params?: StrategyParameters;
     } = body;
 
@@ -30,7 +35,11 @@ export async function POST(request: NextRequest) {
     // 캔들 데이터 (API 또는 모의)
     let candles;
     try {
-      candles = KisApiClient.generateMockCandles(120);
+      if (market === 'OVERSEAS') {
+        candles = KisApiClient.generateMockOverseasCandles(120);
+      } else {
+        candles = KisApiClient.generateMockCandles(120);
+      }
     } catch {
       candles = KisApiClient.generateMockCandles(120);
     }
@@ -63,6 +72,8 @@ export async function POST(request: NextRequest) {
       success: true, 
       data: {
         ...signal,
+        market,
+        exchangeCode,
         timestamp: signal.timestamp.toISOString(),
       }
     });
@@ -74,13 +85,15 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// 관심종목 일괄 분석
+// 관심종목 일괄 분석 (국내 + 해외)
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const strategy = searchParams.get('strategy') || 'ALL';
+    const market = searchParams.get('market') || 'ALL'; // ALL, DOMESTIC, OVERSEAS
 
-    const watchlist = [
+    // 국내 관심종목
+    const domesticStocks = [
       { code: '005930', name: '삼성전자' },
       { code: '000660', name: 'SK하이닉스' },
       { code: '373220', name: 'LG에너지솔루션' },
@@ -93,28 +106,75 @@ export async function GET(request: NextRequest) {
       { code: '003670', name: '포스코홀딩스' },
     ];
 
+    // 해외 관심종목
+    const overseasStocks = [
+      { code: 'AAPL', name: '애플', exchange: 'NAS' },
+      { code: 'NVDA', name: '엔비디아', exchange: 'NAS' },
+      { code: 'MSFT', name: '마이크로소프트', exchange: 'NAS' },
+      { code: 'GOOGL', name: '알파벳', exchange: 'NAS' },
+      { code: 'AMZN', name: '아마존', exchange: 'NAS' },
+      { code: 'TSLA', name: '테슬라', exchange: 'NAS' },
+      { code: 'META', name: '메타', exchange: 'NAS' },
+      { code: 'NFLX', name: '넷플릭스', exchange: 'NAS' },
+      { code: 'AMD', name: 'AMD', exchange: 'NAS' },
+      { code: 'AVGO', name: '브로드컴', exchange: 'NAS' },
+    ];
+
     const signals = [];
-    for (const stock of watchlist) {
-      const candles = KisApiClient.generateMockCandles(120);
-      
-      let signal;
-      switch (strategy) {
-        case 'COMPOSITE':
-          signal = TradingEngine.analyzeComposite(candles, stock.code, stock.name);
-          break;
-        case 'SUPER_TREND':
-          signal = TradingEngine.analyzeSuperTrend(candles, stock.code, stock.name);
-          break;
-        case 'ALL':
-        default:
-          signal = TradingEngine.analyzeAllStrategies(candles, stock.code, stock.name);
-          break;
+
+    // 국내 분석
+    if (market === 'ALL' || market === 'DOMESTIC') {
+      for (const stock of domesticStocks) {
+        const candles = KisApiClient.generateMockCandles(120);
+        
+        let signal;
+        switch (strategy) {
+          case 'COMPOSITE':
+            signal = TradingEngine.analyzeComposite(candles, stock.code, stock.name);
+            break;
+          case 'SUPER_TREND':
+            signal = TradingEngine.analyzeSuperTrend(candles, stock.code, stock.name);
+            break;
+          case 'ALL':
+          default:
+            signal = TradingEngine.analyzeAllStrategies(candles, stock.code, stock.name);
+            break;
+        }
+        
+        signals.push({
+          ...signal,
+          market: 'DOMESTIC',
+          timestamp: signal.timestamp.toISOString(),
+        });
       }
-      
-      signals.push({
-        ...signal,
-        timestamp: signal.timestamp.toISOString(),
-      });
+    }
+
+    // 해외 분석
+    if (market === 'ALL' || market === 'OVERSEAS') {
+      for (const stock of overseasStocks) {
+        const candles = KisApiClient.generateMockOverseasCandles(120);
+        
+        let signal;
+        switch (strategy) {
+          case 'COMPOSITE':
+            signal = TradingEngine.analyzeComposite(candles, stock.code, stock.name);
+            break;
+          case 'SUPER_TREND':
+            signal = TradingEngine.analyzeSuperTrend(candles, stock.code, stock.name);
+            break;
+          case 'ALL':
+          default:
+            signal = TradingEngine.analyzeAllStrategies(candles, stock.code, stock.name);
+            break;
+        }
+        
+        signals.push({
+          ...signal,
+          market: 'OVERSEAS',
+          exchangeCode: stock.exchange,
+          timestamp: signal.timestamp.toISOString(),
+        });
+      }
     }
 
     // 매수/매도 신호만 필터링
@@ -129,6 +189,8 @@ export async function GET(request: NextRequest) {
         buySignals: signals.filter(s => s.signalType === 'BUY').length,
         sellSignals: signals.filter(s => s.signalType === 'SELL').length,
         holdSignals: signals.filter(s => s.signalType === 'HOLD').length,
+        domesticSignals: signals.filter(s => (s as Record<string, unknown>).market === 'DOMESTIC').length,
+        overseasSignals: signals.filter(s => (s as Record<string, unknown>).market === 'OVERSEAS').length,
       }
     });
   } catch (error) {

@@ -1,5 +1,9 @@
 // 한국투자증권 KIS Open API 타입 정의
 
+// 시장 구분 타입
+export type MarketType = 'DOMESTIC' | 'OVERSEAS';
+export type OverseasExchange = 'NAS' | 'NYS' | 'AMS' | 'TKS' | 'HKS' | 'SHS' | 'SZS' | 'HKI' | 'BSE' | 'SSE';
+
 export interface KisConfig {
   appKey: string;
   appSecret: string;
@@ -28,6 +32,38 @@ export interface StockPrice {
   openPrice: number;
   volume: number;
   tradingValue: number;
+  market?: MarketType;
+  currency?: string; // KRW, USD 등
+}
+
+// 해외주식 현재가
+export interface OverseasStockPrice {
+  stockCode: string;       // 종목코드 (예: AAPL)
+  stockName: string;      // 종목명
+  exchangeCode: string;   // 거래소코드 (NAS, NYS, AMS)
+  exchangeName: string;   // 거래소명
+  currentPrice: number;   // 현재가 (현지통화)
+  previousClose: number;  // 전일종가
+  changePrice: number;    // 전일대비
+  changeRate: number;     // 등락율
+  highPrice: number;      // 고가
+  lowPrice: number;       // 저가
+  openPrice: number;      // 시가
+  volume: number;         // 거래량
+  currency: string;       // 통화 (USD)
+  marketPrice: number;    // 장전시가
+  afterHoursPrice: number;// 시간외가격
+}
+
+// 해외주식 일봉
+export interface OverseasStockCandle {
+  date: string;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+  exchangeRate?: number; // 환율
 }
 
 export interface StockCandle {
@@ -45,6 +81,8 @@ export interface OrderRequest {
   quantity: number;
   price?: number; // 지정가일 경우
   orderKind: '00' | '01' | '02'; // 00:지정가, 01:시장가, 02:조건부지정가
+  market?: MarketType;
+  exchangeCode?: string; // 해외주식 거래소 코드 (NAS, NYS, AMS)
 }
 
 export interface OrderResponse {
@@ -62,6 +100,29 @@ export interface BalanceItem {
   profitLoss: number;
   profitRate: number;
   evaluationAmount: number;
+  market?: MarketType;
+  currency?: string;
+  exchangeCode?: string;  // 해외 거래소 코드
+  exchangeRate?: number;  // 환율
+  foreignAmount?: number; // 외화 평가금액
+}
+
+// 해외주식 잔고 아이템
+export interface OverseasBalanceItem {
+  stockCode: string;
+  stockName: string;
+  exchangeCode: string;    // 거래소코드
+  exchangeName: string;    // 거래소명
+  quantity: number;         // 보유수량
+  avgPrice: number;         // 평균단가 (외화)
+  currentPrice: number;     // 현재가 (외화)
+  profitLoss: number;       // 평가손익 (원화)
+  profitRate: number;       // 수익률
+  evaluationAmount: number; // 평가금액 (원화)
+  foreignEvaluation: number;// 외화평가금액
+  exchangeRate: number;     // 환율
+  currency: string;         // 통화
+  purchaseAmount: number;   // 매입금액 (외화)
 }
 
 export interface AccountBalance {
@@ -71,6 +132,12 @@ export interface AccountBalance {
   totalProfitRate: number;
   availableAmount: number;
   positions: BalanceItem[];
+  overseasPositions?: OverseasBalanceItem[];
+  overseasTotalDeposit?: number;
+  overseasTotalEvaluation?: number;
+  overseasTotalProfitLoss?: number;
+  overseasTotalProfitRate?: number;
+  overseasAvailableAmount?: number;
 }
 
 export interface TradingSignal {
@@ -197,4 +264,19 @@ export interface TradeLogItem {
   status: string;
   signalReason?: string;
   tradedAt: Date;
+  market?: MarketType;
+  currency?: string;
+  exchangeCode?: string;
+}
+
+// 해외주식 검색 결과
+export interface OverseasSearchResult {
+  code: string;           // 종목코드 (티커)
+  name: string;           // 종목명
+  nameEng: string;        // 영문종목명
+  exchangeCode: string;   // 거래소코드
+  exchangeName: string;   // 거래소명
+  sector: string;         // 섹터
+  currency: string;       // 통화
+  market: string;         // 시장구분
 }

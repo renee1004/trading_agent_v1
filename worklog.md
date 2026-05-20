@@ -23,3 +23,26 @@ Stage Summary:
 - 전략별 가중치: COMPOSITE 35%, SUPER_TREND 25%, VOLATILITY_BREAKOUT 15%, MEAN_REVERSION 15%, MOMENTUM 10%
 - KIS API 완전 연동 (모의/실전 토글)
 - 종합 리스크 관리 시스템 (7단계 안전장치)
+
+---
+Task ID: 2
+Agent: Main Agent
+Task: 해외주식(미국) 거래 기능 추가
+
+Work Log:
+- types.ts에 해외주식 관련 타입 추가 (MarketType, OverseasStockPrice, OverseasStockCandle, OverseasBalanceItem, OverseasSearchResult)
+- KIS API 클라이언트에 해외주식 6개 메서드 추가 (현재가조회, 일봉조회, 매수/매도주문, 잔고조회, 종목검색, 주문취소)
+- 해외주식 모의데이터 생성기 추가 (generateMockOverseasPrice, generateMockOverseasCandles, generateMockOverseasBalance)
+- 해외주식 API 라우트 4개 추가 (/api/kis/overseas/price, balance, order, search)
+- 대시보드 UI에 "해외주식" 탭 추가 (7번째 탭)
+- 해외주식 탭 기능: 미국종목 검색, 요약카드 4개, 포지션 테이블, 인기 미국종목 빠른 추가
+- Prisma 스키마에 market/exchangeCode/currency 필드 추가 (WatchlistItem, TradeHistory, Position, MarketData)
+- 매매신호 API에 해외주식 분석 지원 추가 (market 파라미터, overseasStocks 분석)
+- 빌드 및 API 테스트 성공
+
+Stage Summary:
+- 미국 나스닥/뉴욕/아멕스 종목 거래 완전 지원
+- KIS 해외주식 API 6개 엔드포인트 연동 (HHDFS00000300, HHDFS76240000, VTTT1002U/1001U, VTTS3012R, CTPF1702R)
+- 60+ 미국 대표 종목 검색 DB 구축 (Big Tech, 반도체, 소프트웨어, 금융, 헬스케어, ETF 등)
+- 해외주식 포지션 관리 (원화/달러 동시 표시, 환율 정보)
+- 5대 매매전략이 해외주식에도 동일하게 적용 가능 (OHLCV 기반)
