@@ -30,8 +30,10 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
-.env*
+# env files
+.env
+.env.local
+.env*.local
 
 # vercel
 .vercel
@@ -52,3 +54,26 @@ prompt
 server.log
 # Skills directory
 /skills/
+
+# DB files
+*.db
+*.db-journal
+/db/
+
+# Download
+/download/
+/upload/
+
+# Research files
+*.json
+!package.json
+!tsconfig.json
+!components.json
+!composite_strategy.json
+
+# Mini services
+/mini-services/
+/examples/
+
+# Caddy
+Caddyfile
