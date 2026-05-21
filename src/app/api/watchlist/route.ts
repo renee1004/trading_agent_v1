@@ -50,7 +50,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { stockCode, stockName, sector } = body;
+    const { stockCode, stockName, sector, market, exchangeCode } = body;
 
     if (!stockCode || !stockName) {
       return NextResponse.json(
@@ -59,8 +59,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // 종목코드에서 거래소 코드 자동 감지
+    const isOverseas = stockCode.includes(':');
+    const finalMarket = market || (isOverseas ? 'OVERSEAS' : 'DOMESTIC');
+    const finalExchangeCode = exchangeCode || (isOverseas ? stockCode.split(':')[0] : null);
+    const finalStockCode = isOverseas ? stockCode.split(':')[1] : stockCode;
+
     const item = await db.watchlistItem.create({
-      data: { stockCode, stockName, sector },
+      data: {
+        stockCode: isOverseas ? stockCode : finalStockCode,
+        stockName,
+        sector,
+        market: finalMarket,
+        exchangeCode: finalExchangeCode,
+      },
     });
 
     return NextResponse.json({ success: true, data: item });

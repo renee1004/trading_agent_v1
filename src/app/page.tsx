@@ -1409,16 +1409,28 @@ export default function TradingDashboard() {
                                   className="bg-blue-600 hover:bg-blue-700"
                                   onClick={async () => {
                                     try {
-                                      await fetch('/api/watchlist', {
+                                      const res = await fetch('/api/watchlist', {
                                         method: 'POST',
                                         headers: { 'Content-Type': 'application/json' },
                                         body: JSON.stringify({
                                           stockCode: `${stock.exchangeCode}:${stock.code}`,
                                           stockName: `[미] ${stock.name}`,
                                           sector: stock.sector,
+                                          market: 'OVERSEAS',
+                                          exchangeCode: stock.exchangeCode,
                                         }),
                                       });
-                                      await loadDashboardData();
+                                      const data = await res.json();
+                                      if (res.ok && data.success) {
+                                        setWatchlist(prev => [...prev, {
+                                          id: data.data?.id || `local-${Date.now()}`,
+                                          stockCode: `${stock.exchangeCode}:${stock.code}`,
+                                          stockName: `[미] ${stock.name}`,
+                                          sector: stock.sector || null,
+                                          isActive: true,
+                                        }]);
+                                        await loadDashboardData();
+                                      }
                                     } catch (error) {
                                       console.error('관심종목 추가 실패:', error);
                                     }
