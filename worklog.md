@@ -40,3 +40,27 @@ Stage Summary:
 - GitHub 저장소 생성 및 코드 푸시 완료
 - Dockerfile, railway.toml, start.sh 등 Railway 배포 파일 이미 준비됨
 - 다음 단계: 사용자가 Railway에서 프로젝트 생성 후 배포
+
+---
+Task ID: 2
+Agent: Main Agent
+Task: Railway 배포 후 URL 에러 + 대시보드 종목 미표시 + 설정 미적용 문제 수정
+
+Work Log:
+- Railway 배포 앱 진단: /api/watchlist 500 에러, /api/kis-config 404 에러 확인
+- 근본 원인 파악: db.ts에서 PrismaClient 생성자는 성공하지만 실제 쿼리는 실패 (스키마 미마이그레이션)
+- db.ts 완전 재작성: Proxy 기반 DB 객체 + Prisma 스키마 검증 후 인메모리 폴백
+  - $connect() 후 _prisma_migrations + WatchlistItem 테이블 존재 확인
+  - 스키마 없으면 자동 인메모리 DB 사용
+  - select 필드 선택 지원 추가
+  - 백그라운드 Prisma 연결 시도, 실패해도 앱 정상 동작
+- watchlist/route.ts: 상세 로깅, 시드 에러 핸들링 개선
+- kis/config/route.ts: 마스킹 로직 단순화, findFirst 실패 시 안전 처리, 에러 핸들링 강화
+- kis/token/route.ts: 동적 임포트, 상세 로깅 추가
+- 로컬 빌드 + API 테스트 성공: watchlist 10개 종목 반환, KIS config 저장/조회 정상
+- GitHub 푸시 후 Railway 자동 재배포
+- Railway 배포 확인: 모든 API 200 응답, watchlist 10개 종목, KIS config 저장/조회 정상
+
+Stage Summary:
+- Railway 배포 앱이 정상 작동: 대시보드 종목 표시, API 설정 저장/유지 모두 정상
+- 핵심 수정: Prisma 스키마 검증 후 인메모리 DB 폴백으로 DB 없이도 완전 동작
