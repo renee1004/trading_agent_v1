@@ -10,13 +10,8 @@ WORKDIR /app
 
 # 종속성 설치 단계
 FROM base AS deps
-COPY package.json bun.lock* package-lock.json* yarn.lock* ./
-RUN \
-  if [ -f yarn.lock ]; then yarn --frozen-lockfile; \
-  elif [ -f package-lock.json ]; then npm ci; \
-  elif [ -f bun.lock ]; then npm ci; \
-  else npm i; \
-  fi
+COPY package.json package-lock.json ./
+RUN npm ci
 
 # 빌드 단계
 FROM base AS builder
