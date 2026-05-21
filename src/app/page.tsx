@@ -173,6 +173,8 @@ export default function TradingDashboard() {
   const [totalProfitRate, setTotalProfitRate] = useState(4.6);
   const [kisConfigured, setKisConfigured] = useState(false);
   const [kisHasToken, setKisHasToken] = useState(false);
+  const [kisTokenError, setKisTokenError] = useState('');
+  const [kisTokenLoading, setKisTokenLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('dashboard');
 
   // KIS 설정 다이얼로그
@@ -636,6 +638,7 @@ export default function TradingDashboard() {
   // KIS 설정 저장
   const saveKisConfig = async () => {
     try {
+      setKisTokenError('');
       // 수정 모드: appSecret이 빈칸이면 localStorage에서 기존 값 가져오기
       let finalAppSecret = appSecret;
       if (isEditMode && !appSecret) {
@@ -672,20 +675,66 @@ export default function TradingDashboard() {
         setAppSecret('');
 
         // 토큰 발급 시도
+        setKisTokenLoading(true);
         try {
           const tokenRes = await fetch('/api/kis/token', { method: 'POST' });
-          if (tokenRes.ok) {
-            const tokenData = await tokenRes.json();
-            if (tokenData.success) {
-              setKisHasToken(true);
-            }
+          const tokenData = await tokenRes.json();
+          if (tokenData.success) {
+            setKisHasToken(true);
+            setKisTokenError('');
+          } else {
+            setKisHasToken(false);
+            setKisTokenError(tokenData.error || '토큰 발급 실패');
           }
-        } catch (tokenErr) {
-          console.warn('토큰 발급 실패 (설정은 저장됨):', tokenErr);
+        } catch (tokenErr: any) {
+          setKisHasToken(false);
+          setKisTokenError(tokenErr.message || '토큰 발급 중 네트워크 오류');
+        } finally {
+          setKisTokenLoading(false);
         }
       }
     } catch (error) {
       console.error('KIS 설정 실패:', error);
+    }
+  };
+
+  // 토큰 재발급
+  const reissueToken = async () => {
+    setKisTokenLoading(true);
+    setKisTokenError('');
+    try {
+      // 서버에 설정이 없으면 localStorage에서 복원 후 시도
+      const configRes = await fetch('/api/kis/config');
+      const configData = await configRes.json();
+      const hasServerConfig = configData.success && configData.data && 
+        (Array.isArray(configData.data) ? configData.data.length > 0 : !!configData.data);
+      
+      if (!hasServerConfig) {
+        const stored = localStorage.getItem('kis_config');
+        if (stored) {
+          const config = JSON.parse(stored);
+          await fetch('/api/kis/config', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(config),
+          });
+        }
+      }
+
+      const tokenRes = await fetch('/api/kis/token', { method: 'POST' });
+      const tokenData = await tokenRes.json();
+      if (tokenData.success) {
+        setKisHasToken(true);
+        setKisTokenError('');
+      } else {
+        setKisHasToken(false);
+        setKisTokenError(tokenData.error || '토큰 발급 실패');
+      }
+    } catch (err: any) {
+      setKisHasToken(false);
+      setKisTokenError(err.message || '토큰 발급 중 오류');
+    } finally {
+      setKisTokenLoading(false);
     }
   };
 
@@ -826,10 +875,30 @@ export default function TradingDashboard() {
                       </div>
                       <div className="flex items-center justify-between">
                         <span className="text-sm font-medium text-muted-foreground">토큰</span>
-                        <Badge variant={kisHasToken ? "default" : "outline"}>
-                          {kisHasToken ? '발급됨' : '미발급'}
-                        </Badge>
+                        <div className="flex items-center gap-2">
+                          {kisTokenLoading ? (
+                            <Badge variant="outline"><RefreshCw className="h-3 w-3 mr-1 animate-spin" />발급 중...</Badge>
+                          ) : (
+                            <Badge variant={kisHasToken ? "default" : "outline"}>
+                              {kisHasToken ? '발급됨' : '미발급'}
+                            </Badge>
+                          )}
+                          {!kisHasToken && !kisTokenLoading && (
+                            <Button size="sm" variant="outline" className="h-6 text-xs" onClick={reissueToken}>
+                              재발급
+                            </Button>
+                          )}
+                        </div>
                       </div>
+                      {kisTokenError && (
+                        <div className="rounded-md bg-red-50 border border-red-200 p-2 mt-2">
+                          <p className="text-xs text-red-600 font-medium">토큰 발급 실패</p>
+                          <p className="text-xs text-red-500 mt-0.5">{kisTokenError}</p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            App Key/Secret이 정확한지, 모의투자 모드 설정이 맞는지 확인하세요.
+                          </p>
+                        </div>
+                      )}
                     </div>
                     <Alert>
                       <AlertTriangle className="h-4 w-4" />
