@@ -1,10 +1,12 @@
 // 관심종목 관리 라우트
 
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/db';
+import { db, getDbType } from '@/lib/db';
 
 export async function GET() {
   try {
+    console.log(`[Watchlist] GET request, DB type: ${getDbType()}`);
+    
     const items = await db.watchlistItem.findMany({
       where: { isActive: true },
       orderBy: { createdAt: 'desc' },
@@ -12,6 +14,7 @@ export async function GET() {
 
     // 기본 관심종목이 없으면 시드
     if (items.length === 0) {
+      console.log('[Watchlist] No items found, seeding defaults...');
       const defaults = [
         { stockCode: '005930', stockName: '삼성전자', sector: '반도체' },
         { stockCode: '000660', stockName: 'SK하이닉스', sector: '반도체' },
@@ -26,22 +29,28 @@ export async function GET() {
       ];
 
       for (const item of defaults) {
-        await db.watchlistItem.create({ data: item });
+        try {
+          await db.watchlistItem.create({ data: item });
+        } catch (createErr) {
+          console.warn('[Watchlist] Seed create error:', createErr);
+        }
       }
 
-      return NextResponse.json({ 
-        success: true, 
-        data: await db.watchlistItem.findMany({
-          where: { isActive: true },
-          orderBy: { createdAt: 'desc' },
-        })
+      const seeded = await db.watchlistItem.findMany({
+        where: { isActive: true },
+        orderBy: { createdAt: 'desc' },
       });
+
+      console.log(`[Watchlist] Seeded ${seeded.length} default items`);
+      return NextResponse.json({ success: true, data: seeded });
     }
 
+    console.log(`[Watchlist] Returning ${items.length} items`);
     return NextResponse.json({ success: true, data: items });
   } catch (error) {
+    console.error('[Watchlist] GET error:', error);
     return NextResponse.json(
-      { success: false, error: '관심종목 조회 실패' },
+      { success: false, error: '관심종목 조회 실패', detail: String(error) },
       { status: 500 }
     );
   }
@@ -75,10 +84,12 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    console.log(`[Watchlist] Added: ${stockName} (${stockCode})`);
     return NextResponse.json({ success: true, data: item });
   } catch (error) {
+    console.error('[Watchlist] POST error:', error);
     return NextResponse.json(
-      { success: false, error: '관심종목 추가 실패' },
+      { success: false, error: '관심종목 추가 실패', detail: String(error) },
       { status: 500 }
     );
   }
@@ -101,10 +112,12 @@ export async function DELETE(request: NextRequest) {
       data: { isActive: false },
     });
 
+    console.log(`[Watchlist] Deleted: ${id}`);
     return NextResponse.json({ success: true });
   } catch (error) {
+    console.error('[Watchlist] DELETE error:', error);
     return NextResponse.json(
-      { success: false, error: '관심종목 삭제 실패' },
+      { success: false, error: '관심종목 삭제 실패', detail: String(error) },
       { status: 500 }
     );
   }

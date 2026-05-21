@@ -2,58 +2,13 @@
 // DATABASE_URL이 없거나 연결 실패 시에도 앱이 크래시되지 않음
 // 인메모리 DB는 실제 메모리에 데이터를 저장하여 DB 없이도 동작
 
-let _db: any = null;
-let _dbInitAttempted = false;
-let _dbAvailable = false;
-
-try {
-  const { PrismaClient } = require('@prisma/client');
-
-  const globalForPrisma = globalThis as unknown as {
-    prisma: any | undefined
-  }
-
-  if (!globalForPrisma.prisma) {
-    if (process.env.DATABASE_URL) {
-      try {
-        globalForPrisma.prisma = new PrismaClient({
-          log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
-        });
-        _dbAvailable = true;
-        console.log('✅ Database connected successfully');
-      } catch (error) {
-        console.warn('⚠️ Prisma client creation failed, using fallback:', error);
-        _dbAvailable = false;
-      }
-    } else {
-      console.warn('⚠️ DATABASE_URL not set - using in-memory database');
-      _dbAvailable = false;
-    }
-  } else {
-    _dbAvailable = true;
-  }
-
-  _db = globalForPrisma.prisma;
-  _dbInitAttempted = true;
-
-  if (process.env.NODE_ENV !== 'production') {
-    (globalThis as any).prisma = _db;
-  }
-} catch (error) {
-  console.warn('⚠️ Prisma not available, using in-memory database:', error);
-  _dbInitAttempted = true;
-  _dbAvailable = false;
-}
-
-// 안전한 DB 래퍼
-export const db = _dbAvailable && _db ? _db : createInMemoryDb();
-
-export const isDbAvailable = () => _dbAvailable;
+import { NextResponse } from 'next/server';
 
 // ============================================
 // 인메모리 데이터베이스 - DB 없이도 모든 기능 동작
-// 각 모델별로 독립적인 Map 사용, 재귀 호출 없이 단순 구현
+// Prisma와 완벽 호환되는 API 제공
 // ============================================
+
 function createInMemoryDb() {
   // 각 모델별 독립적인 데이터 저장소
   const stores: Record<string, Map<string, any>> = {};
@@ -113,7 +68,20 @@ function createInMemoryDb() {
     return results;
   }
 
-  // 모델 핸들러 생성 (재귀 호출 없이 독립 함수만 사용)
+  // select 필드 선택 적용
+  function applySelect(record: any, select: any): any {
+    if (!select || typeof select !== 'object') return record;
+    const result: any = {};
+    for (const [key, value] of Object.entries(select)) {
+      if (value === true && key in record) {
+        result[key] = record[key];
+      }
+      // value가 false면 제외
+    }
+    return result;
+  }
+
+  // 모델 핸들러 생성
   function createHandler(modelName: string) {
     return {
       findMany: async (args?: any) => {
@@ -123,6 +91,7 @@ function createInMemoryDb() {
         if (args?.orderBy) results = applyOrderBy(results, args.orderBy);
         if (args?.skip) results = results.slice(args.skip);
         if (args?.take) results = results.slice(0, args.take);
+        if (args?.select) results = results.map(r => applySelect(r, args.select));
         return results;
       },
 
@@ -131,13 +100,17 @@ function createInMemoryDb() {
         let results = Array.from(store.values());
         if (args?.where) results = results.filter(r => matchesWhere(r, args.where));
         if (args?.orderBy) results = applyOrderBy(results, args.orderBy);
-        return results[0] || null;
+        const result = results[0] || null;
+        if (result && args?.select) return applySelect(result, args.select);
+        return result;
       },
 
       findUnique: async (args?: any) => {
         const store = getStore(modelName);
         if (!args?.where?.id) return null;
-        return store.get(args.where.id) || null;
+        const result = store.get(args.where.id) || null;
+        if (result && args?.select) return applySelect(result, args.select);
+        return result;
       },
 
       create: async (args?: any) => {
@@ -273,3 +246,96 @@ function createInMemoryDb() {
     }
   });
 }
+
+// ============================================
+// DB 초기화 - Prisma 연결 시도 후 실패 시 인메모리 폴백
+// ============================================
+
+let _prismaClient: any = null;
+let _inMemoryDb: any = null;
+let _usePrisma = false;
+
+async function initPrisma(): Promise<boolean> {
+  if (!process.env.DATABASE_URL) {
+    console.warn('[DB] DATABASE_URL not set - using in-memory database');
+    return false;
+  }
+
+  try {
+    const { PrismaClient } = require('@prisma/client');
+    const client = new PrismaClient({
+      log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
+    });
+
+    // 실제 연결 테스트 - $connect()로 DB에 접근 가능한지 확인
+    await client.$connect();
+    
+    // 마이그레이션 테이블 존재 확인 - 스키마가 적용되었는지 검증
+    try {
+      const result = await client.$queryRaw`SELECT COUNT(*) as cnt FROM information_schema.tables WHERE table_name = '_prisma_migrations'` as any[];
+      const migrationExists = Number(result?.[0]?.cnt) > 0;
+      
+      if (migrationExists) {
+        // 실제 데이터 테이블도 확인 (Prisma는 따옴표로 대소문자 구분)
+        const watchlistCheck = await client.$queryRaw`SELECT COUNT(*) as cnt FROM information_schema.tables WHERE table_name IN ('WatchlistItem', 'watchlistitem')` as any[];
+        const tableExists = Number(watchlistCheck?.[0]?.cnt) > 0;
+        
+        if (tableExists) {
+          console.log('[DB] Prisma connected and schema verified - using PostgreSQL');
+          _prismaClient = client;
+          return true;
+        }
+      }
+      
+      console.warn('[DB] Database connected but Prisma schema not migrated, falling back to in-memory');
+      await client.$disconnect().catch(() => {});
+      return false;
+    } catch (queryError) {
+      console.warn('[DB] Prisma connected but schema check failed, falling back to in-memory:', queryError);
+      await client.$disconnect().catch(() => {});
+      return false;
+    }
+  } catch (error) {
+    console.warn('[DB] Prisma connection failed, using in-memory database:', error);
+    return false;
+  }
+}
+
+// 동기적으로 DB 객체를 제공
+// Prisma 연결은 비동기이므로, 초기에는 인메모리 DB를 사용하고
+// 백그라운드에서 Prisma 연결을 시도합니다.
+
+function getInMemoryDb() {
+  if (!_inMemoryDb) {
+    _inMemoryDb = createInMemoryDb();
+    console.log('[DB] In-memory database initialized');
+  }
+  return _inMemoryDb;
+}
+
+// Prisma가 성공하면 교체
+async function trySwitchToPrisma() {
+  const success = await initPrisma();
+  if (success) {
+    _usePrisma = true;
+    console.log('[DB] Switched to Prisma (PostgreSQL)');
+  }
+}
+
+// 백그라운드에서 Prisma 연결 시도 (실패해도 앱은 정상 동작)
+if (typeof window === 'undefined') {
+  // 서버 사이드에서만 실행
+  trySwitchToPrisma().catch(() => {});
+}
+
+// 실제 DB 객체 - Prisma가 준비되면 PrismaClient, 아니면 인메모리
+export const db = new Proxy({} as any, {
+  get: (_target, prop) => {
+    // 실제 DB를 반환
+    const actualDb = _usePrisma && _prismaClient ? _prismaClient : getInMemoryDb();
+    return actualDb[prop];
+  }
+});
+
+export const isDbAvailable = () => _usePrisma && !!_prismaClient;
+export const getDbType = () => _usePrisma ? 'PostgreSQL' : 'InMemory';

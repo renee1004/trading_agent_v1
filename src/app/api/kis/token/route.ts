@@ -1,11 +1,12 @@
 // KIS 토큰 발급 라우트
 
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/db';
-import { KisApiClient } from '@/lib/kis-api';
+import { db, getDbType } from '@/lib/db';
 
 export async function POST() {
   try {
+    console.log(`[KIS Token] POST request, DB type: ${getDbType()}`);
+    
     const config = await db.kisConfig.findFirst();
     
     if (!config) {
@@ -15,6 +16,9 @@ export async function POST() {
       );
     }
 
+    // KIS API 클라이언트 동적 임포트
+    const { KisApiClient } = await import('@/lib/kis-api');
+    
     const client = new KisApiClient({
       appKey: config.appKey,
       appSecret: config.appSecret,
@@ -33,6 +37,7 @@ export async function POST() {
       },
     });
 
+    console.log('[KIS Token] Token issued successfully');
     return NextResponse.json({ 
       success: true, 
       data: { 
@@ -41,6 +46,7 @@ export async function POST() {
       }
     });
   } catch (error: unknown) {
+    console.error('[KIS Token] POST error:', error);
     const message = error instanceof Error ? error.message : '토큰 발급 실패';
     return NextResponse.json(
       { success: false, error: message },
@@ -51,6 +57,8 @@ export async function POST() {
 
 export async function GET() {
   try {
+    console.log(`[KIS Token] GET request, DB type: ${getDbType()}`);
+    
     const config = await db.kisConfig.findFirst();
     
     if (!config) {
@@ -60,7 +68,7 @@ export async function GET() {
       });
     }
 
-    const hasValidToken = config.accessToken && config.tokenExpiresAt && config.tokenExpiresAt > new Date();
+    const hasValidToken = config.accessToken && config.tokenExpiresAt && new Date(config.tokenExpiresAt) > new Date();
 
     return NextResponse.json({ 
       success: true, 
@@ -72,8 +80,9 @@ export async function GET() {
       }
     });
   } catch (error) {
+    console.error('[KIS Token] GET error:', error);
     return NextResponse.json(
-      { success: false, error: '토큰 상태 조회 실패' },
+      { success: false, error: '토큰 상태 조회 실패', detail: String(error) },
       { status: 500 }
     );
   }
