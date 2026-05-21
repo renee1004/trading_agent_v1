@@ -68,6 +68,7 @@ server.log
 # Research files
 *.json
 !package.json
+!package-lock.json
 !tsconfig.json
 !components.json
 !composite_strategy.json
