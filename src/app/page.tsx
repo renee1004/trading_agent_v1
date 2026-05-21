@@ -464,28 +464,43 @@ export default function TradingDashboard() {
       const res = await fetch('/api/kis/config');
       if (res.ok) {
         const data = await res.json();
-        if (data.success && data.data && data.data.length > 0) {
-          const config = data.data[0];
-          setKisConfigured(true);
-          setSavedAppKeyMasked(config.appKey || '');
-          setSavedAccountNo(config.accountNo || '');
-          setSavedIsDemo(config.isDemo ?? true);
-          setIsDemo(config.isDemo ?? true);
-          setAccountNo(config.accountNo || '');
+        console.log('[KIS Config] Load response:', JSON.stringify(data));
+        if (data.success && data.data) {
+          // data.data가 배열이거나 단일 객체일 수 있음
+          const configs = Array.isArray(data.data) ? data.data : [data.data];
+          if (configs.length > 0) {
+            const config = configs[0];
+            setKisConfigured(true);
+            setSavedAppKeyMasked(config.appKey || '');
+            setSavedAccountNo(config.accountNo || '');
+            setSavedIsDemo(config.isDemo ?? true);
+            setIsDemo(config.isDemo ?? true);
+            setAccountNo(config.accountNo || '');
+          } else {
+            setKisConfigured(false);
+          }
         } else {
           setKisConfigured(false);
         }
+      } else {
+        console.warn('[KIS Config] Load failed, status:', res.status);
+        setKisConfigured(false);
       }
       // 토큰 상태도 확인
-      const tokenRes = await fetch('/api/kis/token');
-      if (tokenRes.ok) {
-        const tokenData = await tokenRes.json();
-        if (tokenData.success) {
-          setKisHasToken(tokenData.data?.hasToken ?? false);
+      try {
+        const tokenRes = await fetch('/api/kis/token');
+        if (tokenRes.ok) {
+          const tokenData = await tokenRes.json();
+          if (tokenData.success) {
+            setKisHasToken(tokenData.data?.hasToken ?? false);
+          }
         }
+      } catch (tokenErr) {
+        console.warn('[KIS Config] Token check failed:', tokenErr);
       }
     } catch (error) {
       console.error('KIS 설정 로드 실패:', error);
+      setKisConfigured(false);
     }
   }, []);
 
@@ -591,16 +606,28 @@ export default function TradingDashboard() {
       if (data.success) {
         setKisConfigured(true);
         setIsEditMode(false);
-        setShowKisDialog(false);
-        // 저장된 정보 갱신
-        await loadKisConfig();
+        // 저장된 정보 즉시 갱신
+        setSavedAppKeyMasked(appKey.substring(0, 8) + '****');
+        setSavedAccountNo(accountNo);
+        setSavedIsDemo(isDemo);
+        // 입력 필드 초기화
+        setAppKey('');
+        setAppSecret('');
+        // 다이얼로그는 닫지 않고 저장된 설정 보기 모드로 전환
+        // (사용자가 삭제/수정 버튼 확인 가능)
+        // 백그라운드에서 설정 리로드
+        loadKisConfig().catch(console.error);
         // 토큰 발급 시도
-        const tokenRes = await fetch('/api/kis/token', { method: 'POST' });
-        if (tokenRes.ok) {
-          const tokenData = await tokenRes.json();
-          if (tokenData.success) {
-            setKisHasToken(true);
+        try {
+          const tokenRes = await fetch('/api/kis/token', { method: 'POST' });
+          if (tokenRes.ok) {
+            const tokenData = await tokenRes.json();
+            if (tokenData.success) {
+              setKisHasToken(true);
+            }
           }
+        } catch (tokenErr) {
+          console.warn('토큰 발급 실패 (설정은 저장됨):', tokenErr);
         }
       }
     } catch (error) {
@@ -812,9 +839,16 @@ export default function TradingDashboard() {
                       <Button variant="outline" onClick={() => setShowKisDialog(false)}>닫기</Button>
                       <Button variant="destructive" onClick={async () => {
                         if (confirm('정말 삭제하시겠습니까? API 연결이 해제됩니다.')) {
-                          await fetch('/api/kis/config', { method: 'DELETE' });
+                          try {
+                            await fetch('/api/kis/config', { method: 'DELETE' });
+                          } catch (e) {
+                            console.error('삭제 실패:', e);
+                          }
                           setKisConfigured(false);
                           setKisHasToken(false);
+                          setSavedAppKeyMasked('');
+                          setSavedAccountNo('');
+                          setSavedIsDemo(true);
                           setAppKey('');
                           setAppSecret('');
                           setAccountNo('');
