@@ -57,4 +57,6 @@ EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
+# Railway에서 PORT 환경변수를 자동으로 설정하므로
+# 앱이 해당 포트에서 리스닝해야 함
 CMD ["./start.sh"]
