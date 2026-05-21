@@ -20,7 +20,7 @@ export async function GET() {
     
     const masked = configs.map(c => ({
       ...c,
-      appKey: c.appKey.substring(0, 8) + '****',
+      appKey: c.appKey ? c.appKey.substring(0, 8) + '****' : '',
     }));
 
     return NextResponse.json({ success: true, data: masked });
@@ -37,21 +37,32 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { appKey, appSecret, accountNo, isDemo } = body;
 
-    if (!appKey || !appSecret || !accountNo) {
+    // 기존 설정 조회
+    const existing = await db.kisConfig.findFirst();
+
+    // 수정 모드: appSecret이 빈칸이면 기존 값 유지
+    const finalAppKey = appKey || existing?.appKey;
+    const finalAppSecret = appSecret || existing?.appSecret;
+    const finalAccountNo = accountNo || existing?.accountNo;
+
+    if (!finalAppKey || !finalAppSecret || !finalAccountNo) {
       return NextResponse.json(
-        { success: false, error: '필수 항목 누락' },
+        { success: false, error: '필수 항목 누락 (App Key, App Secret, 계좌번호)' },
         { status: 400 }
       );
     }
 
-    await db.kisConfig.deleteMany({});
+    // 기존 설정 삭제 후 재생성
+    if (existing) {
+      await db.kisConfig.delete({ where: { id: existing.id } });
+    }
     
     const config = await db.kisConfig.create({
       data: {
-        appKey,
-        appSecret,
-        accountNo,
-        isDemo: isDemo ?? true,
+        appKey: finalAppKey,
+        appSecret: finalAppSecret,
+        accountNo: finalAccountNo,
+        isDemo: isDemo ?? existing?.isDemo ?? true,
       },
     });
 

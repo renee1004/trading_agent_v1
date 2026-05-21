@@ -172,14 +172,20 @@ export default function TradingDashboard() {
   const [todayProfit, setTodayProfit] = useState(1250000);
   const [totalProfitRate, setTotalProfitRate] = useState(4.6);
   const [kisConfigured, setKisConfigured] = useState(false);
+  const [kisHasToken, setKisHasToken] = useState(false);
   const [activeTab, setActiveTab] = useState('dashboard');
 
   // KIS 설정 다이얼로그
   const [showKisDialog, setShowKisDialog] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false); // 수정 모드 여부
   const [appKey, setAppKey] = useState('');
   const [appSecret, setAppSecret] = useState('');
   const [accountNo, setAccountNo] = useState('');
   const [isDemo, setIsDemo] = useState(true);
+  // 저장된 설정 (마스킹된)
+  const [savedAppKeyMasked, setSavedAppKeyMasked] = useState('');
+  const [savedAccountNo, setSavedAccountNo] = useState('');
+  const [savedIsDemo, setSavedIsDemo] = useState(true);
 
   // 리스크 설정
   const [riskConfig, setRiskConfig] = useState({
@@ -457,12 +463,12 @@ export default function TradingDashboard() {
     let mounted = true;
     const fetchData = async () => {
       if (!mounted) return;
-      await Promise.all([loadDashboardData(), loadOverseasData(), loadAgentStatus()]);
+      await Promise.all([loadDashboardData(), loadOverseasData(), loadAgentStatus(), loadKisConfig()]);
     };
     fetchData();
     const interval = setInterval(fetchData, 30000);
     return () => { mounted = false; clearInterval(interval); };
-  }, [selectedStrategy, loadDashboardData, loadOverseasData, loadAgentStatus]);
+  }, [selectedStrategy, loadDashboardData, loadOverseasData, loadAgentStatus, loadKisConfig]);
 
   // 자동 사이클: 에이전트 실행 중 + 자동사이클 활성화 시 60초마다 실행
   useEffect(() => {
@@ -542,6 +548,37 @@ export default function TradingDashboard() {
     setIsRunningCycle(false);
   };
 
+  // KIS 설정 로드
+  const loadKisConfig = useCallback(async () => {
+    try {
+      const res = await fetch('/api/kis/config');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && data.data && data.data.length > 0) {
+          const config = data.data[0];
+          setKisConfigured(true);
+          setSavedAppKeyMasked(config.appKey || '');
+          setSavedAccountNo(config.accountNo || '');
+          setSavedIsDemo(config.isDemo ?? true);
+          setIsDemo(config.isDemo ?? true);
+          setAccountNo(config.accountNo || '');
+        } else {
+          setKisConfigured(false);
+        }
+      }
+      // 토큰 상태도 확인
+      const tokenRes = await fetch('/api/kis/token');
+      if (tokenRes.ok) {
+        const tokenData = await tokenRes.json();
+        if (tokenData.success) {
+          setKisHasToken(tokenData.data?.hasToken ?? false);
+        }
+      }
+    } catch (error) {
+      console.error('KIS 설정 로드 실패:', error);
+    }
+  }, []);
+
   // KIS 설정 저장
   const saveKisConfig = async () => {
     try {
@@ -553,9 +590,18 @@ export default function TradingDashboard() {
       const data = await res.json();
       if (data.success) {
         setKisConfigured(true);
+        setIsEditMode(false);
         setShowKisDialog(false);
+        // 저장된 정보 갱신
+        await loadKisConfig();
         // 토큰 발급 시도
-        await fetch('/api/kis/token', { method: 'POST' });
+        const tokenRes = await fetch('/api/kis/token', { method: 'POST' });
+        if (tokenRes.ok) {
+          const tokenData = await tokenRes.json();
+          if (tokenData.success) {
+            setKisHasToken(true);
+          }
+        }
       }
     } catch (error) {
       console.error('KIS 설정 실패:', error);
@@ -640,60 +686,163 @@ export default function TradingDashboard() {
               새로고침
             </Button>
 
-            <Dialog open={showKisDialog} onOpenChange={setShowKisDialog}>
+            <Dialog open={showKisDialog} onOpenChange={(open) => {
+              setShowKisDialog(open);
+              if (open && kisConfigured) {
+                // 이미 설정된 경우: 수정 모드 아님 (읽기 전용)
+                setIsEditMode(false);
+              } else if (open && !kisConfigured) {
+                // 설정 없음: 바로 입력 모드
+                setIsEditMode(true);
+              }
+              if (!open) {
+                setIsEditMode(false);
+              }
+            }}>
               <DialogTrigger asChild>
-                <Button size="sm" variant="outline">
+                <Button size="sm" variant={kisConfigured ? "secondary" : "outline"}>
                   <Settings className="h-4 w-4 mr-1" />
                   API 설정
+                  {kisConfigured && (
+                    <span className="ml-1.5 flex h-2 w-2 rounded-full bg-green-500" />
+                  )}
                 </Button>
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
                   <DialogTitle>한국투자증권 API 설정</DialogTitle>
                   <DialogDescription>
-                    KIS Developers에서 발급받은 App Key와 App Secret을 입력하세요.
+                    {kisConfigured
+                      ? 'API 설정이 등록되어 있습니다. 수정하려면 수정 버튼을 클릭하세요.'
+                      : 'KIS Developers에서 발급받은 App Key와 App Secret을 입력하세요.'}
                   </DialogDescription>
                 </DialogHeader>
-                <div className="space-y-4 py-4">
-                  <div className="flex items-center gap-2">
-                    <Switch checked={isDemo} onCheckedChange={setIsDemo} />
-                    <Label>모의투자 모드</Label>
+
+                {kisConfigured && !isEditMode ? (
+                  /* ===== 저장된 설정 보기 모드 ===== */
+                  <div className="space-y-4 py-4">
+                    <div className="rounded-lg border p-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-muted-foreground">연결 상태</span>
+                        <div className="flex items-center gap-2">
+                          <span className="flex h-2.5 w-2.5 rounded-full bg-green-500" />
+                          <span className="text-sm font-medium text-green-600">연결됨</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-muted-foreground">모드</span>
+                        <Badge variant={savedIsDemo ? "secondary" : "destructive"}>
+                          {savedIsDemo ? '모의투자' : '실전투자'}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-muted-foreground">App Key</span>
+                        <span className="text-sm font-mono">{savedAppKeyMasked}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-muted-foreground">계좌번호</span>
+                        <span className="text-sm font-mono">{savedAccountNo}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-muted-foreground">토큰</span>
+                        <Badge variant={kisHasToken ? "default" : "outline"}>
+                          {kisHasToken ? '발급됨' : '미발급'}
+                        </Badge>
+                      </div>
+                    </div>
+                    <Alert>
+                      <AlertTriangle className="h-4 w-4" />
+                      <AlertDescription>
+                        App Secret은 보안상 표시되지 않습니다. 수정 시 새로 입력해주세요.
+                      </AlertDescription>
+                    </Alert>
                   </div>
-                  <div className="space-y-2">
-                    <Label>App Key</Label>
-                    <Input 
-                      placeholder="PSxxx..." 
-                      value={appKey} 
-                      onChange={(e) => setAppKey(e.target.value)} 
-                    />
+                ) : (
+                  /* ===== 입력/수정 모드 ===== */
+                  <div className="space-y-4 py-4">
+                    <div className="flex items-center gap-2">
+                      <Switch checked={isDemo} onCheckedChange={setIsDemo} />
+                      <Label>모의투자 모드</Label>
+                      {isDemo ? (
+                        <Badge variant="secondary" className="ml-2">모의투자</Badge>
+                      ) : (
+                        <Badge variant="destructive" className="ml-2">실전투자</Badge>
+                      )}
+                    </div>
+                    <div className="space-y-2">
+                      <Label>App Key</Label>
+                      <Input 
+                        placeholder="PSxxx..." 
+                        value={appKey} 
+                        onChange={(e) => setAppKey(e.target.value)} 
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>App Secret</Label>
+                      <Input 
+                        placeholder={isEditMode ? "변경하려면 입력하세요 (빈칸则 유지)" : "xxxxxxxx"}
+                        type="password" 
+                        value={appSecret} 
+                        onChange={(e) => setAppSecret(e.target.value)} 
+                      />
+                      {isEditMode && (
+                        <p className="text-xs text-muted-foreground">변경하지 않으려면 빈칸으로 두세요.</p>
+                      )}
+                    </div>
+                    <div className="space-y-2">
+                      <Label>계좌번호</Label>
+                      <Input 
+                        placeholder="50123456-01" 
+                        value={accountNo} 
+                        onChange={(e) => setAccountNo(e.target.value)} 
+                      />
+                    </div>
+                    <Alert>
+                      <AlertTriangle className="h-4 w-4" />
+                      <AlertDescription>
+                        API 키는 안전하게 저장되며, 모의투자 모드에서 먼저 테스트하는 것을 권장합니다.
+                      </AlertDescription>
+                    </Alert>
                   </div>
-                  <div className="space-y-2">
-                    <Label>App Secret</Label>
-                    <Input 
-                      placeholder="xxxxxxxx" 
-                      type="password" 
-                      value={appSecret} 
-                      onChange={(e) => setAppSecret(e.target.value)} 
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>계좌번호</Label>
-                    <Input 
-                      placeholder="50123456-01" 
-                      value={accountNo} 
-                      onChange={(e) => setAccountNo(e.target.value)} 
-                    />
-                  </div>
-                  <Alert>
-                    <AlertTriangle className="h-4 w-4" />
-                    <AlertDescription>
-                      API 키는 안전하게 저장되며, 모의투자 모드에서 먼저 테스트하는 것을 권장합니다.
-                    </AlertDescription>
-                  </Alert>
-                </div>
+                )}
+
                 <div className="flex justify-end gap-2">
-                  <Button variant="outline" onClick={() => setShowKisDialog(false)}>취소</Button>
-                  <Button onClick={saveKisConfig}>저장</Button>
+                  {kisConfigured && !isEditMode ? (
+                    <>
+                      <Button variant="outline" onClick={() => setShowKisDialog(false)}>닫기</Button>
+                      <Button variant="destructive" onClick={async () => {
+                        if (confirm('정말 삭제하시겠습니까? API 연결이 해제됩니다.')) {
+                          await fetch('/api/kis/config', { method: 'DELETE' });
+                          setKisConfigured(false);
+                          setKisHasToken(false);
+                          setAppKey('');
+                          setAppSecret('');
+                          setAccountNo('');
+                          setIsDemo(true);
+                          setIsEditMode(true);
+                        }
+                      }}>삭제</Button>
+                      <Button onClick={() => {
+                        setIsEditMode(true);
+                        setAppKey('');
+                        setAppSecret('');
+                      }}>수정</Button>
+                    </>
+                  ) : (
+                    <>
+                      {isEditMode && kisConfigured && (
+                        <Button variant="outline" onClick={() => {
+                          setIsEditMode(false);
+                          setAppKey('');
+                          setAppSecret('');
+                        }}>취소</Button>
+                      )}
+                      <Button variant="outline" onClick={() => setShowKisDialog(false)}>닫기</Button>
+                      <Button onClick={saveKisConfig} disabled={!appKey || !accountNo}>
+                        {isEditMode && kisConfigured ? '업데이트' : '저장'}
+                      </Button>
+                    </>
+                  )}
                 </div>
               </DialogContent>
             </Dialog>
