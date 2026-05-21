@@ -10,11 +10,15 @@ export async function POST() {
     const config = await db.kisConfig.findFirst();
     
     if (!config) {
+      console.log('[KIS Token] No config found in DB');
       return NextResponse.json(
         { success: false, error: 'KIS API 설정이 없습니다. 먼저 설정을 등록해주세요.' },
         { status: 400 }
       );
     }
+
+    console.log(`[KIS Token] Config found: appKey=${(config.appKey || '').substring(0, 8)}****, isDemo=${config.isDemo}, accountNo=${config.accountNo}`);
+    console.log(`[KIS Token] App Secret length: ${(config.appSecret || '').length}`);
 
     // KIS API 클라이언트 동적 임포트
     const { KisApiClient } = await import('@/lib/kis-api');

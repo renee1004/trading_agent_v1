@@ -41,26 +41,40 @@ export class KisApiClient {
   async issueToken(): Promise<string> {
     const url = `${this.baseUrl}/oauth2/tokenP`;
     
-    const body = new URLSearchParams({
-      grant_type: 'client_credentials',
-      appkey: this.config.appKey,
-      appsecret: this.config.appSecret,
-    });
-
+    // KIS API는 form-urlencoded 대신 JSON 바디도 지원
+    // App Secret의 특수문자(+, =, /)가 인코딩 문제를 일으킬 수 있어 JSON 사용
     const response = await fetch(url, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
+        'Content-Type': 'application/json',
       },
-      body: body.toString(),
+      body: JSON.stringify({
+        grant_type: 'client_credentials',
+        appkey: this.config.appKey,
+        appsecret: this.config.appSecret,
+      }),
     });
 
+    const responseText = await response.text();
+    console.log(`[KIS API] Token response status: ${response.status}`);
+    console.log(`[KIS API] Token response body: ${responseText.substring(0, 200)}`);
+
     if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`KIS 토큰 발급 실패: ${response.status} - ${errorText}`);
+      // 에러 응답에서 상세 정보 추출
+      let errorDetail = responseText;
+      try {
+        const errorJson = JSON.parse(responseText);
+        errorDetail = `${errorJson.error_code || ''} - ${errorJson.error_description || responseText}`;
+      } catch (e) {}
+      throw new Error(`KIS 토큰 발급 실패 (${response.status}): ${errorDetail}`);
     }
 
-    const data = await response.json();
+    let data;
+    try {
+      data = JSON.parse(responseText);
+    } catch (e) {
+      throw new Error(`KIS 토큰 응답 파싱 실패: ${responseText.substring(0, 100)}`);
+    }
     
     if (data.error_code) {
       throw new Error(`KIS 토큰 에러: ${data.error_code} - ${data.error_description}`);
