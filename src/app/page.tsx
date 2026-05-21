@@ -458,6 +458,37 @@ export default function TradingDashboard() {
     }
   }, []);
 
+  // KIS 설정 로드
+  const loadKisConfig = useCallback(async () => {
+    try {
+      const res = await fetch('/api/kis/config');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && data.data && data.data.length > 0) {
+          const config = data.data[0];
+          setKisConfigured(true);
+          setSavedAppKeyMasked(config.appKey || '');
+          setSavedAccountNo(config.accountNo || '');
+          setSavedIsDemo(config.isDemo ?? true);
+          setIsDemo(config.isDemo ?? true);
+          setAccountNo(config.accountNo || '');
+        } else {
+          setKisConfigured(false);
+        }
+      }
+      // 토큰 상태도 확인
+      const tokenRes = await fetch('/api/kis/token');
+      if (tokenRes.ok) {
+        const tokenData = await tokenRes.json();
+        if (tokenData.success) {
+          setKisHasToken(tokenData.data?.hasToken ?? false);
+        }
+      }
+    } catch (error) {
+      console.error('KIS 설정 로드 실패:', error);
+    }
+  }, []);
+
   // 초기 로드 및 자동 새로고침
   useEffect(() => {
     let mounted = true;
@@ -547,37 +578,6 @@ export default function TradingDashboard() {
     }
     setIsRunningCycle(false);
   };
-
-  // KIS 설정 로드
-  const loadKisConfig = useCallback(async () => {
-    try {
-      const res = await fetch('/api/kis/config');
-      if (res.ok) {
-        const data = await res.json();
-        if (data.success && data.data && data.data.length > 0) {
-          const config = data.data[0];
-          setKisConfigured(true);
-          setSavedAppKeyMasked(config.appKey || '');
-          setSavedAccountNo(config.accountNo || '');
-          setSavedIsDemo(config.isDemo ?? true);
-          setIsDemo(config.isDemo ?? true);
-          setAccountNo(config.accountNo || '');
-        } else {
-          setKisConfigured(false);
-        }
-      }
-      // 토큰 상태도 확인
-      const tokenRes = await fetch('/api/kis/token');
-      if (tokenRes.ok) {
-        const tokenData = await tokenRes.json();
-        if (tokenData.success) {
-          setKisHasToken(tokenData.data?.hasToken ?? false);
-        }
-      }
-    } catch (error) {
-      console.error('KIS 설정 로드 실패:', error);
-    }
-  }, []);
 
   // KIS 설정 저장
   const saveKisConfig = async () => {
