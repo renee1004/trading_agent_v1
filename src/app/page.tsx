@@ -383,6 +383,10 @@ export default function TradingDashboard() {
   // 관심종목 추가
   const addToWatchlist = async (stock: SearchResult) => {
     try {
+      // 이미 있는지 먼저 확인
+      if (isInWatchlist(stock.code)) {
+        return; // 이미 추가됨
+      }
       const res = await fetch('/api/watchlist', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -392,8 +396,19 @@ export default function TradingDashboard() {
           sector: stock.sector,
         }),
       });
-      if (res.ok) {
+      const data = await res.json();
+      if (res.ok && data.success) {
+        // 즉시 로컬 상태에 추가 (서버 재조회 전에 UI 반영)
+        setWatchlist(prev => [...prev, {
+          id: data.data?.id || `local-${Date.now()}`,
+          stockCode: stock.code,
+          stockName: stock.name,
+          sector: stock.sector || null,
+          isActive: true,
+        }]);
         await loadDashboardData();
+      } else {
+        console.error('관심종목 추가 실패:', data.error);
       }
     } catch (error) {
       console.error('관심종목 추가 실패:', error);
