@@ -458,15 +458,40 @@ export default function TradingDashboard() {
     }
   }, []);
 
-  // KIS 설정 로드
+  // localStorage에서 KIS 설정 로드 (서버 재시작해도 유지)
+  const loadKisConfigFromStorage = useCallback(() => {
+    try {
+      const stored = localStorage.getItem('kis_config');
+      if (stored) {
+        const config = JSON.parse(stored);
+        if (config.appKey && config.accountNo) {
+          setKisConfigured(true);
+          setSavedAppKeyMasked(config.appKey.substring(0, 8) + '****');
+          setSavedAccountNo(config.accountNo);
+          setSavedIsDemo(config.isDemo ?? true);
+          setIsDemo(config.isDemo ?? true);
+          setAccountNo(config.accountNo);
+          return config; // 반환값 사용
+        }
+      }
+    } catch (e) {
+      console.warn('localStorage 로드 실패:', e);
+    }
+    setKisConfigured(false);
+    return null;
+  }, []);
+
+  // KIS 설정 로드 (localStorage + 서버 동기화)
   const loadKisConfig = useCallback(async () => {
+    // 1. 먼저 localStorage에서 즉시 복원
+    const storedConfig = loadKisConfigFromStorage();
+
+    // 2. 서버에서도 확인 (서버에 데이터가 있으면 동기화)
     try {
       const res = await fetch('/api/kis/config');
       if (res.ok) {
         const data = await res.json();
-        console.log('[KIS Config] Load response:', JSON.stringify(data));
         if (data.success && data.data) {
-          // data.data가 배열이거나 단일 객체일 수 있음
           const configs = Array.isArray(data.data) ? data.data : [data.data];
           if (configs.length > 0) {
             const config = configs[0];
@@ -476,16 +501,29 @@ export default function TradingDashboard() {
             setSavedIsDemo(config.isDemo ?? true);
             setIsDemo(config.isDemo ?? true);
             setAccountNo(config.accountNo || '');
-          } else {
-            setKisConfigured(false);
+            return; // 서버에 데이터가 있으면 종료
           }
-        } else {
-          setKisConfigured(false);
         }
+      }
+
+      // 3. 서버에 데이터가 없는데 localStorage에 있으면 서버에 복원
+      if (storedConfig) {
+        console.log('[KIS Config] Restoring config to server from localStorage...');
+        fetch('/api/kis/config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            appKey: storedConfig.appKey,
+            appSecret: storedConfig.appSecret,
+            accountNo: storedConfig.accountNo,
+            isDemo: storedConfig.isDemo,
+          }),
+        }).catch(console.error);
       } else {
-        console.warn('[KIS Config] Load failed, status:', res.status);
+        // 둘 다 데이터 없음
         setKisConfigured(false);
       }
+
       // 토큰 상태도 확인
       try {
         const tokenRes = await fetch('/api/kis/token');
@@ -500,9 +538,10 @@ export default function TradingDashboard() {
       }
     } catch (error) {
       console.error('KIS 설정 로드 실패:', error);
-      setKisConfigured(false);
+      // localStorage라도 있으면 configured 유지
+      if (!storedConfig) setKisConfigured(false);
     }
-  }, []);
+  }, [loadKisConfigFromStorage]);
 
   // 초기 로드 및 자동 새로고침
   useEffect(() => {
@@ -597,26 +636,41 @@ export default function TradingDashboard() {
   // KIS 설정 저장
   const saveKisConfig = async () => {
     try {
+      // 수정 모드: appSecret이 빈칸이면 localStorage에서 기존 값 가져오기
+      let finalAppSecret = appSecret;
+      if (isEditMode && !appSecret) {
+        try {
+          const stored = localStorage.getItem('kis_config');
+          if (stored) {
+            finalAppSecret = JSON.parse(stored).appSecret || '';
+          }
+        } catch (e) {}
+      }
+
       const res = await fetch('/api/kis/config', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ appKey, appSecret, accountNo, isDemo }),
+        body: JSON.stringify({ appKey, appSecret: finalAppSecret, accountNo, isDemo }),
       });
       const data = await res.json();
       if (data.success) {
+        // localStorage에도 저장 (서버 재시작 대비)
+        localStorage.setItem('kis_config', JSON.stringify({
+          appKey,
+          appSecret: finalAppSecret,
+          accountNo,
+          isDemo,
+        }));
+
         setKisConfigured(true);
         setIsEditMode(false);
-        // 저장된 정보 즉시 갱신
         setSavedAppKeyMasked(appKey.substring(0, 8) + '****');
         setSavedAccountNo(accountNo);
         setSavedIsDemo(isDemo);
         // 입력 필드 초기화
         setAppKey('');
         setAppSecret('');
-        // 다이얼로그는 닫지 않고 저장된 설정 보기 모드로 전환
-        // (사용자가 삭제/수정 버튼 확인 가능)
-        // 백그라운드에서 설정 리로드
-        loadKisConfig().catch(console.error);
+
         // 토큰 발급 시도
         try {
           const tokenRes = await fetch('/api/kis/token', { method: 'POST' });
@@ -844,6 +898,8 @@ export default function TradingDashboard() {
                           } catch (e) {
                             console.error('삭제 실패:', e);
                           }
+                          // localStorage도 삭제
+                          localStorage.removeItem('kis_config');
                           setKisConfigured(false);
                           setKisHasToken(false);
                           setSavedAppKeyMasked('');
