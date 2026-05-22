@@ -1,4 +1,5 @@
 // 해외주식 잔고 조회 라우트
+// KisApiClient.getOverseasAccountBalance() 사용 (단일 진실 공급원)
 
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
@@ -23,13 +24,15 @@ export async function GET() {
         console.log('[KIS Overseas Balance] API success - totalDeposit:', balance.totalDeposit, 'positions:', balance.positions.length);
         return NextResponse.json({ success: true, data: balance, source: 'api' });
       } catch (apiError: any) {
-        console.error('[KIS Overseas Balance] API failed, falling back to mock:', apiError.message || apiError);
+        console.error('[KIS Overseas Balance] API failed:', apiError.message || apiError);
+        return NextResponse.json(
+          { success: false, error: apiError.message || 'KIS 해외 잔고 조회 실패', source: 'api' },
+          { status: 502 }
+        );
       }
-    } else {
-      console.log('[KIS Overseas Balance] No access token configured, using mock data');
     }
 
-    // 모의 잔고 데이터 (토큰 미발급 또는 API 실패 시 - 0원으로 표시)
+    // 토큰 미발급 시 - 0원으로 표시 (가짜 수익 방지)
     const mockBalance = {
       totalDeposit: 0,
       totalEvaluation: 0,

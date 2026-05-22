@@ -18,6 +18,18 @@ import {
 const DEMO_BASE_URL = 'https://openapivts.koreainvestment.com:29443';
 const REAL_BASE_URL = 'https://openapi.koreainvestment.com:9443';
 
+/**
+ * KIS API 응답 값을 안전하게 숫자로 변환
+ * - 쉼표 포함 문자열("1,000,000") 올바르게 파싱
+ * - null, undefined, 빈 문자열 → 0
+ * - NaN → 0
+ */
+function safeNumber(value: unknown): number {
+  if (value === null || value === undefined || value === '') return 0;
+  const parsed = Number(String(value).replace(/,/g, ''));
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
 // 서버 사이드 토큰 캐시 - 프로세스 내에서 토큰 재사용
 // KisApiClient 인스턴스가 매번 새로 생성되어도 이 캐시를 통해 토큰 공유
 const serverTokenCache: {
@@ -339,6 +351,8 @@ export class KisApiClient {
 
   /**
    * 계좌 잔고 조회 (국내)
+   * KIS API 응답 구조: output1 = 보유종목 Array, output2 = 계좌요약 Array[1]
+   * 쉼표 포함 숫자("1,000,000") 안전 파싱 적용
    */
   async getAccountBalance(): Promise<AccountBalance> {
     const token = await this.ensureToken();
@@ -381,28 +395,55 @@ export class KisApiClient {
       throw new Error(`잔고 조회 에러: ${result.msg1}`);
     }
 
-    const output1 = result.output1 || {};
-    const output2 = result.output2 || [];
+    // KIS 국내 잔고 API: output1 = 보유종목 목록(Array), output2 = 계좌 요약(Array[1])
+    const holdings = Array.isArray(result.output1) ? result.output1 : [];
+    const summaryList = Array.isArray(result.output2) ? result.output2 : [];
+    const summary = (summaryList[0] || {}) as Record<string, string>;
 
-    const positions: BalanceItem[] = output2.map((item: Record<string, string>) => ({
-      stockCode: item.pdno || '',
-      stockName: item.prdt_name || '',
-      quantity: parseInt(item.hldg_qty) || 0,
-      avgPrice: parseInt(item.pchs_avg_pric) || 0,
-      currentPrice: parseInt(item.stck_prpr) || 0,
-      profitLoss: parseInt(item.evlu_pfls_amt) || 0,
-      profitRate: parseFloat(item.evlu_pfls_rt) || 0,
-      evaluationAmount: parseInt(item.evlu_amt) || 0,
-      market: 'DOMESTIC' as const,
-      currency: 'KRW',
-    }));
+    // 보유종목 파싱 (수량 > 0인 종목만)
+    const positions: BalanceItem[] = holdings
+      .filter((item: Record<string, string>) => safeNumber(item.hldg_qty) > 0)
+      .map((item: Record<string, string>) => ({
+        stockCode: item.pdno || '',
+        stockName: item.prdt_name || item.prdt_abrv_name || '',
+        quantity: safeNumber(item.hldg_qty),
+        avgPrice: safeNumber(item.pchs_avg_pric),
+        currentPrice: safeNumber(item.prpr || item.stck_prpr),
+        profitLoss: safeNumber(item.evlu_pfls_amt),
+        profitRate: safeNumber(item.evlu_pfls_rt),
+        evaluationAmount: safeNumber(item.evlu_amt),
+        market: 'DOMESTIC' as const,
+        currency: 'KRW',
+      }));
+
+    // 계좌 요약 파싱 (다중 폴백으로 누락 방지)
+    const stockEvaluation = safeNumber(summary.scts_evlu_amt);
+    const totalEvaluation =
+      safeNumber(summary.tot_evlu_amt) ||
+      safeNumber(summary.nass_amt) ||
+      stockEvaluation + safeNumber(summary.dnca_tot_amt);
+    const totalProfitLoss =
+      safeNumber(summary.evlu_pfls_smtl_amt) ||
+      safeNumber(summary.tot_pfls);
+    const purchaseAmount = safeNumber(summary.pchs_amt_smtl_amt);
+    const totalProfitRate = purchaseAmount > 0
+      ? (totalProfitLoss / purchaseAmount) * 100
+      : safeNumber(summary.tot_pfls_rt);
+    const availableAmount =
+      safeNumber(summary.prvs_rcdl_excc_amt) ||
+      safeNumber(summary.dnca_tot_amt) ||
+      safeNumber(summary.nxdy_excc_amt);
+
+    console.log('[KIS Client] getAccountBalance success', {
+      totalEvaluation, availableAmount, positions: positions.length
+    });
 
     return {
-      totalDeposit: parseInt(output1.dnca_tot_amt) || 0,
-      totalEvaluation: parseInt(output1.tot_evlu_amt) || 0,
-      totalProfitLoss: parseInt(output1.tot_pfls) || 0,
-      totalProfitRate: parseFloat(output1.tot_pfls_rt) || 0,
-      availableAmount: parseInt(output1.prvs_rcdl_excc_amt) || 0,
+      totalDeposit: totalEvaluation,
+      totalEvaluation,
+      totalProfitLoss,
+      totalProfitRate,
+      availableAmount,
       positions,
     };
   }
@@ -650,6 +691,8 @@ export class KisApiClient {
 
   /**
    * 해외주식 잔고 조회
+   * KIS API 응답 구조: output1 = 보유종목 Array, output2 = 계좌요약 Array[1]
+   * 쉼표 포함 숫자("1,000,000") 안전 파싱 적용
    */
   async getOverseasAccountBalance(): Promise<{
     totalDeposit: number;
@@ -694,8 +737,10 @@ export class KisApiClient {
       throw new Error(`해외주식 잔고 조회 에러: ${result.msg1}`);
     }
 
-    const output1 = result.output1 || {};
-    const output2 = result.output2 || [];
+    // KIS 해외 잔고 API: output1 = 보유종목 Array, output2 = 계좌요약 Array[1]
+    const holdings = Array.isArray(result.output1) ? result.output1 : [];
+    const summaryList = Array.isArray(result.output2) ? result.output2 : [];
+    const summary = (summaryList[0] || {}) as Record<string, string>;
 
     // 거래소명 매핑
     const exchangeNames: Record<string, string> = {
@@ -708,29 +753,46 @@ export class KisApiClient {
       'SZS': '심천',
     };
 
-    const positions: OverseasBalanceItem[] = output2.map((item: Record<string, string>) => ({
-      stockCode: item.ovrs_pdno || '',
-      stockName: item.ovrs_item_name || '',
-      exchangeCode: item.ovrs_excg_cd || '',
-      exchangeName: exchangeNames[item.ovrs_excg_cd] || item.ovrs_excg_cd,
-      quantity: parseInt(item.ovrs_cblc_qty) || 0,
-      avgPrice: parseFloat(item.pchs_avg_pric) || 0,
-      currentPrice: parseFloat(item.now_pric2) || 0,
-      profitLoss: parseInt(item.evlu_pfls_amt) || 0,
-      profitRate: parseFloat(item.evlu_pfls_rt) || 0,
-      evaluationAmount: parseInt(item.evlu_amt) || 0,
-      foreignEvaluation: parseFloat(item.frcr_evlu_amt) || 0,
-      exchangeRate: parseFloat(item.bass_exrt) || 1,
-      currency: item.tr_crcy_cd || 'USD',
-      purchaseAmount: parseFloat(item.frcr_pchs_amt1) || 0,
-    }));
+    // 보유종목 파싱 (수량 > 0인 종목만)
+    const positions: OverseasBalanceItem[] = holdings
+      .filter((item: Record<string, string>) => safeNumber(item.ovrs_cblc_qty) > 0)
+      .map((item: Record<string, string>) => ({
+        stockCode: item.ovrs_pdno || '',
+        stockName: item.ovrs_item_name || '',
+        exchangeCode: item.ovrs_excg_cd || '',
+        exchangeName: exchangeNames[item.ovrs_excg_cd] || item.ovrs_excg_cd,
+        quantity: safeNumber(item.ovrs_cblc_qty),
+        avgPrice: safeNumber(item.pchs_avg_pric),
+        currentPrice: safeNumber(item.now_pric2),
+        profitLoss: safeNumber(item.evlu_pfls_amt),
+        profitRate: safeNumber(item.evlu_pfls_rt),
+        evaluationAmount: safeNumber(item.evlu_amt),
+        foreignEvaluation: safeNumber(item.frcr_evlu_amt),
+        exchangeRate: safeNumber(item.bass_exrt) || 1,
+        currency: item.tr_crcy_cd || 'USD',
+        purchaseAmount: safeNumber(item.frcr_pchs_amt1),
+      }));
+
+    // 계좌 요약 파싱 (다중 폴백)
+    const totalEvaluation = safeNumber(summary.tot_evlu_amt);
+    const totalProfitLoss = safeNumber(summary.tot_pfls);
+    const purchaseAmount = positions.reduce((sum, p) => sum + Math.floor(p.purchaseAmount * p.exchangeRate), 0);
+    const totalProfitRate = purchaseAmount > 0 ? (totalProfitLoss / purchaseAmount) * 100 : safeNumber(summary.tot_pfls_rt);
+    const availableAmount =
+      safeNumber(summary.prvs_rcdl_excc_amt) ||
+      safeNumber(summary.wtch_amt) ||
+      safeNumber(summary.dnca_tot_amt);
+
+    console.log('[KIS Client] getOverseasAccountBalance success', {
+      totalEvaluation, availableAmount, positions: positions.length
+    });
 
     return {
-      totalDeposit: parseInt(output1.dnca_tot_amt) || parseInt(output1.wtch_amt) || 0,
-      totalEvaluation: parseInt(output1.tot_evlu_amt) || 0,
-      totalProfitLoss: parseInt(output1.tot_pfls) || 0,
-      totalProfitRate: parseFloat(output1.tot_pfls_rt) || 0,
-      availableAmount: parseInt(output1.prvs_rcdl_excc_amt) || parseInt(output1.wtch_amt) || 0,
+      totalDeposit: totalEvaluation,
+      totalEvaluation,
+      totalProfitLoss,
+      totalProfitRate,
+      availableAmount,
       positions,
     };
   }
