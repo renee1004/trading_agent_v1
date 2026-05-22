@@ -93,8 +93,6 @@ function parseAccountNo(accountNo: string): { cano: string; productCode: string 
   };
 }
 
-// 서버 사이드 토큰 캐시 - 프로세스 내에서 토큰 재사용
-// KisApiClient 인스턴스가 매번 새로 생성되어도 이 캐시를 통해 토큰 공유
 const serverTokenCache: {
   accessToken: string | null;
   tokenExpiresAt: Date | null;
@@ -105,7 +103,6 @@ const serverTokenCache: {
   appKey: null,
 };
 
-// 토큰 발급 뮤텍스 - 동시에 여러 요청이 들어와도 1회만 발급
 let tokenIssuancePromise: Promise<string> | null = null;
 
 export class KisApiClient {
@@ -136,11 +133,6 @@ export class KisApiClient {
     return this.config.isDemo ? DEMO_BASE_URL : REAL_BASE_URL;
   }
 
-  /**
-   * 국내/해외 시세 조회용 후보 base URL.
-   * 모의투자 서버에서 잔고/주문은 되지만 시세/차트가 실패하는 경우가 있어
-   * 모의투자에서는 모의 서버를 먼저 호출하고, 실패 시 실전 quote 서버를 한 번 더 시도한다.
-   */
   private get quoteBaseUrls(): string[] {
     if (this.config.isDemo) {
       return [DEMO_BASE_URL, REAL_BASE_URL];
@@ -148,10 +140,6 @@ export class KisApiClient {
     return [REAL_BASE_URL];
   }
 
-  /**
-   * 접근 토큰 발급
-   * 뮤텍스 적용: 동시에 여러 요청이 들어와도 1회만 KIS API 호출
-   */
   async issueToken(): Promise<string> {
     if (tokenIssuancePromise) {
       console.log('[KIS API] Token issuance already in progress, waiting...');
@@ -219,10 +207,6 @@ export class KisApiClient {
     return this.accessToken!;
   }
 
-  /**
-   * 유효한 토큰 확인 및 갱신
-   * 만료 버퍼 5분: 토큰이 5분 이내에 만료되면 미리 갱신
-   */
   async ensureToken(): Promise<string> {
     const BUFFER_MS = 5 * 60 * 1000;
     if (this.accessToken && this.tokenExpiresAt && this.tokenExpiresAt.getTime() - BUFFER_MS > Date.now()) {
@@ -231,9 +215,6 @@ export class KisApiClient {
     return this.issueToken();
   }
 
-  /**
-   * 현재 토큰 정보 반환 (API 라우트에서 DB 저장용)
-   */
   getTokenInfo(): { accessToken: string | null; tokenExpiresAt: Date | null } {
     return {
       accessToken: this.accessToken,
@@ -241,9 +222,6 @@ export class KisApiClient {
     };
   }
 
-  /**
-   * Hash Key 생성 (주문 시 필요)
-   */
   async createHashKey(data: string): Promise<string> {
     const token = await this.ensureToken();
     const url = `${this.baseUrl}/uapi/hashkey`;
@@ -263,13 +241,6 @@ export class KisApiClient {
     return result.HASH;
   }
 
-  // ========================================
-  // 국내주식 API
-  // ========================================
-
-  /**
-   * 주식 현재가 조회 (국내)
-   */
   async getStockPrice(stockCode: string): Promise<StockPrice> {
     const token = await this.ensureToken();
     const errors: string[] = [];
@@ -328,9 +299,6 @@ export class KisApiClient {
     throw new Error(`시세 조회 실패: ${errors.join(' | ')}`);
   }
 
-  /**
-   * 주식 일봉 데이터 조회 (국내)
-   */
   async getStockDailyCandles(
     stockCode: string,
     period: string = '1M'
@@ -347,7 +315,9 @@ export class KisApiClient {
         FID_INPUT_DATE_1: startDate,
         FID_INPUT_DATE_2: endDate,
         FID_PERIOD_DIV_CODE: 'D',
-        FID_ORG_ADJ_PRC: '1',
+        // KIS 응답 기준으로 FID_ORG_ADJ_PRC는 invalid field로 확인됨.
+        // 현재 사용 중인 서버는 FID_ORIG_ADJ_PRC를 요구한다.
+        FID_ORIG_ADJ_PRC: '1',
       });
 
       console.log(`[KIS API] Daily candles request: ${stockCode}, base=${baseUrl}, period=${period}, date=${startDate}~${endDate}`);
@@ -405,9 +375,6 @@ export class KisApiClient {
     throw new Error(`일봉 조회 실패: ${errors.join(' | ')}`);
   }
 
-  /**
-   * 주식 매수/매도 주문 (국내)
-   */
   async placeOrder(order: OrderRequest): Promise<OrderResponse> {
     if (order.market === 'OVERSEAS' && order.exchangeCode) {
       return this.placeOverseasOrder(order);
@@ -462,9 +429,6 @@ export class KisApiClient {
     };
   }
 
-  /**
-   * 계좌 잔고 조회 (국내)
-   */
   async getAccountBalance(): Promise<AccountBalance> {
     const token = await this.ensureToken();
     const url = `${this.baseUrl}/uapi/domestic-stock/v1/trading/inquire-balance`;
@@ -557,9 +521,6 @@ export class KisApiClient {
     };
   }
 
-  /**
-   * 주문 취소 (국내)
-   */
   async cancelOrder(orderNo: string, stockCode: string, orderType: 'BUY' | 'SELL'): Promise<OrderResponse> {
     const token = await this.ensureToken();
     const url = `${this.baseUrl}/uapi/domestic-stock/v1/trading/order-cash`;
@@ -601,14 +562,6 @@ export class KisApiClient {
     };
   }
 
-  // ========================================
-  // 해외주식 API (미국 등)
-  // ========================================
-
-  /**
-   * 해외주식 현재가 조회
-   * 거래소코드: NAS(나스닥), NYS(뉴욕), AMS(아멕스)
-   */
   async getOverseasStockPrice(
     stockCode: string,
     exchangeCode: string = 'NAS'
@@ -676,9 +629,6 @@ export class KisApiClient {
     };
   }
 
-  /**
-   * 해외주식 일봉 데이터 조회
-   */
   async getOverseasDailyCandles(
     stockCode: string,
     exchangeCode: string = 'NAS',
@@ -739,10 +689,6 @@ export class KisApiClient {
     })).reverse();
   }
 
-  /**
-   * 해외주식 매수/매도 주문
-   * 거래소코드: NAS(나스닥), NYS(뉴욕), AMS(아멕스)
-   */
   async placeOverseasOrder(order: OrderRequest): Promise<OrderResponse> {
     const token = await this.ensureToken();
     const url = `${this.baseUrl}/uapi/overseas-stock/v1/trading/order`;
@@ -795,9 +741,6 @@ export class KisApiClient {
     };
   }
 
-  /**
-   * 해외주식 잔고 조회
-   */
   async getOverseasAccountBalance(): Promise<{
     totalDeposit: number;
     totalEvaluation: number;
@@ -898,9 +841,6 @@ export class KisApiClient {
     };
   }
 
-  /**
-   * 해외주식 주문 취소
-   */
   async cancelOverseasOrder(
     orderNo: string,
     exchangeCode: string = 'NAS'
@@ -944,9 +884,6 @@ export class KisApiClient {
     };
   }
 
-  /**
-   * 해외주식 종목 검색 (조건검색)
-   */
   async searchOverseasStock(
     keyword: string,
     exchangeCode: string = 'NAS'
