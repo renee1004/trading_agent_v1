@@ -64,3 +64,34 @@ Work Log:
 Stage Summary:
 - Railway 배포 앱이 정상 작동: 대시보드 종목 표시, API 설정 저장/유지 모두 정상
 - 핵심 수정: Prisma 스키마 검증 후 인메모리 DB 폴백으로 DB 없이도 완전 동작
+
+---
+Task ID: 3
+Agent: Main Agent
+Task: 핵심 버그 수정 + 타임존/주말 체크 + 마켓 스캐너 스코어링 + 자동 복구
+
+Work Log:
+- cancelOverseasOrder()에서 trId 미정의 버그 발견 및 수정 (VTTT1004U/TTTT1004U)
+- getKSTNow()를 toLocaleString 파싱 → UTC 오프셋 직접 계산으로 변경 (환경 무관 안정적)
+- isMarketHours()에 주말 체크 추가 (dayOfWeek 0,6 → 항상 false)
+- isMarketHours() 반환값에 dayOfWeek 포함하도록 getKSTNow() 시그니처 변경
+- 마켓 스캐너 스코어링/Top-N 선택 기능 추가:
+  - SOURCE_PRIORITY: POSITION(100) > WATCHLIST(50) > BLUE_CHIP(10)
+  - MAX_DOMESTIC_STOCKS=10, MAX_OVERSEAS_STOCKS=5
+  - 스코어 기반 정렬 후 상위 N개만 선택, 제외 종목 로그 출력
+  - filtered 카운트를 ScanResult에 추가
+- instrumentation.ts 추가: 서버 시작 5초 후 autoRecoverScheduler() 호출
+- 모의투자 모드 첫 사이클 장시간 무관 실행 로직 추가
+- getSchedulerStatus()에 currentKST 필드 추가 (디버깅용)
+- /api/agent/status에 currentKST 노출
+- page.tsx에 KST 시간 배지 표시 추가
+- 장시간 스킵 로그에 KST 시간/요일 정보 추가
+- 빌드 테스트 성공, GitHub push 완료
+
+Stage Summary:
+- 치명적 버그 1건 수정 (cancelOverseasOrder 런타임 크래시)
+- 타임존 계산을 환경 독립적 방식으로 개선
+- 주말 장시간 오인식 문제 해결
+- 마켓 스캐너가 API 호출 한도를 보호하며 우선순위 기반 종목 선정
+- 서버 재시작 시 스케줄러 자동 복구 활성화
+- Railway 자동 재배포 예정
