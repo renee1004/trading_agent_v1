@@ -228,6 +228,7 @@ function createInMemoryDb() {
     'watchlistItem', 'kisConfig', 'tradingStrategy',
     'tradeHistory', 'position', 'tradingSession',
     'riskConfig', 'marketData', 'agentConfig', 'agentLog',
+    'appSetting',
   ];
 
   const handlers: Record<string, any> = {};

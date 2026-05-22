@@ -853,17 +853,31 @@ export class KisApiClient {
     };
   }
 
+  /**
+   * 해외주식 기간별시세(일/주/월) 조회
+   * KIS API: HHDFS76240000
+   * 
+   * GUBN: 1글자 코드만 허용 ('0'=일봉, '1'=주봉, '2'=월봉)
+   *   - '3M', '6M' 등 2글자 값을 보내면 WRONG VALUE SIZE 에러 발생
+   *   - period는 BYMD 계산용으로만 사용, GUBN에는 항상 1글자 코드 입력
+   * BYMD: 조회 기준일 (YYYYMMDD), 빈 값이면 당일 기준
+   * MODP: 수정주가 여부 ('0'=수정주가, '1'=원주가)
+   * 
+   * dual-server fallback 적용:
+   *   - 모의투자 서버 실패 시 실전 서버로 재시도
+   *   - 상세 에러 로깅 (rt_cd, msg_cd, msg1, output2Length, 요청 파라미터)
+   */
   async getOverseasDailyCandles(
     stockCode: string,
     exchangeCode: string = 'NAS',
     period: string = '1M'
   ): Promise<OverseasStockCandle[]> {
     const token = await this.ensureToken();
-    const url = `${this.baseUrl}/uapi/overseas-price/v1/quotations/dailyprice`;
+    const errors: string[] = [];
 
     // KIS 해외 일봉 API GUBN 파라미터는 1글자 코드만 허용:
     // '0' = 일봉, '1' = 주봉, '2' = 월봉
-    // '3M', '6M' 등 2글자 값을 보내면 WRONG VALUE SIZE 에러 발생
+    // period는 BYMD 기준일 계산에만 사용, GUBN에는 항상 1글자 코드
     const gubnMap: Record<string, string> = {
       '1W': '1',   // 주봉
       '1M': '0',   // 일봉 (1개월치)
@@ -871,54 +885,94 @@ export class KisApiClient {
       '6M': '0',   // 일봉 (6개월치)
       '1Y': '0',   // 일봉 (1년치)
     };
+    const gubn = gubnMap[period] || '0';
 
-    // BYMD: 조회 기준일 (YYYYMMDD), 빈 값이면 당일 기준
-    const bymd = formatYmd(new Date());
+    // BYMD: 조회 기준일 (YYYYMMDD)
+    // period가 길수록 과거 데이터를 더 많이 가져오도록 BYMD를 과거로 설정
+    let bymdDate = new Date();
+    switch (period) {
+      case '3M': bymdDate.setMonth(bymdDate.getMonth() - 3); break;
+      case '6M': bymdDate.setMonth(bymdDate.getMonth() - 6); break;
+      case '1Y': bymdDate.setFullYear(bymdDate.getFullYear() - 1); break;
+      default: break; // 1M, 1W 등은 당일 기준
+    }
+    const bymd = formatYmd(bymdDate);
 
     const params = new URLSearchParams({
       AUTH: '',
       EXCD: exchangeCode,
       SYMB: stockCode,
-      GUBN: gubnMap[period] || '0',
+      GUBN: gubn,
       BYMD: bymd,
       MODP: '1',
     });
 
     const trId = 'HHDFS76240000';
 
-    console.log(`[KIS API] Overseas daily candles request: ${stockCode}, EXCD=${exchangeCode}, GUBN=${gubnMap[period] || '0'}, BYMD=${bymd}`);
+    for (const baseUrl of this.quoteBaseUrls) {
+      const url = `${baseUrl}/uapi/overseas-price/v1/quotations/dailyprice`;
 
-    const response = await fetch(`${url}?${params.toString()}`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-        appKey: this.config.appKey,
-        appSecret: this.config.appSecret,
-        tr_id: trId,
-      },
-    });
+      console.log(`[KIS API] Overseas daily candles request: stockCode=${stockCode}, EXCD=${exchangeCode}, GUBN=${gubn}, BYMD=${bymd}, base=${baseUrl}, params=${params.toString()}`);
 
-    if (!response.ok) {
-      throw new Error(`해외주식 일봉 조회 실패: ${response.status}`);
+      try {
+        const response = await fetch(`${url}?${params.toString()}`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+            appKey: this.config.appKey,
+            appSecret: this.config.appSecret,
+            tr_id: trId,
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        const result = await response.json();
+        const output2 = Array.isArray(result.output2) ? result.output2 : [];
+
+        console.log('[KIS API] Overseas daily candles response', {
+          stockCode,
+          exchangeCode,
+          baseUrl,
+          rt_cd: result.rt_cd,
+          msg_cd: result.msg_cd,
+          msg1: result.msg1,
+          output2Length: output2.length,
+          EXCD: exchangeCode,
+          SYMB: stockCode,
+          GUBN: gubn,
+          BYMD: bymd,
+          MODP: '1',
+        });
+
+        if (result.rt_cd !== '0') {
+          throw new Error(`${result.msg1 || '해외주식 일봉 조회 에러'} (rt_cd=${result.rt_cd}, msg_cd=${result.msg_cd || ''})`);
+        }
+
+        if (output2.length === 0) {
+          throw new Error(`해외주식 일봉 조회 성공했으나 output2가 비어 있음 (rt_cd=${result.rt_cd}, msg_cd=${result.msg_cd || ''})`);
+        }
+
+        return output2.map((item: Record<string, string>) => ({
+          date: item.xymd || '',
+          open: parseFloat(item.open) || 0,
+          high: parseFloat(item.high) || 0,
+          low: parseFloat(item.low) || 0,
+          close: parseFloat(item.clos) || 0,
+          volume: parseInt(item.tvol) || 0,
+          exchangeRate: parseFloat(item.rate) || 0,
+        })).reverse();
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        errors.push(`[${baseUrl}] ${errorMsg}`);
+        console.warn(`[KIS API] Overseas daily candles failed: stockCode=${stockCode}, EXCD=${exchangeCode}, baseUrl=${baseUrl}, error=${errorMsg}`);
+      }
     }
 
-    const result = await response.json();
-
-    if (result.rt_cd !== '0') {
-      throw new Error(`해외주식 일봉 조회 에러: ${result.msg1}`);
-    }
-
-    const output2 = result.output2 || [];
-    return output2.map((item: Record<string, string>) => ({
-      date: item.xymd || '',
-      open: parseFloat(item.open) || 0,
-      high: parseFloat(item.high) || 0,
-      low: parseFloat(item.low) || 0,
-      close: parseFloat(item.clos) || 0,
-      volume: parseInt(item.tvol) || 0,
-      exchangeRate: parseFloat(item.rate) || 0,
-    })).reverse();
+    throw new Error(`해외주식 일봉 조회 실패: ${errors.join(' | ')}`);
   }
 
   async placeOverseasOrder(order: OrderRequest): Promise<OrderResponse> {

@@ -17,8 +17,24 @@ import {
 import { getDomesticSession, getKSTNow, DomesticSession } from './agent-scheduler';
 import { getOrCreateKisConfigFromEnv } from './kis-config-loader';
 
-// 해외주식 분석/매매 활성화 여부 (기본값: false, 국내 검증 우선)
+// 해외주식 분석/매매 활성화 여부
+// ENABLE_OVERSEAS_TRADING: 레거시 (true이면 analysis도 활성화)
+// ENABLE_OVERSEAS_ANALYSIS: 해외 캔들 조회/전략 분석/신호 생성 허용
+// ENABLE_OVERSEAS_ORDER: 해외 실제 주문 실행 (명시적으로 true일 때만)
 const ENABLE_OVERSEAS_TRADING = process.env.ENABLE_OVERSEAS_TRADING === 'true';
+const ENABLE_OVERSEAS_ANALYSIS = process.env.ENABLE_OVERSEAS_ANALYSIS === 'true' || ENABLE_OVERSEAS_TRADING;
+const ENABLE_OVERSEAS_ORDER = process.env.ENABLE_OVERSEAS_ORDER === 'true';
+
+/**
+ * 현재 해외 분석/주문 설정 반환
+ * DB 설정이 있으면 DB값, 없으면 환경변수, 없으면 기본값
+ */
+export function getOverseasSettings(): { enableAnalysis: boolean; enableOrder: boolean } {
+  return {
+    enableAnalysis: ENABLE_OVERSEAS_ANALYSIS,
+    enableOrder: ENABLE_OVERSEAS_ORDER,
+  };
+}
 
 // 에이전트 로그 타입
 export interface AgentLog {
@@ -191,6 +207,7 @@ async function fetchCandles(
       stockCode,
       stockName,
       market,
+      exchangeCode: exchangeCode || '',
       error: errorMsg,
     });
     return { candles: [], error: errorMsg };
@@ -326,6 +343,37 @@ async function executeOrder(
   exchangeCode?: string,
   quantity: number = 1
 ): Promise<{ success: boolean; orderNo: string; message: string }> {
+  // 해외 주문: 안전장치 체크
+  if (market === 'OVERSEAS') {
+    const os = getOverseasSettings();
+    if (!os.enableOrder) {
+      addLog('RISK', market, `해외 주문 차단: ENABLE_OVERSEAS_ORDER=false`, {
+        stockCode: signal.stockCode,
+        signalType: signal.signalType,
+        strategy: signal.strategy,
+      });
+      return { success: false, orderNo: '', message: '해외 주문 차단: ENABLE_OVERSEAS_ORDER=false' };
+    }
+    // 거래소 코드 유효성
+    const validExchanges = ['NAS', 'NYS', 'AMS', 'TKS', 'HKS', 'SHS', 'SZS'];
+    if (!exchangeCode || !validExchanges.includes(exchangeCode)) {
+      addLog('RISK', market, `해외 주문 차단: 유효하지 않은 거래소 코드 (${exchangeCode || '없음'})`, {
+        stockCode: signal.stockCode,
+        exchangeCode: exchangeCode || '',
+      });
+      return { success: false, orderNo: '', message: `해외 주문 차단: 유효하지 않은 거래소 코드 (${exchangeCode || '없음'})` };
+    }
+    // 계좌번호/가격/수량 체크
+    if (signal.price <= 0) {
+      addLog('RISK', market, `해외 주문 차단: 가격이 0 이하 (${signal.price})`, { stockCode: signal.stockCode });
+      return { success: false, orderNo: '', message: `해외 주문 차단: 가격이 0 이하 (${signal.price})` };
+    }
+    if (quantity <= 0) {
+      addLog('RISK', market, `해외 주문 차단: 수량이 0 이하 (${quantity})`, { stockCode: signal.stockCode });
+      return { success: false, orderNo: '', message: `해외 주문 차단: 수량이 0 이하 (${quantity})` };
+    }
+  }
+
   // 국내 주문: 거래세션 정책 체크 (KIS placeOrder 호출 전)
   if (market === 'DOMESTIC') {
     const policy = getDomesticOrderPolicy(signal);
@@ -878,10 +926,11 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
   });
 
   // ========================================
-  // 해외주식 분석 & 매매 (ENABLE_OVERSEAS_TRADING=true일 때만)
+  // 해외주식 분석 & 매매
   // ========================================
-  if (ENABLE_OVERSEAS_TRADING) {
-    addLog('INFO', 'OVERSEAS', '해외주식 분석 시작');
+  const overseasSettings = getOverseasSettings();
+  if (overseasSettings.enableAnalysis) {
+    addLog('INFO', 'OVERSEAS', `해외주식 분석 시작 (주문=${overseasSettings.enableOrder ? '허용' : '차단'})`);
 
     const overseasPositions = await fetchPositions(kisClient, 'OVERSEAS');
 
@@ -954,6 +1003,15 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
           );
 
           if (riskCheck.allowed) {
+            // 해외 주문 차단 확인
+            if (!overseasSettings.enableOrder) {
+              addLog('RISK', 'OVERSEAS',
+                `해외 주문 차단: ENABLE_OVERSEAS_ORDER=false - ${stock.name} ${finalSignal.signalType} 신호 생성만 수행`,
+                { stockCode: stock.code, signalType: finalSignal.signalType, price: finalSignal.price }
+              );
+              continue;
+            }
+
             const quantity = overseasRisk.calculatePositionSize(
               overseasPositions.accountBalance, finalSignal.price, finalSignal.confidence
             );
@@ -992,7 +1050,7 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
       overseasFailed,
     });
   } else {
-    addLog('INFO', 'OVERSEAS', '해외주식 분석 건너뜀 (ENABLE_OVERSEAS_TRADING=false)');
+    addLog('INFO', 'OVERSEAS', '해외주식 분석 건너뜀 (ENABLE_OVERSEAS_ANALYSIS=false)');
   }
 
   // ========================================
@@ -1001,7 +1059,7 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
   if (kisClient) {
     addLog('INFO', 'DOMESTIC', '포지션 동기화 시작 (잔고 기준)');
     await reconcilePositions(kisClient, 'DOMESTIC');
-    if (ENABLE_OVERSEAS_TRADING) {
+    if (overseasSettings.enableAnalysis) {
       await reconcilePositions(kisClient, 'OVERSEAS');
     }
   }
@@ -1012,9 +1070,9 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
   addLog('INFO', 'DOMESTIC', '포지션 모니터링 시작');
   
   const domesticExits = await monitorPositions(kisClient, 'DOMESTIC');
-  const overseasExits = ENABLE_OVERSEAS_TRADING ? await monitorPositions(kisClient, 'OVERSEAS') : 0;
+  const overseasExits = overseasSettings.enableAnalysis ? await monitorPositions(kisClient, 'OVERSEAS') : 0;
   exitsExecuted = domesticExits + overseasExits;
-  positionsMonitored = domesticPositions.positions.length + (ENABLE_OVERSEAS_TRADING ? (await fetchPositions(kisClient, 'OVERSEAS')).positions.length : 0);
+  positionsMonitored = domesticPositions.positions.length + (overseasSettings.enableAnalysis ? (await fetchPositions(kisClient, 'OVERSEAS')).positions.length : 0);
 
   // ========================================
   // 세션 업데이트

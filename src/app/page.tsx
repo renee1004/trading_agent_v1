@@ -275,6 +275,53 @@ export default function TradingDashboard() {
   const [showOverseasSearchDialog, setShowOverseasSearchDialog] = useState(false);
 
   // 데이터 로드
+  // 서버 DB에서 설정 로드 (진실의 원천: DB > 환경변수 > 기본값)
+  const loadSettingsFromServer = useCallback(async () => {
+    try {
+      const res = await fetch('/api/settings/trading');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && data.data) {
+          const s = data.data;
+          // riskConfig 업데이트 (서버 저장값 우선, localStorage 덮어쓰기 방지)
+          setRiskConfig(prev => ({
+            maxPositionSize: s.maxPositionSize !== undefined ? Math.round(s.maxPositionSize * 100) : prev.maxPositionSize,
+            maxDailyLoss: s.maxDailyLoss !== undefined ? Math.round(s.maxDailyLoss * 100) : prev.maxDailyLoss,
+            maxTotalLoss: s.maxTotalLoss !== undefined ? Math.round(s.maxTotalLoss * 100) : prev.maxTotalLoss,
+            maxOpenPositions: s.maxOpenPositions !== undefined ? s.maxOpenPositions : prev.maxOpenPositions,
+            stopLoss: s.stopLossPercent !== undefined ? Math.round(s.stopLossPercent * 100) : prev.stopLoss,
+            takeProfit: s.takeProfitPercent !== undefined ? Math.round(s.takeProfitPercent * 100) : prev.takeProfit,
+            trailingStop: s.trailingStopPercent !== undefined ? Math.round(s.trailingStopPercent * 100) : prev.trailingStop,
+          }));
+          // 전략 선택값 복원
+          if (s.selectedStrategy) {
+            setSelectedStrategy(s.selectedStrategy);
+          }
+          // localStorage에도 동기화 (서버값이 진실)
+          localStorage.setItem('trading_settings', JSON.stringify(s));
+        }
+      }
+    } catch (error) {
+      // 서버 설정 로드 실패 시 localStorage fallback
+      try {
+        const stored = localStorage.getItem('trading_settings');
+        if (stored) {
+          const s = JSON.parse(stored);
+          setRiskConfig(prev => ({
+            maxPositionSize: s.maxPositionSize !== undefined ? Math.round(s.maxPositionSize * 100) : prev.maxPositionSize,
+            maxDailyLoss: s.maxDailyLoss !== undefined ? Math.round(s.maxDailyLoss * 100) : prev.maxDailyLoss,
+            maxTotalLoss: s.maxTotalLoss !== undefined ? Math.round(s.maxTotalLoss * 100) : prev.maxTotalLoss,
+            maxOpenPositions: s.maxOpenPositions !== undefined ? s.maxOpenPositions : prev.maxOpenPositions,
+            stopLoss: s.stopLossPercent !== undefined ? Math.round(s.stopLossPercent * 100) : prev.stopLoss,
+            takeProfit: s.takeProfitPercent !== undefined ? Math.round(s.takeProfitPercent * 100) : prev.takeProfit,
+            trailingStop: s.trailingStopPercent !== undefined ? Math.round(s.trailingStopPercent * 100) : prev.trailingStop,
+          }));
+          if (s.selectedStrategy) setSelectedStrategy(s.selectedStrategy);
+        }
+      } catch {}
+    }
+  }, []);
+
   const loadDashboardData = useCallback(async () => {
     try {
       // 잔고
@@ -581,6 +628,8 @@ export default function TradingDashboard() {
     let mounted = true;
     const fetchData = async () => {
       if (!mounted) return;
+      // 서버 DB에서 설정 먼저 로드 (진실의 원천)
+      await loadSettingsFromServer();
       // KIS 설정/토큰 상태를 먼저 확인한 뒤 잔고 조회
       await loadKisConfig();
       await Promise.all([loadDashboardData(), loadOverseasData(), loadAgentStatus()]);
@@ -2860,6 +2909,7 @@ export default function TradingDashboard() {
                   <Button 
                     className="w-full mt-4"
                     onClick={async () => {
+                      // 1) 기존 /api/risk에 저장
                       await fetch('/api/risk', {
                         method: 'PUT',
                         headers: { 'Content-Type': 'application/json' },
@@ -2873,6 +2923,32 @@ export default function TradingDashboard() {
                           trailingStopPercent: riskConfig.trailingStop / 100,
                         }),
                       });
+                      // 2) /api/settings/trading에도 통합 저장 (영속 보장)
+                      await fetch('/api/settings/trading', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          maxPositionSize: riskConfig.maxPositionSize / 100,
+                          maxDailyLoss: riskConfig.maxDailyLoss / 100,
+                          maxTotalLoss: riskConfig.maxTotalLoss / 100,
+                          maxOpenPositions: riskConfig.maxOpenPositions,
+                          stopLossPercent: riskConfig.stopLoss / 100,
+                          takeProfitPercent: riskConfig.takeProfit / 100,
+                          trailingStopPercent: riskConfig.trailingStop / 100,
+                          selectedStrategy,
+                        }),
+                      });
+                      // localStorage에도 동기화
+                      localStorage.setItem('trading_settings', JSON.stringify({
+                        maxPositionSize: riskConfig.maxPositionSize / 100,
+                        maxDailyLoss: riskConfig.maxDailyLoss / 100,
+                        maxTotalLoss: riskConfig.maxTotalLoss / 100,
+                        maxOpenPositions: riskConfig.maxOpenPositions,
+                        stopLossPercent: riskConfig.stopLoss / 100,
+                        takeProfitPercent: riskConfig.takeProfit / 100,
+                        trailingStopPercent: riskConfig.trailingStop / 100,
+                        selectedStrategy,
+                      }));
                     }}
                   >
                     리스크 설정 저장
