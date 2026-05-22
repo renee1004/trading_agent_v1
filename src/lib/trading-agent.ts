@@ -255,18 +255,22 @@ async function fetchPositions(
 
 /**
  * 주문 실행 및 기록
+ * - 리스크 매니저가 계산한 quantity를 실제 주문에 반영
+ * - KIS API 주문 실패를 모의 체결로 바꾸지 않음
+ * - 실제 체결이 확인된 경우에만 포지션 DB를 업데이트
  */
 async function executeOrder(
   kisClient: KisApiClient | null,
   signal: TradingSignal,
   market: MarketType,
-  exchangeCode?: string
+  exchangeCode?: string,
+  quantity: number = 1
 ): Promise<{ success: boolean; orderNo: string; message: string }> {
-  const quantity = 1; // 최소 수량 (리스크 매니저에서 계산된 수량이어야 함)
+  const safeQuantity = Math.max(1, Math.floor(quantity));
   const orderRequest: OrderRequest = {
     stockCode: signal.stockCode,
     orderType: signal.signalType as 'BUY' | 'SELL',
-    quantity,
+    quantity: safeQuantity,
     price: signal.price,
     orderKind: '01', // 시장가
     market,
@@ -280,28 +284,26 @@ async function executeOrder(
   // KIS API로 주문 실행
   if (kisClient) {
     try {
-      if (market === 'OVERSEAS') {
-        const result = await kisClient.placeOverseasOrder(orderRequest);
-        orderNo = result.orderNo;
-        status = result.status === 'PENDING' ? 'FILLED' : result.status;
-        message = result.message;
-      } else {
-        const result = await kisClient.placeOrder(orderRequest);
-        orderNo = result.orderNo;
-        status = result.status === 'PENDING' ? 'FILLED' : result.status;
-        message = result.message;
-      }
+      const result = market === 'OVERSEAS'
+        ? await kisClient.placeOverseasOrder(orderRequest)
+        : await kisClient.placeOrder(orderRequest);
+
+      orderNo = result.orderNo;
+      status = result.status;
+      message = result.message;
     } catch (error) {
-      // API 실패 → 모의 주문으로 폴백
-      orderNo = `MOCK-${Date.now()}`;
-      status = 'FILLED';
-      message = `API 오류로 모의 주문 처리: ${error instanceof Error ? error.message : 'Unknown'}`;
-      addLog('ERROR', market, `${signal.stockName} 주문 API 실패, 모의 처리`, {
+      orderNo = '';
+      status = 'FAILED';
+      message = `주문 실패: ${error instanceof Error ? error.message : 'Unknown'}`;
+      addLog('ERROR', market, `${signal.stockName} 주문 실패`, {
         error: error instanceof Error ? error.message : String(error),
+        stockCode: signal.stockCode,
+        quantity: safeQuantity,
+        price: signal.price,
       });
     }
   } else {
-    // KIS 미설정 → 모의 주문
+    // KIS 미설정 상태에서만 명시적 모의 주문 처리
     orderNo = `MOCK-${Date.now()}`;
     status = 'FILLED';
     message = 'KIS 미설정: 모의 주문 완료';
@@ -314,9 +316,9 @@ async function executeOrder(
         stockCode: signal.stockCode,
         stockName: signal.stockName,
         tradeType: signal.signalType,
-        quantity,
+        quantity: safeQuantity,
         price: signal.price,
-        totalAmount: signal.price * quantity,
+        totalAmount: signal.price * safeQuantity,
         strategy: signal.strategy,
         signalReason: signal.reason,
         status,
@@ -332,18 +334,24 @@ async function executeOrder(
     });
   }
 
+  // 주문 실패/대기 상태에서는 포지션을 변경하지 않음
+  if (status !== 'FILLED') {
+    return { success: false, orderNo, message };
+  }
+
   // 포지션 DB 업데이트
   try {
     if (signal.signalType === 'BUY') {
+      const positionId = `${market}-${exchangeCode || 'KR'}-${signal.stockCode}`;
       await db.position.upsert({
         where: {
-          id: `${market}-${signal.stockCode}`,
+          id: positionId,
         },
         create: {
-          id: `${market}-${signal.stockCode}`,
+          id: positionId,
           stockCode: signal.stockCode,
           stockName: signal.stockName,
-          quantity,
+          quantity: safeQuantity,
           avgPrice: signal.price,
           currentPrice: signal.price,
           profitLoss: 0,
@@ -354,25 +362,26 @@ async function executeOrder(
           currency: market === 'OVERSEAS' ? 'USD' : 'KRW',
         },
         update: {
-          quantity: { increment: quantity },
+          quantity: { increment: safeQuantity },
           currentPrice: signal.price,
         },
       });
     } else if (signal.signalType === 'SELL') {
       // 매도 시 포지션 삭제 또는 수량 감소
+      const positionId = `${market}-${exchangeCode || 'KR'}-${signal.stockCode}`;
       const existingPos = await db.position.findUnique({
-        where: { id: `${market}-${signal.stockCode}` },
+        where: { id: positionId },
       });
       if (existingPos) {
-        if (existingPos.quantity <= quantity) {
+        if (existingPos.quantity <= safeQuantity) {
           await db.position.delete({
-            where: { id: `${market}-${signal.stockCode}` },
+            where: { id: positionId },
           });
         } else {
           await db.position.update({
-            where: { id: `${market}-${signal.stockCode}` },
+            where: { id: positionId },
             data: {
-              quantity: existingPos.quantity - quantity,
+              quantity: existingPos.quantity - safeQuantity,
               currentPrice: signal.price,
             },
           });
@@ -385,7 +394,7 @@ async function executeOrder(
     });
   }
 
-  return { success: status === 'FILLED', orderNo, message };
+  return { success: true, orderNo, message };
 }
 
 /**
@@ -433,14 +442,18 @@ async function monitorPositions(
         };
 
         const result = await executeOrder(
-          kisClient, sellSignal, market, position.exchangeCode
+          kisClient,
+          sellSignal,
+          market,
+          position.exchangeCode,
+          position.quantity
         );
 
         if (result.success) {
           exitsExecuted++;
           addLog('TRADE', market, 
-            `${position.stockName} 청산 주문 완료: ${result.orderNo}`,
-            { orderNo: result.orderNo, reason: exitCheck.reason }
+            `${position.stockName} 청산 주문 완료: ${position.quantity}주 (${result.orderNo})`,
+            { orderNo: result.orderNo, quantity: position.quantity, reason: exitCheck.reason }
           );
         }
       }
@@ -460,7 +473,6 @@ async function monitorPositions(
  */
 export async function runAgentCycle(): Promise<AgentCycleResult> {
   const startTime = new Date();
-  const logs: AgentLog[] = [];
   const errors: string[] = [];
   let stocksAnalyzed = 0;
   let signalsGenerated = 0;
@@ -553,13 +565,20 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
           );
 
           // 주문 실행
-          const result = await executeOrder(kisClient, { ...signal, price: signal.price }, 'DOMESTIC');
-          ordersPlaced++;
+          const result = await executeOrder(kisClient, { ...signal, price: signal.price }, 'DOMESTIC', undefined, quantity);
 
-          addLog('TRADE', 'DOMESTIC',
-            `${stock.name} ${signal.signalType} 주문 완료: ${quantity}주 @ ${signal.price}원 (${result.orderNo})`,
-            { orderNo: result.orderNo, quantity, price: signal.price }
-          );
+          if (result.success) {
+            ordersPlaced++;
+            addLog('TRADE', 'DOMESTIC',
+              `${stock.name} ${signal.signalType} 주문 완료: ${quantity}주 @ ${signal.price}원 (${result.orderNo})`,
+              { orderNo: result.orderNo, quantity, price: signal.price }
+            );
+          } else {
+            addLog('ERROR', 'DOMESTIC',
+              `${stock.name} ${signal.signalType} 주문 미체결/실패: ${result.message}`,
+              { orderNo: result.orderNo, quantity, price: signal.price }
+            );
+          }
         } else {
           addLog('RISK', 'DOMESTIC',
             `${stock.name} 매매 차단: ${riskCheck.reason}`,
@@ -609,13 +628,20 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
             overseasPositions.accountBalance, signal.price, signal.confidence
           );
 
-          const result = await executeOrder(kisClient, { ...signal, price: signal.price }, 'OVERSEAS', stock.exchange);
-          ordersPlaced++;
+          const result = await executeOrder(kisClient, { ...signal, price: signal.price }, 'OVERSEAS', stock.exchange, quantity);
 
-          addLog('TRADE', 'OVERSEAS',
-            `${stock.name} ${signal.signalType} 주문 완료: ${quantity}주 @ $${signal.price} (${result.orderNo})`,
-            { orderNo: result.orderNo, quantity, price: signal.price, exchange: stock.exchange }
-          );
+          if (result.success) {
+            ordersPlaced++;
+            addLog('TRADE', 'OVERSEAS',
+              `${stock.name} ${signal.signalType} 주문 완료: ${quantity}주 @ $${signal.price} (${result.orderNo})`,
+              { orderNo: result.orderNo, quantity, price: signal.price, exchange: stock.exchange }
+            );
+          } else {
+            addLog('ERROR', 'OVERSEAS',
+              `${stock.name} ${signal.signalType} 주문 미체결/실패: ${result.message}`,
+              { orderNo: result.orderNo, quantity, price: signal.price, exchange: stock.exchange }
+            );
+          }
         } else {
           addLog('RISK', 'OVERSEAS',
             `${stock.name} 매매 차단: ${riskCheck.reason}`,
