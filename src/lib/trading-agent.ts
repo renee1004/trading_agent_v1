@@ -133,7 +133,7 @@ async function loadTargetStocks(): Promise<{
       exchange: w.exchangeCode || 'NAS' 
     }));
 
-  // 관심종목이 없으면 기본 종목 사용
+  // 관심종목이 없으면 기본 국내 종목 사용
   if (domestic.length === 0) {
     domestic.push(
       { code: '005930', name: '삼성전자' },
@@ -144,14 +144,8 @@ async function loadTargetStocks(): Promise<{
     );
   }
 
-  if (overseas.length === 0) {
-    overseas.push(
-      { code: 'AAPL', name: '애플', exchange: 'NAS' },
-      { code: 'NVDA', name: '엔비디아', exchange: 'NAS' },
-      { code: 'MSFT', name: '마이크로소프트', exchange: 'NAS' },
-      { code: 'TSLA', name: '테슬라', exchange: 'NAS' },
-    );
-  }
+  // 해외주식은 관심종목에 있는 것만 분석 (기본값 없음)
+  // 사용자가 명시적으로 추가한 해외종목만 매매 대상
 
   return { domestic, overseas };
 }

@@ -126,7 +126,7 @@ export async function GET(request: NextRequest) {
       where: { isActive: true },
     });
 
-    // 관심종목이 없으면 기본 종목
+    // 관심종목이 없으면 기본 국내 종목만 (해외는 관심종목에 있을 때만)
     const domesticStocks = watchlist.filter(w => w.market === 'DOMESTIC').length > 0
       ? watchlist.filter(w => w.market === 'DOMESTIC').map(w => ({ code: w.stockCode, name: w.stockName }))
       : [
@@ -142,22 +142,12 @@ export async function GET(request: NextRequest) {
           { code: '003670', name: '포스코홀딩스' },
         ];
 
+    // 해외주식은 관심종목에 있는 것만 분석 (기본값 없음)
     const overseasStocks = watchlist.filter(w => w.market === 'OVERSEAS').length > 0
       ? watchlist.filter(w => w.market === 'OVERSEAS').map(w => ({ 
           code: w.stockCode, name: w.stockName, exchange: w.exchangeCode || 'NAS' 
         }))
-      : [
-          { code: 'AAPL', name: '애플', exchange: 'NAS' },
-          { code: 'NVDA', name: '엔비디아', exchange: 'NAS' },
-          { code: 'MSFT', name: '마이크로소프트', exchange: 'NAS' },
-          { code: 'GOOGL', name: '알파벳', exchange: 'NAS' },
-          { code: 'AMZN', name: '아마존', exchange: 'NAS' },
-          { code: 'TSLA', name: '테슬라', exchange: 'NAS' },
-          { code: 'META', name: '메타', exchange: 'NAS' },
-          { code: 'NFLX', name: '넷플릭스', exchange: 'NAS' },
-          { code: 'AMD', name: 'AMD', exchange: 'NAS' },
-          { code: 'AVGO', name: '브로드컴', exchange: 'NAS' },
-        ];
+      : []; // 관심종목에 해외주식이 없으면 빈 배열
 
     const signals = [];
 
