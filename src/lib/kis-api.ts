@@ -321,7 +321,7 @@ export class KisApiClient {
         FID_ORIG_ADJ_PRC: '1',
       });
 
-      console.log(`[KIS API] Daily candles request: ${stockCode}, base=${baseUrl}, period=${period}, date=${startDate}~${endDate}`);
+      console.log(`[KIS API] Daily candles request: ${stockCode}, base=${baseUrl}, period=${period}, date=${startDate}~${endDate}, params=${params.toString()}`);
 
       try {
         const response = await fetch(`${url}?${params.toString()}`, {
