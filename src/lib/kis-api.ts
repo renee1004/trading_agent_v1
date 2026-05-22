@@ -793,10 +793,13 @@ export class KisApiClient {
     const token = await this.ensureToken();
     const url = `${this.baseUrl}/uapi/overseas-price/v1/quotations/price`;
 
+    // 워치리스트/잔고에서 오는 stockCode에 'NAS:' 같은 거래소 프리픽스가 포함될 수 있음
+    const pureSymbol = stockCode.includes(':') ? stockCode.split(':').pop()! : stockCode;
+
     const params = new URLSearchParams({
       AUTH: '',
       EXCD: exchangeCode,
-      SYMB: stockCode,
+      SYMB: pureSymbol,
     });
 
     const trId = 'HHDFS00000300';
@@ -898,10 +901,14 @@ export class KisApiClient {
     }
     const bymd = formatYmd(bymdDate);
 
+    // 워치리스트/잔고에서 오는 stockCode에 'NAS:' 같은 거래소 프리픽스가 포함될 수 있음
+    // KIS API SYMB 파라미터는 순수 심볼만 허용 (예: 'TSLA', 'NVDA')
+    const pureSymbol = stockCode.includes(':') ? stockCode.split(':').pop()! : stockCode;
+
     const params = new URLSearchParams({
       AUTH: '',
       EXCD: exchangeCode,
-      SYMB: stockCode,
+      SYMB: pureSymbol,
       GUBN: gubn,
       BYMD: bymd,
       MODP: '1',
@@ -912,7 +919,7 @@ export class KisApiClient {
     for (const baseUrl of this.quoteBaseUrls) {
       const url = `${baseUrl}/uapi/overseas-price/v1/quotations/dailyprice`;
 
-      console.log(`[KIS API] Overseas daily candles request: stockCode=${stockCode}, EXCD=${exchangeCode}, GUBN=${gubn}, BYMD=${bymd}, base=${baseUrl}, params=${params.toString()}`);
+      console.log(`[KIS API] Overseas daily candles request: stockCode=${stockCode}, pureSymbol=${pureSymbol}, EXCD=${exchangeCode}, GUBN=${gubn}, BYMD=${bymd}, base=${baseUrl}`);
 
       try {
         const response = await fetch(`${url}?${params.toString()}`, {
@@ -935,14 +942,13 @@ export class KisApiClient {
 
         console.log('[KIS API] Overseas daily candles response', {
           stockCode,
+          pureSymbol,
           exchangeCode,
           baseUrl,
           rt_cd: result.rt_cd,
           msg_cd: result.msg_cd,
           msg1: result.msg1,
           output2Length: output2.length,
-          EXCD: exchangeCode,
-          SYMB: stockCode,
           GUBN: gubn,
           BYMD: bymd,
           MODP: '1',
