@@ -51,3 +51,25 @@ Stage Summary:
 - FID_ORG_ADJ_PRC 코드 내 완전 제거 확인
 - 해외 분석 기본 비활성화, ENABLE_OVERSEAS_TRADING=true로 활성화 가능
 - stocksAnalyzed=0 원인 진단 기능 추가
+
+---
+Task ID: 5
+Agent: Main Agent
+Task: Railway 배포 검증 + FID_ORIG_ADJ_PRC → FID_ORG_ADJ_PRC 수정
+
+Work Log:
+- Railway /api/agent/status 호출하여 배포 상태 확인
+- gitCommitSha=17620f8 확인 (당시 최신), domesticSuccess=0, domesticFailed=10
+- KIS API에서 ERROR INPUT FIELD NOT FOUND [FID_ORG_ADJ_PRC] 에러 지속 확인
+- 웹 검색으로 KIS 공식 API 문서 확인 → 정확한 파라미터명은 FID_ORG_ADJ_PRC (NOT FID_ORIG_ADJ_PRC)
+- kis-api.ts에서 FID_ORIG_ADJ_PRC → FID_ORG_ADJ_PRC 수정
+- 파라미터 로깅 추가 (params.toString() 출력)
+- 빌드 + git push (commit 43c827a)
+- Railway 자동 재배포 대기 후 스케줄러 재시작
+- 새 사이클 결과: domesticSuccess=10, domesticFailed=0, stocksAnalyzed=10 ✅
+
+Stage Summary:
+- 핵심 원인: FID_ORIG_ADJ_PRC(오타) → FID_ORG_ADJ_PRC(KIS 공식명) 복원으로 해결
+- 10개 국내 종목 캔들 조회 전체 성공
+- 잔고 조회(HTTP 500)는 모의서버 제한으로 추정 (장외시간 + mock server)
+- version.gitCommitSha=43c827a로 최신 코드 배포 확인 완료
