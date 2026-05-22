@@ -94,6 +94,7 @@ export async function GET() {
           config: schedulerStatus.config,
           totalCycles: schedulerStatus.totalCycles,
           totalTrades: schedulerStatus.totalTrades,
+          currentKST: schedulerStatus.currentKST,
         },
 
         // 로그

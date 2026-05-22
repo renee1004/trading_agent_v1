@@ -254,6 +254,7 @@ export default function TradingDashboard() {
     };
     totalCycles: number;
     totalTrades: number;
+    currentKST: string;
   } | null>(null);
   const [agentMode, setAgentMode] = useState<'SERVER' | 'BROWSER'>('SERVER');
 
@@ -2072,6 +2073,12 @@ export default function TradingDashboard() {
                   </div>
                   {/* 장시간 상태 표시 */}
                   <div className="flex items-center gap-2">
+                    {schedulerInfo?.currentKST && (
+                      <Badge variant="outline" className="text-xs border-gray-300 text-gray-500">
+                        <Clock className="h-3 w-3 mr-1" />
+                        KST {schedulerInfo.currentKST}
+                      </Badge>
+                    )}
                     {schedulerInfo?.isMarketOpen && (
                       <>
                         <Badge variant="outline" className={`text-xs ${schedulerInfo.isMarketOpen.domestic ? 'border-emerald-300 text-emerald-600' : 'border-gray-300 text-gray-400'}`}>

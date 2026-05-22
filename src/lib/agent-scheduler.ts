@@ -46,26 +46,52 @@ let schedulerState: SchedulerState = {
 const MAX_CONSECUTIVE_ERRORS = 5;
 
 /**
- * 한국시간(Asia/Seoul) 기준 현재 시간 정보 반환
+ * 한국시간(Asia/Seoul) 기준 현재 시간 및 요일 정보 반환
  * Railway 등 UTC 서버에서도 정확한 장시간 판단을 위해 필수
+ * 
+ * 구현 방식: UTC 오프셋 직접 계산
+ * - toLocaleString + new Date() 파싱은 환경마다 결과가 다를 수 있어
+ *   getTimezoneOffset() 기반 직접 계산 사용
+ * - KST = UTC+9
  */
-function getKSTNow(): { hours: number; minutes: number; totalMinutes: number } {
-  // toLocaleString('ko-KR')은 서버 로케일과 무관하게 Asia/Seoul 시간 반환
+function getKSTNow(): { hours: number; minutes: number; totalMinutes: number; dayOfWeek: number } {
   const now = new Date();
-  const kstParts = now.toLocaleString('en-US', { timeZone: 'Asia/Seoul', hour12: false });
-  const kstDate = new Date(kstParts);
+  // UTC 밀리초 = 로컬 시간 + 로컬 타임존 오프셋(분→ms)
+  const utcMs = now.getTime() + now.getTimezoneOffset() * 60000;
+  // KST = UTC + 9시간
+  const kstMs = utcMs + 9 * 3600000;
+  const kstDate = new Date(kstMs);
   const hours = kstDate.getHours();
   const minutes = kstDate.getMinutes();
-  return { hours, minutes, totalMinutes: hours * 60 + minutes };
+  const dayOfWeek = kstDate.getDay(); // 0=일요일, 6=토요일
+  return { hours, minutes, totalMinutes: hours * 60 + minutes, dayOfWeek };
+}
+
+/**
+ * 영업일(주말 제외) 여부 확인
+ * 한국 주식시장은 토요일(6), 일요일(0)에 열지 않음
+ * 해외(미국) 주식시장도 토요일, 일요일에 열지 않음
+ */
+function isWeekday(dayOfWeek: number): boolean {
+  return dayOfWeek !== 0 && dayOfWeek !== 6;
 }
 
 /**
  * 장시간 체크
- * 국내: 09:00~15:30, 해외: 23:30~06:00 (한국시간)
+ * 국내: 09:00~15:30 (평일만), 해외: 23:30~06:00 (평일만, 한국시간)
  * Railway 등 UTC 서버에서도 정확한 판단을 위해 getKSTNow() 사용
+ * 
+ * 주말 체크: 토요일/일요일에는 시간과 무관하게 항상 false
+ * - 해외장의 경우 금요일 23:30~토요일 06:00(KST)은 예외적으로 영업
+ *   하지만 KIS 모의투자에서는 주말 거래를 지원하지 않으므로 일괄 차단
  */
 export function isMarketHours(market: 'DOMESTIC' | 'OVERSEAS' | 'ALL'): boolean {
-  const { totalMinutes: currentMinutes } = getKSTNow();
+  const { totalMinutes: currentMinutes, dayOfWeek } = getKSTNow();
+
+  // 주말(토/일)에는 장시간이 아님
+  if (!isWeekday(dayOfWeek)) {
+    return false;
+  }
 
   if (market === 'DOMESTIC' || market === 'ALL') {
     const [openH, openM] = schedulerState.config.domesticMarketOpen.split(':').map(Number);
@@ -198,9 +224,12 @@ async function executeSchedulerCycle(): Promise<void> {
       // 실전투자: 장시간에만 거래
       const isDomesticOpen = isMarketHours('DOMESTIC');
       const isOverseasOpen = isMarketHours('OVERSEAS');
+      const { hours, minutes, dayOfWeek } = getKSTNow();
+      const kstTimeStr = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+      const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
 
       if (!isDomesticOpen && !isOverseasOpen) {
-        console.log('[Scheduler] 장시간 외, 사이클 스킵 (실전투자)');
+        console.log(`[Scheduler] 장시간 외, 사이클 스킵 (실전투자) - KST ${kstTimeStr} ${dayNames[dayOfWeek]}요일`);
         return;
       }
     } else {
@@ -326,7 +355,17 @@ export async function startScheduler(): Promise<{ success: boolean; message: str
     schedulerState.errorCount = 0;
 
     // 첫 사이클은 비동기로 실행 (응답을 블로킹하지 않도록)
-    if (!schedulerState.config.tradeOnlyMarketHours || isMarketHours('ALL')) {
+    // 모의투자 모드에서는 장시간 무관하게 항상 첫 사이클 실행
+    let shouldRunFirstCycle = !schedulerState.config.tradeOnlyMarketHours || isMarketHours('ALL');
+    if (!shouldRunFirstCycle) {
+      try {
+        const kisConfig = await db.kisConfig.findFirst();
+        if (kisConfig?.isDemo) {
+          shouldRunFirstCycle = true; // 모의투자: 장시간 무관
+        }
+      } catch (e) {}
+    }
+    if (shouldRunFirstCycle) {
       setTimeout(() => executeSchedulerCycle(), 2000); // 2초 후 비동기 실행
     }
 
@@ -394,6 +433,7 @@ export async function getSchedulerStatus(): Promise<{
   isMarketOpen: { domestic: boolean; overseas: boolean };
   totalCycles: number;
   totalTrades: number;
+  currentKST: string;
 }> {
   // DB에서 최신 설정 로드
   const dbConfig = await db.agentConfig.findFirst();
@@ -402,6 +442,11 @@ export async function getSchedulerStatus(): Promise<{
   const nextCycleAt = schedulerState.isSchedulerRunning && lastCycleAt
     ? new Date(lastCycleAt.getTime() + schedulerState.config.cycleIntervalMs)
     : null;
+
+  // 현재 KST 시간 문자열 (디버깅용)
+  const { hours, minutes, dayOfWeek } = getKSTNow();
+  const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
+  const currentKST = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')} ${dayNames[dayOfWeek]}요일`;
 
   return {
     isSchedulerRunning: schedulerState.isSchedulerRunning,
@@ -418,6 +463,7 @@ export async function getSchedulerStatus(): Promise<{
     },
     totalCycles: dbConfig?.totalCycles ?? 0,
     totalTrades: dbConfig?.totalTrades ?? 0,
+    currentKST,
   };
 }
 

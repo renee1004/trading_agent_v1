@@ -847,6 +847,8 @@ export class KisApiClient {
   ): Promise<OrderResponse> {
     const token = await this.ensureToken();
     const url = `${this.baseUrl}/uapi/overseas-stock/v1/trading/order`;
+    
+    // 해외주식 주문취소 TR ID
     const trId = this.config.isDemo ? 'VTTT1004U' : 'TTTT1004U';
 
     const account = parseAccountNo(this.config.accountNo);
