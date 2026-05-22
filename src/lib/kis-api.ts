@@ -325,10 +325,10 @@ export class KisApiClient {
         FID_INPUT_DATE_1: startDate,
         FID_INPUT_DATE_2: endDate,
         FID_PERIOD_DIV_CODE: 'D',
-        FID_ORIG_ADJ_PRC: '1',
+        FID_ORG_ADJ_PRC: '1',
       });
 
-      console.log(`[KIS API] Daily candles request: stockCode=${stockCode}, base=${baseUrl}, period=${period}, date=${startDate}~${endDate}`);
+      console.log(`[KIS API] Daily candles request: stockCode=${stockCode}, base=${baseUrl}, period=${period}, date=${startDate}~${endDate}, params=${params.toString()}`);
 
       try {
         const response = await fetch(`${url}?${params.toString()}`, {
