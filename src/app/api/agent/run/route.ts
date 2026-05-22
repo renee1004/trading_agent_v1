@@ -1,14 +1,14 @@
-// 에이전트 사이클 실행 라우트
-// POST: 1사이클 실행 (시그널 분석 → 리스크 체크 → 주문 실행 → 포지션 모니터링)
-
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { runAgentCycle, getAgentStatus } from '@/lib/trading-agent';
+import { requireAdminApiToken } from '@/lib/api-auth';
 
-export async function POST() {
+export async function POST(request: NextRequest) {
+  const authError = requireAdminApiToken(request);
+  if (authError) return authError;
+
   try {
     const status = getAgentStatus();
 
-    // 에이전트가 실행 중이 아니면 사이클 불가
     if (!status.isRunning) {
       return NextResponse.json(
         { success: false, error: '에이전트가 실행 중이 아닙니다. 먼저 시작해주세요.' },
