@@ -30,8 +30,8 @@ export async function GET() {
 
     // 3. Prisma 연결 진단 (DATABASE_URL이 있는데 InMemory인 원인 파악)
     let prismaDiagnosis: Record<string, unknown> = {};
-    if (process.env.DATABASE_URL && dbType === 'InMemory') {
-      // DATABASE_URL은 있는데 InMemory → Prisma 연결 실패한 상황
+    if (process.env.DATABASE_URL) {
+      // DATABASE_URL이 있으면 Prisma 연결 상태 직접 확인
       try {
         const { PrismaClient } = require('@prisma/client');
         prismaDiagnosis.clientImport = 'OK';
@@ -41,16 +41,21 @@ export async function GET() {
           await testClient.$connect();
           prismaDiagnosis.connect = 'OK';
 
-          // 스키마/마이그레이션 테이블 확인
+          // 항상 전체 테이블 목록 확인
           try {
-            const migrationResult = await testClient.$queryRaw`SELECT COUNT(*) as cnt FROM information_schema.tables WHERE table_name = '_prisma_migrations'` as any[];
-            const migrationExists = Number(migrationResult?.[0]?.cnt) > 0;
-            prismaDiagnosis.migrationTable = migrationExists ? 'EXISTS' : 'NOT_FOUND';
+            const tablesResult = await testClient.$queryRaw`SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE' ORDER BY table_name` as any[];
+            const tables = tablesResult?.map((r: any) => r.table_name) || [];
+            prismaDiagnosis.tables = tables;
+            prismaDiagnosis.tableCount = tables.length;
 
-            if (migrationExists) {
-              const watchlistResult = await testClient.$queryRaw`SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE' ORDER BY table_name` as any[];
-              prismaDiagnosis.tables = watchlistResult?.map((r: any) => r.table_name) || [];
-            }
+            // 핵심 데이터 테이블 존재 여부
+            const coreTables = ['KisConfig', 'kisconfig', 'AgentConfig', 'agentconfig'];
+            const hasCoreTable = tables.some((t: string) => coreTables.includes(t));
+            prismaDiagnosis.hasCoreTables = hasCoreTable;
+
+            // 마이그레이션 테이블 확인
+            const migrationExists = tables.includes('_prisma_migrations');
+            prismaDiagnosis.migrationTable = migrationExists ? 'EXISTS' : 'NOT_FOUND';
           } catch (schemaError) {
             prismaDiagnosis.schemaCheck = `FAILED: ${schemaError instanceof Error ? schemaError.message : String(schemaError)}`;
           }
