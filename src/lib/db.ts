@@ -299,8 +299,37 @@ async function initPrisma(): Promise<boolean> {
         return true;
       }
 
-      console.warn('[DB] Database connected but no data tables found, falling back to in-memory');
+      console.warn('[DB] Database connected but no data tables found');
       console.warn('[DB] Available tables:', tableNames.join(', ') || '(none)');
+
+      // 테이블이 없으면 prisma db push를 자동 실행하여 스키마 동기화 시도
+      console.log('[DB] Attempting prisma db push to create tables...');
+      try {
+        const { execSync } = require('child_process');
+        const pushOutput = execSync('npx prisma db push --accept-data-loss 2>&1', {
+          timeout: 30000,
+          env: { ...process.env },
+        });
+        console.log('[DB] prisma db push output:', pushOutput.toString());
+
+        // 푸시 후 테이블 재확인
+        const recheck = await client.$queryRaw`SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE' ORDER BY table_name` as any[];
+        const newTableNames = recheck?.map((r: any) => r.table_name) || [];
+        const nowHasTables = newTableNames.some((t: string) =>
+          ['KisConfig', 'kisconfig', 'AgentConfig', 'agentconfig'].includes(t)
+        );
+
+        if (nowHasTables) {
+          console.log('[DB] prisma db push succeeded! Tables:', newTableNames.join(', '));
+          _prismaClient = client;
+          return true;
+        }
+
+        console.warn('[DB] prisma db push completed but tables still not found');
+      } catch (pushError) {
+        console.warn('[DB] prisma db push failed:', pushError instanceof Error ? pushError.message : String(pushError));
+      }
+
       await client.$disconnect().catch(() => {});
       return false;
     } catch (queryError) {
