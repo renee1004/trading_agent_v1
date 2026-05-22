@@ -383,17 +383,21 @@ export async function loadSchedulerConfig(): Promise<SchedulerConfig> {
     console.error('[Scheduler] AgentConfig 로드 실패:', error);
   }
 
-  // AppSetting(trading_settings)에서 cycleIntervalMs/tradeOnlyMarketHours 덮어쓰기
+  // AppSetting(trading_settings)에서 6개 스케줄러 설정 덮어쓰기
   // 이것이 실제 사용자가 대시보드에서 저장한 설정이므로 최우선
   try {
     const { settings: effectiveSettings } = await getEffectiveTradingSettings();
+
     if (effectiveSettings.cycleIntervalMs && effectiveSettings.cycleIntervalMs >= 10000) {
       schedulerState.config.cycleIntervalMs = effectiveSettings.cycleIntervalMs;
     }
-    // tradeOnlyMarketHours는 명시적으로 설정된 경우에만 덮어쓰기
     schedulerState.config.tradeOnlyMarketHours = effectiveSettings.tradeOnlyMarketHours;
+    schedulerState.config.domesticMarketOpen = effectiveSettings.domesticMarketOpen;
+    schedulerState.config.domesticMarketClose = effectiveSettings.domesticMarketClose;
+    schedulerState.config.overseasMarketOpen = effectiveSettings.overseasMarketOpen;
+    schedulerState.config.overseasMarketClose = effectiveSettings.overseasMarketClose;
 
-    console.log(`[Scheduler] AppSetting 반영: cycleMs=${schedulerState.config.cycleIntervalMs}, marketHoursOnly=${schedulerState.config.tradeOnlyMarketHours}`);
+    console.log(`[Scheduler] AppSetting 반영: cycleMs=${schedulerState.config.cycleIntervalMs}, marketHoursOnly=${schedulerState.config.tradeOnlyMarketHours}, domestic=${schedulerState.config.domesticMarketOpen}~${schedulerState.config.domesticMarketClose}, overseas=${schedulerState.config.overseasMarketOpen}~${schedulerState.config.overseasMarketClose}`);
   } catch (error) {
     console.warn('[Scheduler] AppSetting 로드 실패, AgentConfig/기본값 사용:', error instanceof Error ? error.message : 'Unknown');
   }
