@@ -21,6 +21,7 @@ export async function GET() {
       type: string;
       market: string;
       message: string;
+      details: string | null;
       createdAt: string;
     }> = [];
     try {
@@ -33,6 +34,7 @@ export async function GET() {
         type: l.type,
         market: l.market,
         message: l.message,
+        details: l.details,
         createdAt: l.createdAt.toISOString(),
       }));
     } catch {
@@ -48,6 +50,7 @@ export async function GET() {
         type: log.type,
         market: log.market,
         message: log.message,
+        details: log.details || null,
       })),
       ...dbLogs.filter(l => !memoryLogIds.has(l.message + l.type)).map(l => ({
         id: l.id,
@@ -55,6 +58,7 @@ export async function GET() {
         type: l.type,
         market: l.market,
         message: l.message,
+        details: l.details,
       })),
     ].slice(0, 50);
 

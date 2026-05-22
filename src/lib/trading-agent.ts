@@ -151,7 +151,7 @@ async function loadTargetStocks(): Promise<{
 }
 
 /**
- * 캔들 데이터 조회 (실제 API 우선 → 실패 시 모의 데이터)
+ * 캔들 데이터 조회 (실제 API만 사용, 모의 데이터 사용 안 함)
  */
 async function fetchCandles(
   kisClient: KisApiClient | null,
@@ -159,35 +159,36 @@ async function fetchCandles(
   market: MarketType,
   exchangeCode?: string
 ): Promise<StockCandle[]> {
-  // 실제 API 호출 시도
-  if (kisClient) {
-    try {
-      if (market === 'OVERSEAS' && exchangeCode) {
-        const overseasCandles = await kisClient.getOverseasDailyCandles(
-          stockCode, exchangeCode, '3M'
-        );
-        // OverseasStockCandle → StockCandle 변환
-        return overseasCandles.map(c => ({
-          date: c.date,
-          open: c.open,
-          high: c.high,
-          low: c.low,
-          close: c.close,
-          volume: c.volume,
-        }));
-      } else {
-        return await kisClient.getStockDailyCandles(stockCode, '3M');
-      }
-    } catch (error) {
-      addLog('ERROR', market, `${stockCode} 캔들 데이터 조회 실패, 모의 데이터 사용`, {
-        error: error instanceof Error ? error.message : String(error),
-      });
-    }
+  // KIS 클라이언트가 없으면 조회 불가
+  if (!kisClient) {
+    addLog('ERROR', market, `${stockCode} 캔들 조회 불가 - KIS 클라이언트 없음`);
+    return [];
   }
 
-  // KIS 미연결 시 모의 데이터를 사용하지 않음 - 가짜 매매 신호 방지
-  addLog('ERROR', market, `${stockCode} 캔들 데이터 없음 (KIS 미연결)`);
-  return [];
+  try {
+    if (market === 'OVERSEAS' && exchangeCode) {
+      const overseasCandles = await kisClient.getOverseasDailyCandles(
+        stockCode, exchangeCode, '3M'
+      );
+      // OverseasStockCandle → StockCandle 변환
+      return overseasCandles.map(c => ({
+        date: c.date,
+        open: c.open,
+        high: c.high,
+        low: c.low,
+        close: c.close,
+        volume: c.volume,
+      }));
+    } else {
+      return await kisClient.getStockDailyCandles(stockCode, '3M');
+    }
+  } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    addLog('ERROR', market, `${stockCode} 캔들 데이터 조회 실패`, {
+      error: errorMsg,
+    });
+    return [];
+  }
 }
 
 /**

@@ -31,6 +31,51 @@ function safeNumber(value: unknown): number {
 }
 
 /**
+ * 날짜를 YYYYMMDD 형식으로 포맷
+ */
+function formatYmd(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}${m}${d}`;
+}
+
+/**
+ * 기간 문자열(1M, 3M, 6M, 1Y 등)을 시작일/종료일로 변환
+ * KIS 일봉 API는 FID_PERIOD_DIV_CODE에 '3M' 같은 값을 허용하지 않고
+ * 실제 날짜 범위를 요구하므로 날짜를 계산해서 전달해야 함
+ */
+function getDateRangeByPeriod(period: string): { startDate: string; endDate: string } {
+  const end = new Date();
+  const start = new Date();
+
+  switch (period) {
+    case '1W':
+      start.setDate(start.getDate() - 7);
+      break;
+    case '1M':
+      start.setMonth(start.getMonth() - 1);
+      break;
+    case '3M':
+      start.setMonth(start.getMonth() - 3);
+      break;
+    case '6M':
+      start.setMonth(start.getMonth() - 6);
+      break;
+    case '1Y':
+      start.setFullYear(start.getFullYear() - 1);
+      break;
+    default:
+      start.setMonth(start.getMonth() - 1);
+  }
+
+  return {
+    startDate: formatYmd(start),
+    endDate: formatYmd(end),
+  };
+}
+
+/**
  * 계좌번호 파서
  * - 하이픈 제거 후 CANO(8자리) + ACNT_PRDT_CD(2자리) 분리
  * - KIS API는 계좌번호를 두 필드로 나누어 전송
@@ -274,6 +319,9 @@ export class KisApiClient {
 
   /**
    * 주식 일봉 데이터 조회 (국내)
+   * KIS 일봉 API는 FID_INPUT_DATE_1/2에 실제 날짜를 넣고
+   * FID_PERIOD_DIV_CODE는 일봉(D)/주봉(W)/월봉(M)으로 지정
+   * 이전에는 FID_PERIOD_DIV_CODE에 '3M'을 넣어서 조회 실패했음
    */
   async getStockDailyCandles(
     stockCode: string, 
@@ -281,15 +329,20 @@ export class KisApiClient {
   ): Promise<StockCandle[]> {
     const token = await this.ensureToken();
     const url = `${this.baseUrl}/uapi/domestic-stock/v1/quotations/inquire-daily-itemchartprice`;
-    
+
+    // 기간에 따른 날짜 범위 계산
+    const { startDate, endDate } = getDateRangeByPeriod(period);
+
     const params = new URLSearchParams({
       FID_COND_MRKT_DIV_CODE: 'J',
       FID_INPUT_ISCD: stockCode,
-      FID_INPUT_DATE_1: '',
-      FID_INPUT_DATE_2: '',
-      FID_PERIOD_DIV_CODE: period,
-      FID_ORIG_ADJ_PRC: '1', // 수정주가
+      FID_INPUT_DATE_1: startDate,  // 조회 시작일
+      FID_INPUT_DATE_2: endDate,    // 조회 종료일
+      FID_PERIOD_DIV_CODE: 'D',     // 일봉
+      FID_ORIG_ADJ_PRC: '1',       // 수정주가
     });
+
+    console.log(`[KIS API] Daily candles request: ${stockCode}, period=${period}, date=${startDate}~${endDate}`);
 
     const response = await fetch(`${url}?${params.toString()}`, {
       method: 'GET',
@@ -309,7 +362,7 @@ export class KisApiClient {
     const result = await response.json();
     
     if (result.rt_cd !== '0') {
-      throw new Error(`일봉 조회 에러: ${result.msg1}`);
+      throw new Error(`일봉 조회 에러: ${result.msg1} (rt_cd=${result.rt_cd})`);
     }
 
     const output2 = result.output2 || [];
