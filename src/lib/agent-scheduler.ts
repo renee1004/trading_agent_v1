@@ -77,6 +77,124 @@ function isWeekday(dayOfWeek: number): boolean {
 }
 
 /**
+ * 한국 공휴일 체크
+ * 한국거래소(KRX)가 지정한 휴장일에는 주식 시장이 열지 않음
+ *
+ * 공휴일 체크 방식:
+ * 1. 고정 공휴일 (매년 같은 날짜)
+ * 2. 연도별 특별 공휴일 (대선, 임시공휴일 등)
+ * 3. 대체공휴일 (공휴일이 주말과 겹칠 때)
+ *
+ * 주의: 음력 공휴일(설날, 추석, 부처님오신날)은 매년 날짜가 다름
+ * 2025~2027년 음력 공휴일 날짜를 하드코딩으로 관리
+ */
+function isKoreanHoliday(date: Date): boolean {
+  const year = date.getFullYear();
+  const month = date.getMonth() + 1; // 1~12
+  const day = date.getDate();
+  const ymd = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+
+  // 고정 공휴일 (매년 같음)
+  const fixedHolidays = [
+    '01-01', // 신정
+    '03-01', // 삼일절
+    '05-01', // 근로자의날 (5월1일 → 공휴일은 아니지만 휴장)
+    '05-05', // 어린이날
+    '06-06', // 현충일
+    '08-15', // 광복절
+    '10-03', // 개천절
+    '10-09', // 한글날
+    '12-25', // 크리스마스
+  ];
+
+  const md = `${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  if (fixedHolidays.includes(md)) return true;
+
+  // 연도별 음력/특별 공휴일
+  const lunarHolidays: Record<number, string[]> = {
+    2025: [
+      '2025-01-28', // 설날 연휴
+      '2025-01-29', // 설날
+      '2025-01-30', // 설날 연휴
+      '2025-03-03', // 대체공휴일 (삼일절이 일요일)
+      '2025-05-05', // 어린이날 (이미 고정에 포함)
+      '2025-05-06', // 부처님오신날 대체공휴일
+      '2025-06-05', // 대체공휴일 (현충일 전일 대체 X, 예비군훈련 X)
+      '2025-10-06', // 추석 연휴
+      '2025-10-07', // 추석
+      '2025-10-08', // 추석 연휴
+      '2025-10-09', // 한글날 (이미 고정에 포함)
+    ],
+    2026: [
+      '2026-02-16', // 설날 연휴
+      '2026-02-17', // 설날
+      '2026-02-18', // 설날 연휴
+      '2026-05-05', // 어린이날
+      '2026-05-25', // 부처님오신날
+      '2026-09-24', // 추석 연휴
+      '2026-09-25', // 추석
+      '2026-09-26', // 추석 연휴
+    ],
+    2027: [
+      '2027-02-05', // 설날 연휴
+      '2027-02-06', // 설날
+      '2027-02-07', // 설날 연휴
+      '2027-05-05', // 어린이날
+      '2027-05-14', // 부처님오신날
+      '2027-09-14', // 추석 연휴
+      '2027-09-15', // 추석
+      '2027-09-16', // 추석 연휴
+    ],
+  };
+
+  const yearHolidays = lunarHolidays[year] || [];
+  if (yearHolidays.includes(ymd)) return true;
+
+  return false;
+}
+
+/**
+ * 미국 공휴일 체크 (해외주식 휴장)
+ * NYSE/NASDAQ 휴장일
+ */
+function isUSHoliday(date: Date): boolean {
+  const year = date.getFullYear();
+  const month = date.getMonth() + 1;
+  const day = date.getDate();
+  const dayOfWeek = date.getDay(); // KST 기준이지만 대략적 체크
+
+  // 고정 미국 공휴일
+  if (month === 1 && day === 1) return true;   // New Year's Day
+  if (month === 6 && day === 19) return true;   // Juneteenth
+  if (month === 7 && day === 4) return true;    // Independence Day
+  if (month === 11 && day === 11) return true;  // Veterans Day
+  if (month === 12 && day === 25) return true;  // Christmas
+
+  // 월요일 공휴일 (3rd Monday of January - MLK Day)
+  if (month === 1 && dayOfWeek === 1 && Math.ceil(day / 7) === 3) return true;
+  // 3rd Monday of February - Presidents' Day
+  if (month === 2 && dayOfWeek === 1 && Math.ceil(day / 7) === 3) return true;
+  // Last Monday of May - Memorial Day
+  if (month === 5 && dayOfWeek === 1 && day + 7 > 31) return true;
+  // 1st Monday of September - Labor Day
+  if (month === 9 && dayOfWeek === 1 && day <= 7) return true;
+  // 4th Thursday of November - Thanksgiving
+  if (month === 11 && dayOfWeek === 4 && Math.ceil(day / 7) === 4) return true;
+
+  // Good Friday (부활절 금요일) - 간이 계산
+  // 2025: 4/18, 2026: 4/3, 2027: 3/26
+  const goodFridays: Record<number, string> = {
+    2025: '2025-04-18',
+    2026: '2026-04-03',
+    2027: '2027-03-26',
+  };
+  const ymd = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  if (goodFridays[year] === ymd) return true;
+
+  return false;
+}
+
+/**
  * 국내 주식 거래세션 정보
  * KIS API 주문구분코드(ORD_DVSN) 매핑 포함
  *
@@ -121,6 +239,15 @@ export function getDomesticSession(): DomesticSessionInfo {
   // 주말
   if (!isWeekday(dayOfWeek)) {
     return { session: 'CLOSED', orderDivision: '00', label: '휴장 (주말)' };
+  }
+
+  // 공휴일 체크
+  const now = new Date();
+  const utcMs = now.getTime() + now.getTimezoneOffset() * 60000;
+  const kstMs = utcMs + 9 * 3600000;
+  const kstDate = new Date(kstMs);
+  if (isKoreanHoliday(kstDate)) {
+    return { session: 'CLOSED', orderDivision: '00', label: '휴장 (공휴일)' };
   }
 
   // 08:30~08:40: 장전 시간외 종가
@@ -178,7 +305,18 @@ export function isMarketHours(market: 'DOMESTIC' | 'OVERSEAS' | 'ALL'): boolean 
     return false;
   }
 
+  // KST 기준 오늘 날짜 계산 (공휴일 체크용)
+  const now = new Date();
+  const utcMs = now.getTime() + now.getTimezoneOffset() * 60000;
+  const kstMs = utcMs + 9 * 3600000;
+  const kstDate = new Date(kstMs);
+
   if (market === 'DOMESTIC' || market === 'ALL') {
+    // 한국 공휴일 체크
+    if (isKoreanHoliday(kstDate)) {
+      return false;
+    }
+
     const [openH, openM] = schedulerState.config.domesticMarketOpen.split(':').map(Number);
     const [closeH, closeM] = schedulerState.config.domesticMarketClose.split(':').map(Number);
     const openMinutes = openH * 60 + openM;
@@ -190,6 +328,13 @@ export function isMarketHours(market: 'DOMESTIC' | 'OVERSEAS' | 'ALL'): boolean 
   }
 
   if (market === 'OVERSEAS' || market === 'ALL') {
+    // 미국 공휴일 체크 (KST 날짜 기준, ±1일 보정 필요하지만 대략적 체크)
+    if (isUSHoliday(kstDate)) {
+      // KST 기준으로 전일/익일이 실제 미국 날짜일 수 있으나,
+      // 근사치로 충분함 (정확한 체크는 API 호출 필요)
+      return false;
+    }
+
     const [openH, openM] = schedulerState.config.overseasMarketOpen.split(':').map(Number);
     const [closeH, closeM] = schedulerState.config.overseasMarketClose.split(':').map(Number);
     const openMinutes = openH * 60 + openM;

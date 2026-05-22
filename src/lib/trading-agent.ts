@@ -8,6 +8,7 @@ import { TradingEngine } from './trading-engine';
 import { RiskManager } from './risk-manager';
 import { getMarketRiskConfig } from './market-defaults';
 import { scanTargetStocks } from './market-scanner';
+import { aiAnalyzer } from './ai-analyzer';
 import { 
   KisConfig, StockCandle, OverseasStockCandle, 
   BalanceItem, OverseasBalanceItem, MarketType,
@@ -227,7 +228,9 @@ async function fetchPositions(
  * 주문 실행 및 기록
  * - 리스크 매니저가 계산한 quantity를 실제 주문에 반영
  * - KIS API 주문 실패를 모의 체결로 바꾸지 않음
- * - 실제 체결이 확인된 경우에만 포지션 DB를 업데이트
+ * - 시장가(01) 주문은 장중에 즉시 체결되므로 PENDING도 성공으로 처리
+ * - 포지션 DB는 즉시 업데이트 (낙관적 업데이트)
+ * - 다음 사이클에서 잔고 조회로 실제 포지션과 동기화 (reconcilePositions)
  */
 async function executeOrder(
   kisClient: KisApiClient | null,
@@ -281,6 +284,11 @@ async function executeOrder(
     return { success: false, orderNo: '', message: 'KIS API 미연결: 주문을 실행할 수 없습니다. API 설정을 완료하고 토큰을 발급받으세요.' };
   }
 
+  // 주문 완전 실패 시 종료
+  if (status === 'FAILED') {
+    return { success: false, orderNo, message };
+  }
+
   // 거래 내역 DB 기록
   try {
     await db.tradeHistory.create({
@@ -306,12 +314,9 @@ async function executeOrder(
     });
   }
 
-  // 주문 실패/대기 상태에서는 포지션을 변경하지 않음
-  if (status !== 'FILLED') {
-    return { success: false, orderNo, message };
-  }
-
-  // 포지션 DB 업데이트
+  // 포지션 DB 업데이트 (낙관적 업데이트)
+  // 시장가 주문은 장중에 즉시 체결되므로 PENDING도 포지션에 반영
+  // 이후 사이클에서 reconcilePositions()이 실제 잔고와 동기화
   try {
     if (signal.signalType === 'BUY') {
       const positionId = `${market}-${exchangeCode || 'KR'}-${signal.stockCode}`;
@@ -366,7 +371,8 @@ async function executeOrder(
     });
   }
 
-  return { success: true, orderNo, message };
+  // PENDING도 성공으로 처리 (시장가 주문은 즉시 체결)
+  return { success: true, orderNo, message: `주문 접수 완료 (${status}) - ${message}` };
 }
 
 /**
@@ -437,6 +443,104 @@ async function monitorPositions(
   }
 
   return exitsExecuted;
+}
+
+/**
+ * 포지션 동기화 (Reconciliation)
+ * KIS 잔고 API에서 실제 보유 종목을 가져와 로컬 DB와 동기화
+ * 주문 후 낙관적 업데이트된 포지션을 실제 잔고 기준으로 보정
+ * - 잔고에 있고 DB에 없으면 추가 (이미 보유 중인 종목)
+ * - 잔고에 없고 DB에 있으면 삭제 (전량 매도된 종목)
+ * - 수량/가격 불일치 시 잔고 기준으로 업데이트
+ */
+async function reconcilePositions(
+  kisClient: KisApiClient | null,
+  market: MarketType
+): Promise<{ synced: number; added: number; removed: number }> {
+  if (!kisClient) return { synced: 0, added: 0, removed: 0 };
+
+  let synced = 0;
+  let added = 0;
+  let removed = 0;
+
+  try {
+    const { positions: actualPositions } = await fetchPositions(kisClient, market);
+
+    // 잔고에 있는 종목 ID 집합
+    const actualIds = new Set(
+      actualPositions.map(p => `${market}-${p.exchangeCode || 'KR'}-${p.stockCode}`)
+    );
+
+    // DB에서 현재 마켓의 포지션 조회
+    const dbPositions = await db.position.findMany({
+      where: { market },
+    });
+
+    // 1. 잔고에 없는 포지션 삭제 (전량 매도 또는 체결 실패)
+    for (const dbPos of dbPositions) {
+      if (!actualIds.has(dbPos.id)) {
+        await db.position.delete({ where: { id: dbPos.id } }).catch(() => {});
+        removed++;
+        addLog('INFO', market, `포지션 동기화: ${dbPos.stockName} 삭제 (잔고에 없음)`, {
+          stockCode: dbPos.stockCode,
+        });
+      }
+    }
+
+    // 2. 잔고에 있는 종목 upsert
+    for (const pos of actualPositions) {
+      const positionId = `${market}-${pos.exchangeCode || 'KR'}-${pos.stockCode}`;
+      const dbPos = dbPositions.find(p => p.id === positionId);
+
+      if (!dbPos) {
+        // DB에 없는 새 포지션 (수동 매수 또는 이전 세션에서 보유)
+        await db.position.create({
+          data: {
+            id: positionId,
+            stockCode: pos.stockCode,
+            stockName: pos.stockName,
+            quantity: pos.quantity,
+            avgPrice: pos.avgPrice,
+            currentPrice: pos.currentPrice,
+            profitLoss: pos.profitLoss,
+            profitRate: pos.profitRate,
+            strategy: 'MANUAL',
+            market,
+            exchangeCode: pos.exchangeCode || null,
+            currency: pos.currency || (market === 'OVERSEAS' ? 'USD' : 'KRW'),
+          },
+        }).catch(() => {});
+        added++;
+      } else {
+        // 수량/가격 업데이트
+        if (dbPos.quantity !== pos.quantity || Math.abs(dbPos.currentPrice - pos.currentPrice) > 0) {
+          await db.position.update({
+            where: { id: positionId },
+            data: {
+              quantity: pos.quantity,
+              avgPrice: pos.avgPrice,
+              currentPrice: pos.currentPrice,
+              profitLoss: pos.profitLoss,
+              profitRate: pos.profitRate,
+            },
+          }).catch(() => {});
+          synced++;
+        }
+      }
+    }
+
+    if (added > 0 || removed > 0 || synced > 0) {
+      addLog('INFO', market, `포지션 동기화 완료: 추가 ${added}, 삭제 ${removed}, 업데이트 ${synced}`, {
+        added, removed, synced,
+      });
+    }
+  } catch (error) {
+    addLog('ERROR', market, '포지션 동기화 실패', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+
+  return { synced, added, removed };
 }
 
 /**
@@ -526,30 +630,54 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
           { signalType: signal.signalType, confidence: signal.confidence, price: signal.price, strategy: signal.strategy }
         );
 
+        // AI 분석으로 신호 검증 (비동기, 실패 시 기술적 신호만 사용)
+        let finalSignal = signal;
+        try {
+          const aiResult = await aiAnalyzer.analyzeStock(
+            stock.name, stock.code, 'DOMESTIC', signal
+          );
+          if (aiResult.confidence > 0) {
+            finalSignal = aiAnalyzer.combineSignals(signal, aiResult);
+            addLog('SIGNAL', 'DOMESTIC',
+              `${stock.name} AI 검증: ${signal.signalType}→${finalSignal.signalType} (신뢰도: ${signal.confidence}%→${finalSignal.confidence}%) - AI심리: ${aiResult.sentiment}`,
+              { aiRecommendation: aiResult.recommendation, aiConfidence: aiResult.confidence, aiRiskLevel: aiResult.riskLevel }
+            );
+          }
+        } catch (aiError) {
+          // AI 분석 실패는 무시하고 기술적 신호만 사용
+          addLog('INFO', 'DOMESTIC', `${stock.name} AI 분석 스킵 (기술적 신호만 사용)`);
+        }
+
+        // AI 검증 후 HOLD로 변경된 경우 매매 차단
+        if (finalSignal.signalType === 'HOLD') {
+          addLog('RISK', 'DOMESTIC', `${stock.name} AI 검증 결과 HOLD로 변경 - 매매 차단`);
+          continue;
+        }
+
         // 리스크 체크
         const riskCheck = domesticRisk.canTrade(
-          signal, domesticPositions.positions, domesticPositions.accountBalance
+          finalSignal, domesticPositions.positions, domesticPositions.accountBalance
         );
 
         if (riskCheck.allowed) {
           // 포지션 사이즈 계산
           const quantity = domesticRisk.calculatePositionSize(
-            domesticPositions.accountBalance, signal.price, signal.confidence
+            domesticPositions.accountBalance, finalSignal.price, finalSignal.confidence
           );
 
           // 주문 실행
-          const result = await executeOrder(kisClient, { ...signal, price: signal.price }, 'DOMESTIC', undefined, quantity);
+          const result = await executeOrder(kisClient, { ...finalSignal, price: finalSignal.price }, 'DOMESTIC', undefined, quantity);
 
           if (result.success) {
             ordersPlaced++;
             addLog('TRADE', 'DOMESTIC',
-              `${stock.name} ${signal.signalType} 주문 완료: ${quantity}주 @ ${signal.price}원 (${result.orderNo})`,
-              { orderNo: result.orderNo, quantity, price: signal.price }
+              `${stock.name} ${finalSignal.signalType} 주문 완료: ${quantity}주 @ ${finalSignal.price}원 (${result.orderNo})`,
+              { orderNo: result.orderNo, quantity, price: finalSignal.price }
             );
           } else {
             addLog('ERROR', 'DOMESTIC',
-              `${stock.name} ${signal.signalType} 주문 미체결/실패: ${result.message}`,
-              { orderNo: result.orderNo, quantity, price: signal.price }
+              `${stock.name} ${finalSignal.signalType} 주문 미체결/실패: ${result.message}`,
+              { orderNo: result.orderNo, quantity, price: finalSignal.price }
             );
           }
         } else {
@@ -591,28 +719,51 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
           { signalType: signal.signalType, confidence: signal.confidence, price: signal.price, strategy: signal.strategy }
         );
 
+        // AI 분석으로 신호 검증 (비동기, 실패 시 기술적 신호만 사용)
+        let finalSignal = signal;
+        try {
+          const aiResult = await aiAnalyzer.analyzeStock(
+            stock.name, stock.code, 'OVERSEAS', signal
+          );
+          if (aiResult.confidence > 0) {
+            finalSignal = aiAnalyzer.combineSignals(signal, aiResult);
+            addLog('SIGNAL', 'OVERSEAS',
+              `${stock.name} AI 검증: ${signal.signalType}→${finalSignal.signalType} (신뢰도: ${signal.confidence}%→${finalSignal.confidence}%) - AI심리: ${aiResult.sentiment}`,
+              { aiRecommendation: aiResult.recommendation, aiConfidence: aiResult.confidence, aiRiskLevel: aiResult.riskLevel }
+            );
+          }
+        } catch (aiError) {
+          addLog('INFO', 'OVERSEAS', `${stock.name} AI 분석 스킵 (기술적 신호만 사용)`);
+        }
+
+        // AI 검증 후 HOLD로 변경된 경우 매매 차단
+        if (finalSignal.signalType === 'HOLD') {
+          addLog('RISK', 'OVERSEAS', `${stock.name} AI 검증 결과 HOLD로 변경 - 매매 차단`);
+          continue;
+        }
+
         // 리스크 체크
         const riskCheck = overseasRisk.canTrade(
-          signal, overseasPositions.positions, overseasPositions.accountBalance
+          finalSignal, overseasPositions.positions, overseasPositions.accountBalance
         );
 
         if (riskCheck.allowed) {
           const quantity = overseasRisk.calculatePositionSize(
-            overseasPositions.accountBalance, signal.price, signal.confidence
+            overseasPositions.accountBalance, finalSignal.price, finalSignal.confidence
           );
 
-          const result = await executeOrder(kisClient, { ...signal, price: signal.price }, 'OVERSEAS', stock.exchange, quantity);
+          const result = await executeOrder(kisClient, { ...finalSignal, price: finalSignal.price }, 'OVERSEAS', stock.exchange, quantity);
 
           if (result.success) {
             ordersPlaced++;
             addLog('TRADE', 'OVERSEAS',
-              `${stock.name} ${signal.signalType} 주문 완료: ${quantity}주 @ $${signal.price} (${result.orderNo})`,
-              { orderNo: result.orderNo, quantity, price: signal.price, exchange: stock.exchange }
+              `${stock.name} ${finalSignal.signalType} 주문 완료: ${quantity}주 @ $${finalSignal.price} (${result.orderNo})`,
+              { orderNo: result.orderNo, quantity, price: finalSignal.price, exchange: stock.exchange }
             );
           } else {
             addLog('ERROR', 'OVERSEAS',
-              `${stock.name} ${signal.signalType} 주문 미체결/실패: ${result.message}`,
-              { orderNo: result.orderNo, quantity, price: signal.price, exchange: stock.exchange }
+              `${stock.name} ${finalSignal.signalType} 주문 미체결/실패: ${result.message}`,
+              { orderNo: result.orderNo, quantity, price: finalSignal.price, exchange: stock.exchange }
             );
           }
         } else {
@@ -627,6 +778,17 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
       errors.push(`해외 ${stock.name}: ${errMsg}`);
       addLog('ERROR', 'OVERSEAS', `${stock.name} 분석 오류: ${errMsg}`);
     }
+  }
+
+  // ========================================
+  // 포지션 동기화 (Reconciliation)
+  // KIS 잔고 API에서 실제 보유 종목을 가져와 로컬 DB 동기화
+  // 주문 후 낙관적 업데이트된 포지션을 실제 잔고 기준으로 보정
+  // ========================================
+  if (kisClient) {
+    addLog('INFO', 'DOMESTIC', '포지션 동기화 시작 (잔고 기준)');
+    await reconcilePositions(kisClient, 'DOMESTIC');
+    await reconcilePositions(kisClient, 'OVERSEAS');
   }
 
   // ========================================

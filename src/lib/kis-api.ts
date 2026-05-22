@@ -547,6 +547,197 @@ export class KisApiClient {
     };
   }
 
+  /**
+   * 국내주식 주문체결내역 조회
+   * 주문 후 체결 여부를 확인하기 위해 사용
+   * KIS API: TTTC8001R (실전) / VTTC8001R (모의)
+   * 엔드포인트: /uapi/domestic-stock/v1/trading/inquire-ccnl
+   *
+   * 반환값:
+   * - 총체결수량, 총체결금액
+   * - 체결상태: 접수/확인/체결/전량체결/취소/거부
+   */
+  async getOrderStatus(
+    orderNo: string,
+  ): Promise<{
+    orderNo: string;
+    stockCode: string;
+    stockName: string;
+    orderType: 'BUY' | 'SELL';
+    orderQuantity: number;
+    filledQuantity: number;
+    filledPrice: number;
+    status: 'PENDING' | 'PARTIAL' | 'FILLED' | 'CANCELLED' | 'REJECTED';
+    rawStatus: string;
+  }> {
+    const token = await this.ensureToken();
+    const url = `${this.baseUrl}/uapi/domestic-stock/v1/trading/inquire-ccnl`;
+
+    const account = parseAccountNo(this.config.accountNo);
+    const params = new URLSearchParams({
+      CANO: account.cano,
+      ACNT_PRDT_CD: account.productCode,
+      INQR_DVSN_1: '1',
+      INQR_DVSN_2: '0',
+      CTX_AREA_FK100: '',
+      CTX_AREA_NK100: '',
+    });
+
+    // 주문번호가 있으면 특정 주문 조회
+    if (orderNo) {
+      params.set('ODNO', orderNo);
+    }
+
+    const trId = this.config.isDemo ? 'VTTC8001R' : 'TTTC8001R';
+
+    try {
+      const response = await fetch(`${url}?${params.toString()}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+          appKey: this.config.appKey,
+          appSecret: this.config.appSecret,
+          tr_id: trId,
+        },
+      });
+
+      const result = await response.json();
+
+      if (result.rt_cd !== '0') {
+        throw new Error(`주문체결 조회 에러: ${result.msg1}`);
+      }
+
+      const output1 = Array.isArray(result.output1) ? result.output1 : [];
+      const order = output1.find((item: Record<string, string>) =>
+        item.odno === orderNo || item.ord_no === orderNo
+      );
+
+      if (!order) {
+        return {
+          orderNo,
+          stockCode: '',
+          stockName: '',
+          orderType: 'BUY',
+          orderQuantity: 0,
+          filledQuantity: 0,
+          filledPrice: 0,
+          status: 'PENDING',
+          rawStatus: '조회불가',
+        };
+      }
+
+      const filledQty = safeNumber(order.tot_ccld_qty || order.ccld_qty);
+      const orderQty = safeNumber(order.ord_qty);
+      const rawStatus = order.ord_dvsn_name || order.sll_buy_dvsn_cd || '';
+
+      // 체결 상태 판별
+      let status: 'PENDING' | 'PARTIAL' | 'FILLED' | 'CANCELLED' | 'REJECTED';
+      if (filledQty === 0) {
+        status = 'PENDING';
+      } else if (filledQty < orderQty) {
+        // 부분 체결 또는 취소 여부 확인
+        const cnclYn = order.cncl_yn || '';
+        if (cnclYn === 'Y') {
+          status = 'CANCELLED';
+        } else {
+          status = 'PARTIAL';
+        }
+      } else {
+        status = 'FILLED';
+      }
+
+      return {
+        orderNo: order.odno || order.ord_no || orderNo,
+        stockCode: order.pdno || order.stck_shrn_iscd || '',
+        stockName: order.prdt_name || '',
+        orderType: (order.sll_buy_dvsn_cd === '01' || order.ord_dvsn_cd === '01') ? 'BUY' : 'SELL',
+        orderQuantity: orderQty,
+        filledQuantity: filledQty,
+        filledPrice: safeNumber(order.tot_ccld_amt || order.avg_prpr),
+        status,
+        rawStatus,
+      };
+    } catch (error) {
+      console.error('[KIS API] 주문체결 조회 실패:', error);
+      return {
+        orderNo,
+        stockCode: '',
+        stockName: '',
+        orderType: 'BUY',
+        orderQuantity: 0,
+        filledQuantity: 0,
+        filledPrice: 0,
+        status: 'PENDING',
+        rawStatus: `조회실패: ${error instanceof Error ? error.message : 'Unknown'}`,
+      };
+    }
+  }
+
+  /**
+   * 미체결 주문 전체 조회
+   * 대기 중인 주문을 확인하여 정리/취소 여부 판단
+   */
+  async getPendingOrders(): Promise<Array<{
+    orderNo: string;
+    stockCode: string;
+    stockName: string;
+    orderType: 'BUY' | 'SELL';
+    orderQuantity: number;
+    orderPrice: number;
+    orderKind: string;
+    orderTime: string;
+  }>> {
+    const token = await this.ensureToken();
+    const url = `${this.baseUrl}/uapi/domestic-stock/v1/trading/inquire-psbl-order`;
+
+    const account = parseAccountNo(this.config.accountNo);
+    const params = new URLSearchParams({
+      CANO: account.cano,
+      ACNT_PRDT_CD: account.productCode,
+      INQR_DVSN_1: '0',
+      INQR_DVSN_2: '0',
+      CTX_AREA_FK100: '',
+      CTX_AREA_NK100: '',
+    });
+
+    const trId = this.config.isDemo ? 'VTTC8001R' : 'TTTC8001R';
+
+    try {
+      const response = await fetch(`${url}?${params.toString()}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+          appKey: this.config.appKey,
+          appSecret: this.config.appSecret,
+          tr_id: trId,
+        },
+      });
+
+      const result = await response.json();
+
+      if (result.rt_cd !== '0') {
+        return [];
+      }
+
+      const output1 = Array.isArray(result.output1) ? result.output1 : [];
+      return output1.map((item: Record<string, string>) => ({
+        orderNo: item.odno || item.ord_no || '',
+        stockCode: item.pdno || item.stck_shrn_iscd || '',
+        stockName: item.prdt_name || '',
+        orderType: (item.sll_buy_dvsn_cd === '01') ? 'BUY' : 'SELL',
+        orderQuantity: safeNumber(item.ord_qty || item.tot_ccld_qty),
+        orderPrice: safeNumber(item.ord_unpr || item.avg_prpr),
+        orderKind: item.ord_dvsn_cd || '00',
+        orderTime: item.ord_tmd || '',
+      }));
+    } catch (error) {
+      console.error('[KIS API] 미체결 조회 실패:', error);
+      return [];
+    }
+  }
+
   async cancelOrder(orderNo: string, stockCode: string, orderType: 'BUY' | 'SELL'): Promise<OrderResponse> {
     const token = await this.ensureToken();
     const url = `${this.baseUrl}/uapi/domestic-stock/v1/trading/order-cash`;
