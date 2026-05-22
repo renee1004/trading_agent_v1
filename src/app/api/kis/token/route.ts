@@ -18,7 +18,26 @@ export async function POST() {
     }
 
     console.log(`[KIS Token] Config found: appKey=${(config.appKey || '').substring(0, 8)}****, isDemo=${config.isDemo}, accountNo=${config.accountNo}`);
-    console.log(`[KIS Token] App Secret length: ${(config.appSecret || '').length}`);
+
+    // 기존 토큰이 유효한지 먼저 확인 (1분 이상 남아있으면 재사용)
+    if (config.accessToken && config.tokenExpiresAt) {
+      const expiresAt = new Date(config.tokenExpiresAt);
+      const now = new Date();
+      const remainingMs = expiresAt.getTime() - now.getTime();
+      // 1분 이상 남아있으면 기존 토큰 재사용 (불필요한 발급 방지)
+      if (remainingMs > 60 * 1000) {
+        console.log(`[KIS Token] Existing token is still valid (expires in ${Math.round(remainingMs / 60000)}min), reusing`);
+        return NextResponse.json({ 
+          success: true, 
+          data: { 
+            tokenIssued: true,
+            expiresIn: `${Math.round(remainingMs / 3600000)}시간 ${Math.round((remainingMs % 3600000) / 60000)}분`,
+            reused: true,
+          }
+        });
+      }
+      console.log(`[KIS Token] Existing token expired or about to expire (remaining: ${Math.round(remainingMs / 1000)}s), requesting new token`);
+    }
 
     // KIS API 클라이언트 동적 임포트
     const { KisApiClient } = await import('@/lib/kis-api');
@@ -28,6 +47,9 @@ export async function POST() {
       appSecret: config.appSecret,
       accountNo: config.accountNo,
       isDemo: config.isDemo,
+      // DB에 저장된 토큰 전달 (서버 캐시 동기화)
+      accessToken: config.accessToken || undefined,
+      tokenExpiresAt: config.tokenExpiresAt ?? undefined,
     });
 
     const token = await client.issueToken();
@@ -47,6 +69,7 @@ export async function POST() {
       data: { 
         tokenIssued: true,
         expiresIn: '24시간',
+        reused: false,
       }
     });
   } catch (error: unknown) {
@@ -73,6 +96,15 @@ export async function GET() {
     }
 
     const hasValidToken = config.accessToken && config.tokenExpiresAt && new Date(config.tokenExpiresAt) > new Date();
+    
+    // 남은 시간 계산
+    let expiresInfo = '';
+    if (hasValidToken && config.tokenExpiresAt) {
+      const remainingMs = new Date(config.tokenExpiresAt).getTime() - Date.now();
+      const hours = Math.floor(remainingMs / 3600000);
+      const minutes = Math.floor((remainingMs % 3600000) / 60000);
+      expiresInfo = `${hours}시간 ${minutes}분 남음`;
+    }
 
     return NextResponse.json({ 
       success: true, 
@@ -81,6 +113,7 @@ export async function GET() {
         hasToken: !!hasValidToken,
         isDemo: config.isDemo,
         tokenExpiresAt: config.tokenExpiresAt,
+        expiresInfo,
       }
     });
   } catch (error) {

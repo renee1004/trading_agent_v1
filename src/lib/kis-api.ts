@@ -18,6 +18,21 @@ import {
 const DEMO_BASE_URL = 'https://openapivts.koreainvestment.com:29443';
 const REAL_BASE_URL = 'https://openapi.koreainvestment.com:9443';
 
+// 서버 사이드 토큰 캐시 - 프로세스 내에서 토큰 재사용
+// KisApiClient 인스턴스가 매번 새로 생성되어도 이 캐시를 통해 토큰 공유
+const serverTokenCache: {
+  accessToken: string | null;
+  tokenExpiresAt: Date | null;
+  appKey: string | null;  // 어떤 appKey의 토큰인지 추적
+} = {
+  accessToken: null,
+  tokenExpiresAt: null,
+  appKey: null,
+};
+
+// 토큰 발급 뮤텍스 - 동시에 여러 요청이 들어와도 1회만 발급
+let tokenIssuancePromise: Promise<string> | null = null;
+
 export class KisApiClient {
   private config: KisConfig;
   private accessToken: string | null = null;
@@ -25,9 +40,23 @@ export class KisApiClient {
 
   constructor(config: KisConfig) {
     this.config = config;
+    
+    // 1. 생성자로 전달된 토큰 사용
     if (config.accessToken && config.tokenExpiresAt) {
       this.accessToken = config.accessToken;
       this.tokenExpiresAt = config.tokenExpiresAt;
+      // 서버 캐시에도 동기화
+      if (!serverTokenCache.accessToken || serverTokenCache.appKey === config.appKey) {
+        serverTokenCache.accessToken = config.accessToken;
+        serverTokenCache.tokenExpiresAt = config.tokenExpiresAt;
+        serverTokenCache.appKey = config.appKey;
+      }
+    }
+    
+    // 2. 인스턴스에 토큰이 없으면 서버 캐시에서 복원
+    if (!this.accessToken && serverTokenCache.accessToken && serverTokenCache.appKey === config.appKey) {
+      this.accessToken = serverTokenCache.accessToken;
+      this.tokenExpiresAt = serverTokenCache.tokenExpiresAt;
     }
   }
 
@@ -37,8 +66,28 @@ export class KisApiClient {
 
   /**
    * 접근 토큰 발급 (24시간 유효)
+   * 뮤텍스 적용: 동시에 여러 요청이 들어와도 1회만 KIS API 호출
    */
   async issueToken(): Promise<string> {
+    // 뮤텍스: 이미 발급 중이면 기다리기
+    if (tokenIssuancePromise) {
+      console.log('[KIS API] Token issuance already in progress, waiting...');
+      const token = await tokenIssuancePromise;
+      // 발급 완료 후 캐시에서 가져오기
+      this.accessToken = serverTokenCache.accessToken;
+      this.tokenExpiresAt = serverTokenCache.tokenExpiresAt;
+      return this.accessToken!;
+    }
+
+    tokenIssuancePromise = this._doIssueToken();
+    try {
+      return await tokenIssuancePromise;
+    } finally {
+      tokenIssuancePromise = null;
+    }
+  }
+
+  private async _doIssueToken(): Promise<string> {
     const url = `${this.baseUrl}/oauth2/tokenP`;
     
     // KIS API는 form-urlencoded 대신 JSON 바디도 지원
@@ -82,6 +131,13 @@ export class KisApiClient {
 
     this.accessToken = data.access_token;
     this.tokenExpiresAt = new Date(Date.now() + (data.expires_in || 86400) * 1000);
+    
+    // 서버 캐시 업데이트
+    serverTokenCache.accessToken = this.accessToken;
+    serverTokenCache.tokenExpiresAt = this.tokenExpiresAt;
+    serverTokenCache.appKey = this.config.appKey;
+    
+    console.log(`[KIS API] Token cached, expires at: ${this.tokenExpiresAt.toISOString()}`);
     
     return this.accessToken!;
   }

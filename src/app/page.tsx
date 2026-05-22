@@ -175,6 +175,7 @@ export default function TradingDashboard() {
   const [kisHasToken, setKisHasToken] = useState(false);
   const [kisTokenError, setKisTokenError] = useState('');
   const [kisTokenLoading, setKisTokenLoading] = useState(false);
+  const [tokenCooldown, setTokenCooldown] = useState(0); // 재발급 쿨다운 (초)
   const [activeTab, setActiveTab] = useState('dashboard');
 
   // KIS 설정 다이얼로그
@@ -682,13 +683,16 @@ export default function TradingDashboard() {
           if (tokenData.success) {
             setKisHasToken(true);
             setKisTokenError('');
+            setTokenCooldown(10); // 성공 시 10초 쿨다운
           } else {
             setKisHasToken(false);
             setKisTokenError(tokenData.error || '토큰 발급 실패');
+            setTokenCooldown(60); // 실패 시 60초 쿨다운
           }
         } catch (tokenErr: any) {
           setKisHasToken(false);
           setKisTokenError(tokenErr.message || '토큰 발급 중 네트워크 오류');
+          setTokenCooldown(60); // 에러 시 60초 쿨다운
         } finally {
           setKisTokenLoading(false);
         }
@@ -698,8 +702,21 @@ export default function TradingDashboard() {
     }
   };
 
+  // 토큰 재발급 쿨다운 타이머
+  useEffect(() => {
+    if (tokenCooldown <= 0) return;
+    const timer = setInterval(() => {
+      setTokenCooldown(prev => {
+        if (prev <= 1) return 0;
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [tokenCooldown]);
+
   // 토큰 재발급
   const reissueToken = async () => {
+    if (tokenCooldown > 0 || kisTokenLoading) return; // 쿨다운 중이거나 이미 발급 중이면 무시
     setKisTokenLoading(true);
     setKisTokenError('');
     try {
@@ -726,13 +743,19 @@ export default function TradingDashboard() {
       if (tokenData.success) {
         setKisHasToken(true);
         setKisTokenError('');
+        // 성공 시 10초 쿨다운
+        setTokenCooldown(10);
       } else {
         setKisHasToken(false);
         setKisTokenError(tokenData.error || '토큰 발급 실패');
+        // 실패 시 60초 쿨다운 (KIS 속도제한: 1분당 1회)
+        setTokenCooldown(60);
       }
     } catch (err: any) {
       setKisHasToken(false);
       setKisTokenError(err.message || '토큰 발급 중 오류');
+      // 에러 시 60초 쿨다운
+      setTokenCooldown(60);
     } finally {
       setKisTokenLoading(false);
     }
@@ -884,8 +907,8 @@ export default function TradingDashboard() {
                             </Badge>
                           )}
                           {!kisHasToken && !kisTokenLoading && (
-                            <Button size="sm" variant="outline" className="h-6 text-xs" onClick={reissueToken}>
-                              재발급
+                            <Button size="sm" variant="outline" className="h-6 text-xs" onClick={reissueToken} disabled={tokenCooldown > 0}>
+                              {tokenCooldown > 0 ? `${tokenCooldown}초 후 재시도` : '재발급'}
                             </Button>
                           )}
                         </div>
