@@ -255,6 +255,11 @@ export default function TradingDashboard() {
     totalCycles: number;
     totalTrades: number;
     currentKST: string;
+    domesticSession: {
+      session: string;
+      orderDivision: string;
+      label: string;
+    };
   } | null>(null);
   const [agentMode, setAgentMode] = useState<'SERVER' | 'BROWSER'>('SERVER');
 
@@ -2077,6 +2082,11 @@ export default function TradingDashboard() {
                       <Badge variant="outline" className="text-xs border-gray-300 text-gray-500">
                         <Clock className="h-3 w-3 mr-1" />
                         KST {schedulerInfo.currentKST}
+                      </Badge>
+                    )}
+                    {schedulerInfo?.domesticSession && schedulerInfo.domesticSession.session !== 'CLOSED' && (
+                      <Badge variant="outline" className="text-xs border-blue-300 text-blue-600">
+                        {schedulerInfo.domesticSession.label}
                       </Badge>
                     )}
                     {schedulerInfo?.isMarketOpen && (

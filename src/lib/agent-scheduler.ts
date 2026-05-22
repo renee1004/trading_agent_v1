@@ -32,8 +32,8 @@ let schedulerState: SchedulerState = {
   config: {
     cycleIntervalMs: 60000,
     tradeOnlyMarketHours: true,
-    domesticMarketOpen: '09:00',
-    domesticMarketClose: '15:30',
+    domesticMarketOpen: '08:30',   // 장전 시간외 + 동시호가 포함
+    domesticMarketClose: '18:00', // 시간외 단일가까지 포함
     overseasMarketOpen: '23:30',
     overseasMarketClose: '06:00',
   },
@@ -77,13 +77,98 @@ function isWeekday(dayOfWeek: number): boolean {
 }
 
 /**
+ * 국내 주식 거래세션 정보
+ * KIS API 주문구분코드(ORD_DVSN) 매핑 포함
+ *
+ * 세션별 주문 가능 방식:
+ * - 장전 시간외: 종가 주문만 (ORD_DVSN='61')
+ * - 동시호가: 지정가/시장가 (ORD_DVSN='00'/'01')
+ * - 정규장: 지정가/시장가/조건부지정가 (ORD_DVSN='00'/'01'/'02')
+ * - 장후 시간외: 종가 주문만 (ORD_DVSN='81')
+ * - 시간외 단일가: 단일가 주문 (ORD_DVSN='62')
+ */
+export type DomesticSession =
+  | 'PREMARKET_CLOSE'     // 장전 시간외 종가 (08:30~08:40)
+  | 'OPENING_CALL_AUCTION' // 시초가 동시호가 (08:30~09:00)
+  | 'REGULAR'             // 정규장 (09:00~15:30)
+  | 'CLOSING_CALL_AUCTION' // 장마감 동시호가 (15:20~15:30, 정규장에 포함)
+  | 'POSTMARKET_CLOSE'    // 장후 시간외 종가 (15:40~16:00)
+  | 'AFTERHOURS_SINGLE'   // 시간외 단일가 (16:00~18:00)
+  | 'CLOSED';             // 장외
+
+export interface DomesticSessionInfo {
+  session: DomesticSession;
+  /** KIS 주문구분코드 (ORD_DVSN) */
+  orderDivision: '00' | '01' | '02' | '61' | '62' | '81';
+  /** 사람이 읽을 수 있는 세션명 */
+  label: string;
+}
+
+/**
+ * 현재 KST 기준 국내 주식 거래세션 판별
+ * 주문 시 세션에 맞는 ORD_DVSN 코드를 반환
+ *
+ * 세션 시간 (KST 기준, 평일만):
+ * 08:30~08:40  장전 시간외 종가      → '61'
+ * 08:30~09:00  시초가 동시호가      → '00' (지정가)
+ * 09:00~15:30  정규장               → '01' (시장가, 기본)
+ * 15:40~16:00  장후 시간외 종가      → '81'
+ * 16:00~18:00  시간외 단일가         → '62'
+ */
+export function getDomesticSession(): DomesticSessionInfo {
+  const { totalMinutes, dayOfWeek } = getKSTNow();
+
+  // 주말
+  if (!isWeekday(dayOfWeek)) {
+    return { session: 'CLOSED', orderDivision: '00', label: '휴장 (주말)' };
+  }
+
+  // 08:30~08:40: 장전 시간외 종가
+  if (totalMinutes >= 510 && totalMinutes < 520) { // 08:30~08:40
+    return { session: 'PREMARKET_CLOSE', orderDivision: '61', label: '장전 시간외 종가' };
+  }
+
+  // 08:40~09:00: 시초가 동시호가
+  if (totalMinutes >= 520 && totalMinutes < 540) { // 08:40~09:00
+    return { session: 'OPENING_CALL_AUCTION', orderDivision: '00', label: '시초가 동시호가' };
+  }
+
+  // 09:00~15:30: 정규장
+  if (totalMinutes >= 540 && totalMinutes <= 930) { // 09:00~15:30
+    return { session: 'REGULAR', orderDivision: '01', label: '정규장' };
+  }
+
+  // 15:30~15:40: 정규장 직후 대기 (주문 불가)
+  if (totalMinutes > 930 && totalMinutes < 940) { // 15:30~15:40
+    return { session: 'CLOSED', orderDivision: '00', label: '장간 대기' };
+  }
+
+  // 15:40~16:00: 장후 시간외 종가
+  if (totalMinutes >= 940 && totalMinutes < 960) { // 15:40~16:00
+    return { session: 'POSTMARKET_CLOSE', orderDivision: '81', label: '장후 시간외 종가' };
+  }
+
+  // 16:00~18:00: 시간외 단일가
+  if (totalMinutes >= 960 && totalMinutes <= 1080) { // 16:00~18:00
+    return { session: 'AFTERHOURS_SINGLE', orderDivision: '62', label: '시간외 단일가' };
+  }
+
+  return { session: 'CLOSED', orderDivision: '00', label: '장외' };
+}
+
+/**
  * 장시간 체크
- * 국내: 09:00~15:30 (평일만), 해외: 23:30~06:00 (평일만, 한국시간)
+ * 국내: 08:30~18:00 (전체 거래세션, 평일만), 해외: 23:30~06:00 (평일만, 한국시간)
  * Railway 등 UTC 서버에서도 정확한 판단을 위해 getKSTNow() 사용
- * 
+ *
+ * 국내 거래세션 전체 (KST 기준):
+ * 08:30~08:40  장전 시간외 종가
+ * 08:30~09:00  시초가 동시호가
+ * 09:00~15:30  정규장
+ * 15:40~16:00  장후 시간외 종가
+ * 16:00~18:00  시간외 단일가
+ *
  * 주말 체크: 토요일/일요일에는 시간과 무관하게 항상 false
- * - 해외장의 경우 금요일 23:30~토요일 06:00(KST)은 예외적으로 영업
- *   하지만 KIS 모의투자에서는 주말 거래를 지원하지 않으므로 일괄 차단
  */
 export function isMarketHours(market: 'DOMESTIC' | 'OVERSEAS' | 'ALL'): boolean {
   const { totalMinutes: currentMinutes, dayOfWeek } = getKSTNow();
@@ -170,8 +255,8 @@ export async function saveSchedulerConfig(config: Partial<SchedulerConfig>): Pro
         data: {
           cycleIntervalMs: config.cycleIntervalMs ?? 60000,
           tradeOnlyMarketHours: config.tradeOnlyMarketHours ?? true,
-          domesticMarketOpen: config.domesticMarketOpen ?? '09:00',
-          domesticMarketClose: config.domesticMarketClose ?? '15:30',
+          domesticMarketOpen: config.domesticMarketOpen ?? '08:30',
+          domesticMarketClose: config.domesticMarketClose ?? '18:00',
           overseasMarketOpen: config.overseasMarketOpen ?? '23:30',
           overseasMarketClose: config.overseasMarketClose ?? '06:00',
         },
@@ -434,6 +519,7 @@ export async function getSchedulerStatus(): Promise<{
   totalCycles: number;
   totalTrades: number;
   currentKST: string;
+  domesticSession: DomesticSessionInfo;
 }> {
   // DB에서 최신 설정 로드
   const dbConfig = await db.agentConfig.findFirst();
@@ -447,6 +533,9 @@ export async function getSchedulerStatus(): Promise<{
   const { hours, minutes, dayOfWeek } = getKSTNow();
   const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
   const currentKST = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')} ${dayNames[dayOfWeek]}요일`;
+
+  // 현재 국내 거래세션 정보
+  const domesticSession = getDomesticSession();
 
   return {
     isSchedulerRunning: schedulerState.isSchedulerRunning,
@@ -464,6 +553,7 @@ export async function getSchedulerStatus(): Promise<{
     totalCycles: dbConfig?.totalCycles ?? 0,
     totalTrades: dbConfig?.totalTrades ?? 0,
     currentKST,
+    domesticSession,
   };
 }
 

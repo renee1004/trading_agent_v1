@@ -80,7 +80,7 @@ export interface OrderRequest {
   orderType: 'BUY' | 'SELL';
   quantity: number;
   price?: number; // 지정가일 경우
-  orderKind: '00' | '01' | '02'; // 00:지정가, 01:시장가, 02:조건부지정가
+  orderKind: '00' | '01' | '02' | '61' | '62' | '81'; // 00:지정가, 01:시장가, 02:조건부지정가, 61:장전시간외종가, 62:시간외단일가, 81:장후시간외종가
   market?: MarketType;
   exchangeCode?: string; // 해외주식 거래소 코드 (NAS, NYS, AMS)
 }

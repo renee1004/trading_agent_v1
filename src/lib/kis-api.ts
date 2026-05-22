@@ -14,6 +14,7 @@ import {
   OverseasStockCandle,
   OverseasBalanceItem,
 } from './types';
+import { getDomesticSession } from './agent-scheduler';
 
 const DEMO_BASE_URL = 'https://openapivts.koreainvestment.com:29443';
 const REAL_BASE_URL = 'https://openapi.koreainvestment.com:9443';
@@ -375,6 +376,18 @@ export class KisApiClient {
     throw new Error(`일봉 조회 실패: ${errors.join(' | ')}`);
   }
 
+  /**
+   * 주식 매수/매도 주문 (국내)
+   *
+   * 주문구분코드(ORD_DVSN) 자동 선택:
+   * - 정규장 (09:00~15:30): 시장가 '01' (기본)
+   * - 장전 시간외 종가 (08:30~08:40): '61'
+   * - 장후 시간외 종가 (15:40~16:00): '81'
+   * - 시간외 단일가 (16:00~18:00): '62'
+   * - 동시호가 (08:40~09:00): 지정가 '00'
+   *
+   * 호출자가 명시적으로 orderKind를 지정하면 그 값을 우선 사용
+   */
   async placeOrder(order: OrderRequest): Promise<OrderResponse> {
     if (order.market === 'OVERSEAS' && order.exchangeCode) {
       return this.placeOverseasOrder(order);
@@ -387,12 +400,25 @@ export class KisApiClient {
       ? (this.config.isDemo ? 'VTTC0802U' : 'TTTC0802U')
       : (this.config.isDemo ? 'VTTC0801U' : 'TTTC0801U');
 
+    // 현재 세션에 맞는 주문구분코드 자동 선택
+    // order.orderKind가 '01' (기본 시장가)인 경우에만 세션 기반 자동 선택
+    // 명시적으로 '00', '02' 등이 지정된 경우 그대로 사용
+    let orderKind = order.orderKind;
+    if (orderKind === '01') {
+      const session = getDomesticSession();
+      // 정규장이면 시장가('01') 그대로, 다른 세션이면 세션에 맞는 코드 사용
+      if (session.session !== 'REGULAR' && session.session !== 'CLOSED') {
+        orderKind = session.orderDivision;
+        console.log(`[KIS API] 세션 자동 감지: ${session.label} → ORD_DVSN='${orderKind}'`);
+      }
+    }
+
     const account = parseAccountNo(this.config.accountNo);
     const orderData = {
       CANO: account.cano,
       ACNT_PRDT_CD: account.productCode,
       PDNO: order.stockCode,
-      ORD_DVSN: order.orderKind,
+      ORD_DVSN: orderKind,
       ORD_QTY: String(order.quantity),
       ORD_UNPR: String(order.price || 0),
     };
