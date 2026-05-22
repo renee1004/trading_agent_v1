@@ -73,3 +73,29 @@ Stage Summary:
 - 10개 국내 종목 캔들 조회 전체 성공
 - 잔고 조회(HTTP 500)는 모의서버 제한으로 추정 (장외시간 + mock server)
 - version.gitCommitSha=43c827a로 최신 코드 배포 확인 완료
+
+---
+Task ID: 6
+Agent: Main Agent
+Task: 해외 분석/주문 분리 + 설정 영속화 구현
+
+Work Log:
+- getOverseasDailyCandles() dual-server fallback 적용 (모의→실전 자동 전환)
+- 해외 캔들 상세 로깅 추가 (EXCD, SYMB, GUBN, BYMD, MODP, rt_cd, msg_cd, msg1, output2Length)
+- GUBN 1글자 코드 유지, BYMD period 기반 과거 날짜 계산
+- ENABLE_OVERSEAS_ANALYSIS/ORDER 분리 (하위호환: ENABLE_OVERSEAS_TRADING→ANALYSIS)
+- 해외 주문 안전장치: 거래소코드 유효성/가격>0/수량>0/enableOrder 체크
+- Prisma AppSetting 모델 추가 (key/value Json)
+- GET/POST /api/settings/trading API 구현 (DB > 환경변수 > 기본값)
+- 위험 옵션 안전장치: enableOverseasOrder/allowAfterHoursTrading 명시적 true만 허용
+- /api/agent/status에 effectiveSettings + settingsSource 추가
+- 프론트엔드 loadSettingsFromServer() 추가 (서버 DB 우선 → localStorage fallback)
+- 리스크 설정 저장 시 /api/settings/trading + localStorage 동기화
+- env-check POST 스키마 동기화 추가 (AppSetting 테이블 자동 생성)
+
+Stage Summary:
+- Railway 배포 검증 완료 (commit e27cfd9)
+- 국내: domesticSuccess=10, domesticFailed=0 (정상 유지)
+- 해외: "해외주식 분석 건너뜀 (ENABLE_OVERSEAS_ANALYSIS=false)" 로그 확인
+- 설정 영속화: DB 저장→GET 조회 시 source=db, 값 유지 확인
+- 위험 옵션: enableOverseasOrder 항상 false (안전장치 동작 확인)
