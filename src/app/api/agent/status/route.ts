@@ -6,6 +6,7 @@ import { NextResponse } from 'next/server';
 import { getAgentStatus, getAgentLogs } from '@/lib/trading-agent';
 import { getSchedulerStatus } from '@/lib/agent-scheduler';
 import { getEffectiveTradingSettings, computeRuntimeDecision } from '@/lib/effective-settings';
+import { getOverseasMarketInfo, isUSDST, getCurrentKSTString, getCurrentETString } from '@/lib/market-hours';
 import { db } from '@/lib/db';
 
 export async function GET() {
@@ -117,6 +118,22 @@ export async function GET() {
           totalTrades: schedulerStatus.totalTrades,
           currentKST: schedulerStatus.currentKST,
           domesticSession: schedulerStatus.domesticSession,
+          overseasMarketInfo: schedulerStatus.overseasMarketInfo,
+        },
+
+        // 해외(미국) 장시간 ET 기반 정보
+        // KST 요일이 아닌 ET 요일로 판단, 서머타임 자동 반영
+        overseasMarket: {
+          currentKST: getCurrentKSTString(),
+          currentET: getCurrentETString(),
+          isUSDST: isUSDST(),
+          isOverseasMarketOpen: schedulerStatus.overseasMarketInfo.isOpen,
+          overseasMarketOpenKST: schedulerStatus.overseasMarketInfo.overseasMarketOpenKST,
+          overseasMarketCloseKST: schedulerStatus.overseasMarketInfo.overseasMarketCloseKST,
+          overseasSessionLabel: schedulerStatus.overseasMarketInfo.overseasSessionLabel,
+          etDate: schedulerStatus.overseasMarketInfo.etDate,
+          etDayOfWeek: schedulerStatus.overseasMarketInfo.etDayOfWeek,
+          blockedReason: schedulerStatus.overseasMarketInfo.blockedReason,
         },
 
         // 배포 버전 정보

@@ -10,6 +10,7 @@ import { db } from './db';
 import { RiskConfig } from './types';
 import { getMarketRiskConfig } from './market-defaults';
 import { isMarketHours, getDomesticSession } from './agent-scheduler';
+import { isOverseasMarketOpen, getOverseasBlockedReason } from './market-hours';
 
 // =============================================
 // 설정 인터페이스 + 안전 기본값
@@ -90,7 +91,7 @@ export interface RuntimeDecision {
 export function computeRuntimeDecision(settings: EffectiveTradingSettings): RuntimeDecision {
   const domesticSession = getDomesticSession();
   const isDomesticOpen = domesticSession.session === 'REGULAR';
-  const isOverseasOpen = isMarketHours('OVERSEAS');
+  const isOverseasOpen = isOverseasMarketOpen(); // ET 기준 (KST 요일 아님)
 
   // ── canRunAnalysisNow ──
   let canRunAnalysisNow = true;
@@ -115,14 +116,15 @@ export function computeRuntimeDecision(settings: EffectiveTradingSettings): Runt
   }
 
   // ── canPlaceOverseasOrderNow ──
+  // 해외 주문은 ET 기준으로 장시간 판단 (KST 요일이 아닌 ET 요일)
   let canPlaceOverseasOrderNow = true;
   let overseasOrderBlockedReason = '';
   if (!settings.enableOverseasOrder) {
     canPlaceOverseasOrderNow = false;
     overseasOrderBlockedReason = 'enableOverseasOrder=false';
   } else if (settings.tradeOnlyMarketHours && !isOverseasOpen) {
+    overseasOrderBlockedReason = getOverseasBlockedReason() || '해외 장시간 아님 (ET 기준)';
     canPlaceOverseasOrderNow = false;
-    overseasOrderBlockedReason = '해외 장시간 아님';
   }
 
   return {

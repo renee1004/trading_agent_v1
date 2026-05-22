@@ -5,6 +5,7 @@
 import { db } from './db';
 import { runAgentCycle, startAgent, stopAgent, getAgentStatus, addLog as addAgentLog } from './trading-agent';
 import { getEffectiveTradingSettings } from './effective-settings';
+import { isOverseasMarketOpen, getOverseasMarketInfo, OverseasMarketInfo } from './market-hours';
 
 // 스케줄러 설정
 export interface SchedulerConfig {
@@ -154,46 +155,8 @@ function isKoreanHoliday(date: Date): boolean {
   return false;
 }
 
-/**
- * 미국 공휴일 체크 (해외주식 휴장)
- * NYSE/NASDAQ 휴장일
- */
-function isUSHoliday(date: Date): boolean {
-  const year = date.getFullYear();
-  const month = date.getMonth() + 1;
-  const day = date.getDate();
-  const dayOfWeek = date.getDay(); // KST 기준이지만 대략적 체크
-
-  // 고정 미국 공휴일
-  if (month === 1 && day === 1) return true;   // New Year's Day
-  if (month === 6 && day === 19) return true;   // Juneteenth
-  if (month === 7 && day === 4) return true;    // Independence Day
-  if (month === 11 && day === 11) return true;  // Veterans Day
-  if (month === 12 && day === 25) return true;  // Christmas
-
-  // 월요일 공휴일 (3rd Monday of January - MLK Day)
-  if (month === 1 && dayOfWeek === 1 && Math.ceil(day / 7) === 3) return true;
-  // 3rd Monday of February - Presidents' Day
-  if (month === 2 && dayOfWeek === 1 && Math.ceil(day / 7) === 3) return true;
-  // Last Monday of May - Memorial Day
-  if (month === 5 && dayOfWeek === 1 && day + 7 > 31) return true;
-  // 1st Monday of September - Labor Day
-  if (month === 9 && dayOfWeek === 1 && day <= 7) return true;
-  // 4th Thursday of November - Thanksgiving
-  if (month === 11 && dayOfWeek === 4 && Math.ceil(day / 7) === 4) return true;
-
-  // Good Friday (부활절 금요일) - 간이 계산
-  // 2025: 4/18, 2026: 4/3, 2027: 3/26
-  const goodFridays: Record<number, string> = {
-    2025: '2025-04-18',
-    2026: '2026-04-03',
-    2027: '2027-03-26',
-  };
-  const ymd = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-  if (goodFridays[year] === ymd) return true;
-
-  return false;
-}
+// 미국 공휴일 체크는 market-hours.ts의 isUSHolidayET()로 이동
+// ET 날짜 기준으로 판단하므로 KST 날짜로 판단하던 기존 로직은 제거
 
 /**
  * 국내 주식 거래세션 정보
@@ -334,27 +297,13 @@ export function isMarketHours(market: 'DOMESTIC' | 'OVERSEAS' | 'ALL'): boolean 
   }
 
   if (market === 'OVERSEAS' || market === 'ALL') {
-    // 미국 공휴일 체크 (KST 날짜 기준, ±1일 보정 필요하지만 대략적 체크)
-    if (isUSHoliday(kstDate)) {
-      // KST 기준으로 전일/익일이 실제 미국 날짜일 수 있으나,
-      // 근사치로 충분함 (정확한 체크는 API 호출 필요)
-      return false;
-    }
-
-    const [openH, openM] = schedulerState.config.overseasMarketOpen.split(':').map(Number);
-    const [closeH, closeM] = schedulerState.config.overseasMarketClose.split(':').map(Number);
-    const openMinutes = openH * 60 + openM;
-    const closeMinutes = closeH * 60 + closeM;
-
-    // 자정을 넘나드는 경우 (예: 23:30 ~ 06:00)
-    if (openMinutes > closeMinutes) {
-      if (currentMinutes >= openMinutes || currentMinutes <= closeMinutes) {
-        return true;
-      }
-    } else {
-      if (currentMinutes >= openMinutes && currentMinutes <= closeMinutes) {
-        return true;
-      }
+    // 해외(미국) 장시간은 ET 기준으로 판단
+    // KST 요일/시간이 아닌 ET 요일/시간으로 정확히 판단
+    // 서머타임 자동 반영, 미국 공휴일도 ET 날짜 기준
+    //
+    // 예: KST 토요일 00:27 = ET 금요일 11:27 → 해외장 OPEN
+    if (isOverseasMarketOpen()) {
+      return true;
     }
   }
 
@@ -665,6 +614,7 @@ export async function getSchedulerStatus(): Promise<{
   totalTrades: number;
   currentKST: string;
   domesticSession: DomesticSessionInfo;
+  overseasMarketInfo: OverseasMarketInfo;
 }> {
   // DB에서 최신 설정 로드
   const dbConfig = await db.agentConfig.findFirst();
@@ -682,6 +632,9 @@ export async function getSchedulerStatus(): Promise<{
   // 현재 국내 거래세션 정보
   const domesticSession = getDomesticSession();
 
+  // 해외(미국) 장시간 정보 (ET 기준, 서머타임 자동 반영)
+  const overseasMarketInfo = getOverseasMarketInfo();
+
   return {
     isSchedulerRunning: schedulerState.isSchedulerRunning,
     schedulerMode: dbConfig?.schedulerMode ?? 'SERVER',
@@ -693,12 +646,13 @@ export async function getSchedulerStatus(): Promise<{
     nextCycleAt,
     isMarketOpen: {
       domestic: isMarketHours('DOMESTIC'),
-      overseas: isMarketHours('OVERSEAS'),
+      overseas: isOverseasMarketOpen(),
     },
     totalCycles: dbConfig?.totalCycles ?? 0,
     totalTrades: dbConfig?.totalTrades ?? 0,
     currentKST,
     domesticSession,
+    overseasMarketInfo,
   };
 }
 
