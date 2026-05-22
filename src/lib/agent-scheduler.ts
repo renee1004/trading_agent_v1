@@ -4,6 +4,7 @@
 
 import { db } from './db';
 import { runAgentCycle, startAgent, stopAgent, getAgentStatus, addLog as addAgentLog } from './trading-agent';
+import { getEffectiveTradingSettings } from './effective-settings';
 
 // 스케줄러 설정
 export interface SchedulerConfig {
@@ -362,6 +363,8 @@ export function isMarketHours(market: 'DOMESTIC' | 'OVERSEAS' | 'ALL'): boolean 
 
 /**
  * DB에서 스케줄러 설정 로드
+ * AppSetting(trading_settings)의 cycleIntervalMs/tradeOnlyMarketHours도 반영
+ * 우선순위: AppSetting(trading_settings) > AgentConfig > 기본값
  */
 export async function loadSchedulerConfig(): Promise<SchedulerConfig> {
   try {
@@ -377,8 +380,24 @@ export async function loadSchedulerConfig(): Promise<SchedulerConfig> {
       };
     }
   } catch (error) {
-    console.error('[Scheduler] 설정 로드 실패:', error);
+    console.error('[Scheduler] AgentConfig 로드 실패:', error);
   }
+
+  // AppSetting(trading_settings)에서 cycleIntervalMs/tradeOnlyMarketHours 덮어쓰기
+  // 이것이 실제 사용자가 대시보드에서 저장한 설정이므로 최우선
+  try {
+    const { settings: effectiveSettings } = await getEffectiveTradingSettings();
+    if (effectiveSettings.cycleIntervalMs && effectiveSettings.cycleIntervalMs >= 10000) {
+      schedulerState.config.cycleIntervalMs = effectiveSettings.cycleIntervalMs;
+    }
+    // tradeOnlyMarketHours는 명시적으로 설정된 경우에만 덮어쓰기
+    schedulerState.config.tradeOnlyMarketHours = effectiveSettings.tradeOnlyMarketHours;
+
+    console.log(`[Scheduler] AppSetting 반영: cycleMs=${schedulerState.config.cycleIntervalMs}, marketHoursOnly=${schedulerState.config.tradeOnlyMarketHours}`);
+  } catch (error) {
+    console.warn('[Scheduler] AppSetting 로드 실패, AgentConfig/기본값 사용:', error instanceof Error ? error.message : 'Unknown');
+  }
+
   return { ...schedulerState.config };
 }
 

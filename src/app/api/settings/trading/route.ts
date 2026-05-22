@@ -2,11 +2,15 @@
 // 서버 DB를 진실의 원천으로 사용
 // 우선순위: DB 저장값 > 환경변수 > 안전 기본값
 // 위험 옵션(ENABLE_OVERSEAS_ORDER, ALLOW_AFTER_HOURS_TRADING)은 명시적 true가 아니면 false
+//
+// GET/POST 모두 getEffectiveTradingSettings() 공통 함수를 사용하여
+// 실제 에이전트 실행 설정과 100% 일치 보장
 
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { getEffectiveTradingSettings, EffectiveTradingSettings } from '@/lib/effective-settings';
 
-// 안전 기본값
+// 안전 기본값 (effective-settings.ts와 동일)
 const DEFAULT_SETTINGS = {
   enableOverseasAnalysis: false,
   enableOverseasOrder: false,
@@ -35,68 +39,13 @@ const SETTINGS_DB_KEY = 'trading_settings';
 /**
  * GET /api/settings/trading
  * DB에서 마지막 저장된 trading settings 반환
- * 없으면 환경변수 > 안전 기본값
+ * getEffectiveTradingSettings() 공통 함수를 사용하여
+ * 에이전트 실행 설정과 동일한 결과 보장
  */
 export async function GET() {
   try {
-    let dbSettings: Record<string, unknown> | null = null;
-    let source: 'db' | 'env' | 'default' = 'default';
-
-    // 1순위: DB에서 조회
-    try {
-      const record = await db.appSetting.findUnique({
-        where: { key: SETTINGS_DB_KEY },
-      });
-      if (record?.value) {
-        dbSettings = record.value as Record<string, unknown>;
-        source = 'db';
-      }
-    } catch (dbError) {
-      console.warn('[Settings] DB 조회 실패, 환경변수/기본값 사용:', dbError instanceof Error ? dbError.message : 'Unknown');
-    }
-
-    // 2순위: 환경변수 오버라이드
-    const envOverrides: Partial<typeof DEFAULT_SETTINGS> = {};
-
-    // 해외 설정: 환경변수가 명시적 true면 반영
-    if (process.env.ENABLE_OVERSEAS_TRADING === 'true') {
-      envOverrides.enableOverseasAnalysis = true;
-    }
-    if (process.env.ENABLE_OVERSEAS_ANALYSIS === 'true') {
-      envOverrides.enableOverseasAnalysis = true;
-    }
-    if (process.env.ENABLE_OVERSEAS_ORDER === 'true') {
-      envOverrides.enableOverseasOrder = true;
-    }
-    if (process.env.ALLOW_AFTER_HOURS_TRADING === 'true') {
-      envOverrides.allowAfterHoursTrading = true;
-    }
-
-    // 위험 옵션은 명시적 true가 아니면 항상 false (DB에 true로 저장되어도)
-    // 환경변수가 이 값을 강제할 수 있음
-    const safetyOverrides: Partial<typeof DEFAULT_SETTINGS> = {};
-    // ENABLE_OVERSEAS_ORDER가 명시적으로 true가 아니면 false
-    if (process.env.ENABLE_OVERSEAS_ORDER !== 'true') {
-      safetyOverrides.enableOverseasOrder = false;
-    }
-    // ALLOW_AFTER_HOURS_TRADING이 명시적으로 true가 아니면 false
-    if (process.env.ALLOW_AFTER_HOURS_TRADING !== 'true') {
-      safetyOverrides.allowAfterHoursTrading = false;
-    }
-
-    // 3순위: 기본값
-    const settings = {
-      ...DEFAULT_SETTINGS,
-      ...(dbSettings || {}),
-      ...envOverrides,
-      // 위험 옵션 안전장치: 명시적 true가 아니면 항상 false
-      ...safetyOverrides,
-    };
-
-    // source 결정: DB 값이 있었으면 db, 환경변수 오버라이드가 있었으면 env
-    if (source !== 'db' && Object.keys(envOverrides).length > 0) {
-      source = 'env';
-    }
+    // 공통 함수 사용: DB > 환경변수 > 안전 기본값
+    const { settings, source, sources } = await getEffectiveTradingSettings();
 
     // DATABASE_URL 확인 로그
     const dbUrlSet = !!process.env.DATABASE_URL;
@@ -106,9 +55,9 @@ export async function GET() {
       success: true,
       data: settings,
       source,
+      sources,
       meta: {
         dbUrlAvailable: dbUrlSet,
-        savedAt: dbSettings ? undefined : undefined,
       },
     });
   } catch (error) {
@@ -169,20 +118,13 @@ export async function POST(request: NextRequest) {
       // DB 저장 실패해도 응답은 반환 (인메모리로 동작)
     }
 
-    // 환경변수 안전 오버라이드 재적용
-    if (process.env.ENABLE_OVERSEAS_ORDER !== 'true') {
-      validated.enableOverseasOrder = false;
-    }
-    if (process.env.ALLOW_AFTER_HOURS_TRADING !== 'true') {
-      validated.allowAfterHoursTrading = false;
-    }
+    // 저장 후 getEffectiveTradingSettings()로 최종 결과 재계산
+    // (안전 오버라이드 등이 정확히 반영되도록)
+    const { settings: effectiveResult } = await getEffectiveTradingSettings();
 
     return NextResponse.json({
       success: true,
-      data: {
-        ...DEFAULT_SETTINGS,
-        ...validated,
-      },
+      data: effectiveResult,
       source: 'db',
       message: '설정이 저장되었습니다.',
     });

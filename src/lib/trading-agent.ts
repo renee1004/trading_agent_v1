@@ -6,7 +6,6 @@ import { db } from './db';
 import { KisApiClient } from './kis-api';
 import { TradingEngine } from './trading-engine';
 import { RiskManager } from './risk-manager';
-import { getMarketRiskConfig } from './market-defaults';
 import { scanTargetStocks } from './market-scanner';
 import { aiAnalyzer } from './ai-analyzer';
 import { 
@@ -16,25 +15,12 @@ import {
 } from './types';
 import { getDomesticSession, getKSTNow, DomesticSession } from './agent-scheduler';
 import { getOrCreateKisConfigFromEnv } from './kis-config-loader';
-
-// 해외주식 분석/매매 활성화 여부
-// ENABLE_OVERSEAS_TRADING: 레거시 (true이면 analysis도 활성화)
-// ENABLE_OVERSEAS_ANALYSIS: 해외 캔들 조회/전략 분석/신호 생성 허용
-// ENABLE_OVERSEAS_ORDER: 해외 실제 주문 실행 (명시적으로 true일 때만)
-const ENABLE_OVERSEAS_TRADING = process.env.ENABLE_OVERSEAS_TRADING === 'true';
-const ENABLE_OVERSEAS_ANALYSIS = process.env.ENABLE_OVERSEAS_ANALYSIS === 'true' || ENABLE_OVERSEAS_TRADING;
-const ENABLE_OVERSEAS_ORDER = process.env.ENABLE_OVERSEAS_ORDER === 'true';
-
-/**
- * 현재 해외 분석/주문 설정 반환
- * DB 설정이 있으면 DB값, 없으면 환경변수, 없으면 기본값
- */
-export function getOverseasSettings(): { enableAnalysis: boolean; enableOrder: boolean } {
-  return {
-    enableAnalysis: ENABLE_OVERSEAS_ANALYSIS,
-    enableOrder: ENABLE_OVERSEAS_ORDER,
-  };
-}
+import {
+  getEffectiveTradingSettings,
+  buildRiskConfigFromSettings,
+  formatSettingsSummary,
+  EffectiveTradingSettings,
+} from './effective-settings';
 
 // 에이전트 로그 타입
 export interface AgentLog {
@@ -275,11 +261,13 @@ async function fetchPositions(
  * 규칙:
  * - BUY: 정규장 09:00~15:10만 허용
  * - SELL/RISK_EXIT: 정규장 09:00~15:20만 허용
- * - PREMARKET_CLOSE, OPENING_CALL_AUCTION, CLOSING_CALL_AUCTION,
- *   POSTMARKET_CLOSE, AFTERHOURS_SINGLE: 기본 차단
- * - 시간외 주문은 ALLOW_AFTER_HOURS_TRADING=true 환경변수 설정 시에만 허용
+ * - 시간외: settings.allowAfterHoursTrading이 true일 때만 허용
+ *   (DB 저장 설정 > 환경변수 > 기본값 false)
  */
-function getDomesticOrderPolicy(signal: TradingSignal): { allowed: boolean; reason: string; session: DomesticSession } {
+function getDomesticOrderPolicy(
+  signal: TradingSignal,
+  allowAfterHoursTrading: boolean
+): { allowed: boolean; reason: string; session: DomesticSession } {
   const sessionInfo = getDomesticSession();
   const { session } = sessionInfo;
 
@@ -313,14 +301,14 @@ function getDomesticOrderPolicy(signal: TradingSignal): { allowed: boolean; reas
     }
   }
 
-  // 시간외 세션: 기본 차단, ALLOW_AFTER_HOURS_TRADING=true인 경우만 허용
+  // 시간외 세션: 기본 차단, settings.allowAfterHoursTrading이 true인 경우만 허용
   const afterHoursSessions: DomesticSession[] = [
     'PREMARKET_CLOSE', 'OPENING_CALL_AUCTION', 'CLOSING_CALL_AUCTION',
     'POSTMARKET_CLOSE', 'AFTERHOURS_SINGLE',
   ];
   if (afterHoursSessions.includes(session)) {
-    if (process.env.ALLOW_AFTER_HOURS_TRADING === 'true') {
-      return { allowed: true, reason: `시간외 거래 허용 (${sessionInfo.label}, ALLOW_AFTER_HOURS_TRADING=true)`, session };
+    if (allowAfterHoursTrading) {
+      return { allowed: true, reason: `시간외 거래 허용 (${sessionInfo.label}, allowAfterHoursTrading=true)`, session };
     }
     return { allowed: false, reason: `시간외 거래 차단 (${sessionInfo.label})`, session };
   }
@@ -340,19 +328,19 @@ async function executeOrder(
   kisClient: KisApiClient | null,
   signal: TradingSignal,
   market: MarketType,
+  settings: EffectiveTradingSettings,
   exchangeCode?: string,
   quantity: number = 1
 ): Promise<{ success: boolean; orderNo: string; message: string }> {
-  // 해외 주문: 안전장치 체크
+  // 해외 주문: 안전장치 체크 (DB 저장 설정 기반)
   if (market === 'OVERSEAS') {
-    const os = getOverseasSettings();
-    if (!os.enableOrder) {
-      addLog('RISK', market, `해외 주문 차단: ENABLE_OVERSEAS_ORDER=false`, {
+    if (!settings.enableOverseasOrder) {
+      addLog('RISK', market, `해외 주문 차단: enableOverseasOrder=false`, {
         stockCode: signal.stockCode,
         signalType: signal.signalType,
         strategy: signal.strategy,
       });
-      return { success: false, orderNo: '', message: '해외 주문 차단: ENABLE_OVERSEAS_ORDER=false' };
+      return { success: false, orderNo: '', message: '해외 주문 차단: enableOverseasOrder=false' };
     }
     // 거래소 코드 유효성
     const validExchanges = ['NAS', 'NYS', 'AMS', 'TKS', 'HKS', 'SHS', 'SZS'];
@@ -374,9 +362,9 @@ async function executeOrder(
     }
   }
 
-  // 국내 주문: 거래세션 정책 체크 (KIS placeOrder 호출 전)
+  // 국내 주문: 거래세션 정책 체크 (DB 저장 설정 기반)
   if (market === 'DOMESTIC') {
-    const policy = getDomesticOrderPolicy(signal);
+    const policy = getDomesticOrderPolicy(signal, settings.allowAfterHoursTrading);
     if (!policy.allowed) {
       addLog('RISK', market, `${signal.stockName} 주문 차단: ${policy.reason}`, {
         stockCode: signal.stockCode,
@@ -530,11 +518,12 @@ async function executeOrder(
  */
 async function monitorPositions(
   kisClient: KisApiClient | null,
-  market: MarketType
+  market: MarketType,
+  settings: EffectiveTradingSettings
 ): Promise<number> {
   let exitsExecuted = 0;
 
-  const riskConfig = getMarketRiskConfig(market);
+  const riskConfig = buildRiskConfigFromSettings(settings, market);
   const riskManager = new RiskManager(riskConfig, market);
 
   const { positions } = await fetchPositions(kisClient, market);
@@ -573,6 +562,7 @@ async function monitorPositions(
           kisClient,
           sellSignal,
           market,
+          settings,
           position.exchangeCode,
           position.quantity
         );
@@ -760,6 +750,10 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
 
   addLog('INFO', 'DOMESTIC', '에이전트 사이클 시작');
 
+  // 0. DB 저장 설정 로드 (DB > 환경변수 > 안전 기본값)
+  const { settings: effectiveSettings, source: settingsSource } = await getEffectiveTradingSettings();
+  addLog('INFO', 'DOMESTIC', `실행 설정 로드 완료 (source=${settingsSource}): ${formatSettingsSummary(effectiveSettings)}`);
+
   // 1. KIS 설정 로드
   const kisConfig = await loadKisConfig();
   let kisClient: KisApiClient | null = null;
@@ -798,9 +792,9 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
   const { domestic: domesticStocks, overseas: overseasStocks } = await loadTargetStocks(kisClient);
   addLog('INFO', 'DOMESTIC', `분석 대상: 국내 ${domesticStocks.length}개, 해외 ${overseasStocks.length}개`);
 
-  // 3. 리스크 매니저 초기화
-  const domesticRisk = new RiskManager(getMarketRiskConfig('DOMESTIC'), 'DOMESTIC');
-  const overseasRisk = new RiskManager(getMarketRiskConfig('OVERSEAS'), 'OVERSEAS');
+  // 3. 리스크 매니저 초기화 (DB 저장 리스크 설정 적용)
+  const domesticRisk = new RiskManager(buildRiskConfigFromSettings(effectiveSettings, 'DOMESTIC'), 'DOMESTIC');
+  const overseasRisk = new RiskManager(buildRiskConfigFromSettings(effectiveSettings, 'OVERSEAS'), 'OVERSEAS');
 
   // 4. 현재 포지션 조회
   const domesticPositions = await fetchPositions(kisClient, 'DOMESTIC');
@@ -890,7 +884,7 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
           );
 
           // 주문 실행
-          const result = await executeOrder(kisClient, { ...finalSignal, price: finalSignal.price }, 'DOMESTIC', undefined, quantity);
+          const result = await executeOrder(kisClient, { ...finalSignal, price: finalSignal.price }, 'DOMESTIC', effectiveSettings, undefined, quantity);
 
           if (result.success) {
             ordersPlaced++;
@@ -926,11 +920,10 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
   });
 
   // ========================================
-  // 해외주식 분석 & 매매
+  // 해외주식 분석 & 매매 (DB 저장 설정 기반)
   // ========================================
-  const overseasSettings = getOverseasSettings();
-  if (overseasSettings.enableAnalysis) {
-    addLog('INFO', 'OVERSEAS', `해외주식 분석 시작 (주문=${overseasSettings.enableOrder ? '허용' : '차단'})`);
+  if (effectiveSettings.enableOverseasAnalysis) {
+    addLog('INFO', 'OVERSEAS', `해외주식 분석 시작 (주문=${effectiveSettings.enableOverseasOrder ? '허용' : '차단'})`);
 
     const overseasPositions = await fetchPositions(kisClient, 'OVERSEAS');
 
@@ -1003,10 +996,10 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
           );
 
           if (riskCheck.allowed) {
-            // 해외 주문 차단 확인
-            if (!overseasSettings.enableOrder) {
+            // 해외 주문 차단 확인 (DB 저장 설정 기반)
+            if (!effectiveSettings.enableOverseasOrder) {
               addLog('RISK', 'OVERSEAS',
-                `해외 주문 차단: ENABLE_OVERSEAS_ORDER=false - ${stock.name} ${finalSignal.signalType} 신호 생성만 수행`,
+                `해외 주문 차단: enableOverseasOrder=false - ${stock.name} ${finalSignal.signalType} 신호 생성만 수행`,
                 { stockCode: stock.code, signalType: finalSignal.signalType, price: finalSignal.price }
               );
               continue;
@@ -1016,7 +1009,7 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
               overseasPositions.accountBalance, finalSignal.price, finalSignal.confidence
             );
 
-            const result = await executeOrder(kisClient, { ...finalSignal, price: finalSignal.price }, 'OVERSEAS', stock.exchange, quantity);
+            const result = await executeOrder(kisClient, { ...finalSignal, price: finalSignal.price }, 'OVERSEAS', effectiveSettings, stock.exchange, quantity);
 
             if (result.success) {
               ordersPlaced++;
@@ -1050,7 +1043,7 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
       overseasFailed,
     });
   } else {
-    addLog('INFO', 'OVERSEAS', '해외주식 분석 건너뜀 (ENABLE_OVERSEAS_ANALYSIS=false)');
+    addLog('INFO', 'OVERSEAS', '해외주식 분석 건너뜀 (enableOverseasAnalysis=false)');
   }
 
   // ========================================
@@ -1059,7 +1052,7 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
   if (kisClient) {
     addLog('INFO', 'DOMESTIC', '포지션 동기화 시작 (잔고 기준)');
     await reconcilePositions(kisClient, 'DOMESTIC');
-    if (overseasSettings.enableAnalysis) {
+    if (effectiveSettings.enableOverseasAnalysis) {
       await reconcilePositions(kisClient, 'OVERSEAS');
     }
   }
@@ -1069,10 +1062,10 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
   // ========================================
   addLog('INFO', 'DOMESTIC', '포지션 모니터링 시작');
   
-  const domesticExits = await monitorPositions(kisClient, 'DOMESTIC');
-  const overseasExits = overseasSettings.enableAnalysis ? await monitorPositions(kisClient, 'OVERSEAS') : 0;
+  const domesticExits = await monitorPositions(kisClient, 'DOMESTIC', effectiveSettings);
+  const overseasExits = effectiveSettings.enableOverseasAnalysis ? await monitorPositions(kisClient, 'OVERSEAS', effectiveSettings) : 0;
   exitsExecuted = domesticExits + overseasExits;
-  positionsMonitored = domesticPositions.positions.length + (overseasSettings.enableAnalysis ? (await fetchPositions(kisClient, 'OVERSEAS')).positions.length : 0);
+  positionsMonitored = domesticPositions.positions.length + (effectiveSettings.enableOverseasAnalysis ? (await fetchPositions(kisClient, 'OVERSEAS')).positions.length : 0);
 
   // ========================================
   // 세션 업데이트

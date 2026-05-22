@@ -1,9 +1,12 @@
 // 에이전트 상태 조회 라우트
 // 서버 스케줄러 상태 + 에이전트 상태 + 배포 버전 정보 통합
+// effectiveSettings는 getEffectiveTradingSettings() 공통 함수를 사용하여
+// 실제 에이전트 실행 설정과 100% 일치 보장
 
 import { NextResponse } from 'next/server';
-import { getAgentStatus, getAgentLogs, getOverseasSettings } from '@/lib/trading-agent';
+import { getAgentStatus, getAgentLogs } from '@/lib/trading-agent';
 import { getSchedulerStatus } from '@/lib/agent-scheduler';
+import { getEffectiveTradingSettings, formatSettingsSummary } from '@/lib/effective-settings';
 import { db } from '@/lib/db';
 
 export async function GET() {
@@ -25,35 +28,8 @@ export async function GET() {
       nodeEnv: process.env.NODE_ENV || 'development',
     };
 
-    // 현재 적용 중인 설정 (DB > 환경변수 > 기본값)
-    const overseasSettings = getOverseasSettings();
-    let settingsSource: 'db' | 'env' | 'default' = 'env';
-    let dbSettings: Record<string, unknown> | null = null;
-    try {
-      const record = await db.appSetting.findUnique({
-        where: { key: 'trading_settings' },
-      });
-      if (record?.value) {
-        dbSettings = record.value as Record<string, unknown>;
-        settingsSource = 'db';
-      }
-    } catch {}
-
-    const effectiveSettings = {
-      enableOverseasAnalysis: overseasSettings.enableAnalysis,
-      enableOverseasOrder: overseasSettings.enableOrder,
-      allowAfterHoursTrading: process.env.ALLOW_AFTER_HOURS_TRADING === 'true',
-      cycleIntervalMs: schedulerStatus.config.cycleIntervalMs,
-      tradeOnlyMarketHours: schedulerStatus.config.tradeOnlyMarketHours,
-      riskSummary: {
-        maxPositionSize: dbSettings?.maxPositionSize ?? 0.1,
-        maxDailyLoss: dbSettings?.maxDailyLoss ?? 0.03,
-        maxOpenPositions: dbSettings?.maxOpenPositions ?? 5,
-        stopLossPercent: dbSettings?.stopLossPercent ?? 0.05,
-        takeProfitPercent: dbSettings?.takeProfitPercent ?? 0.15,
-        trailingStopPercent: dbSettings?.trailingStopPercent ?? 0.03,
-      },
-    };
+    // 실제 실행 설정 (에이전트와 동일한 getEffectiveTradingSettings 사용)
+    const { settings: effectiveSettings, source: settingsSource, sources: settingsSources } = await getEffectiveTradingSettings();
 
     // DB에서 영속 로그 조회 (최근 30개)
     let dbLogs: Array<{
@@ -146,9 +122,26 @@ export async function GET() {
         // 배포 버전 정보
         version: versionInfo,
 
-        // 현재 적용 중인 설정
-        effectiveSettings,
+        // 실제 실행 설정 (에이전트와 100% 동일한 소스)
+        effectiveSettings: {
+          enableOverseasAnalysis: effectiveSettings.enableOverseasAnalysis,
+          enableOverseasOrder: effectiveSettings.enableOverseasOrder,
+          allowAfterHoursTrading: effectiveSettings.allowAfterHoursTrading,
+          cycleIntervalMs: effectiveSettings.cycleIntervalMs,
+          tradeOnlyMarketHours: effectiveSettings.tradeOnlyMarketHours,
+          riskSummary: {
+            maxPositionSize: effectiveSettings.maxPositionSize,
+            maxDailyLoss: effectiveSettings.maxDailyLoss,
+            maxTotalLoss: effectiveSettings.maxTotalLoss,
+            maxOpenPositions: effectiveSettings.maxOpenPositions,
+            stopLossPercent: effectiveSettings.stopLossPercent,
+            takeProfitPercent: effectiveSettings.takeProfitPercent,
+            trailingStopPercent: effectiveSettings.trailingStopPercent,
+          },
+          selectedStrategy: effectiveSettings.selectedStrategy,
+        },
         settingsSource,
+        settingsSources,
 
         // 로그
         recentLogs: mergedLogs,
