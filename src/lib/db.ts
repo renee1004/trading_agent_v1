@@ -305,149 +305,98 @@ async function initPrisma(): Promise<boolean> {
       // 테이블이 없으면 raw SQL로 직접 생성 (prisma db push가 동작하지 않는 환경 대비)
       console.log('[DB] Creating tables via raw SQL...');
       try {
-        await client.$executeRawUnsafe(`
-          CREATE TABLE IF NOT EXISTS "KisConfig" (
-            "id" TEXT NOT NULL PRIMARY KEY DEFAULT gen_random_uuid(),
-            "appKey" TEXT NOT NULL,
-            "appSecret" TEXT NOT NULL,
-            "accountNo" TEXT NOT NULL,
-            "isDemo" BOOLEAN NOT NULL DEFAULT true,
-            "accessToken" TEXT,
-            "tokenExpiresAt" TIMESTAMP(3),
-            "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
-          );
-          CREATE TABLE IF NOT EXISTS "AgentConfig" (
-            "id" TEXT NOT NULL PRIMARY KEY DEFAULT gen_random_uuid(),
-            "isRunning" BOOLEAN NOT NULL DEFAULT false,
-            "currentSessionId" TEXT,
-            "schedulerMode" TEXT NOT NULL DEFAULT 'SERVER',
-            "cycleIntervalMs" INTEGER NOT NULL DEFAULT 60000,
-            "tradeOnlyMarketHours" BOOLEAN NOT NULL DEFAULT true,
-            "domesticMarketOpen" TEXT NOT NULL DEFAULT '08:30',
-            "domesticMarketClose" TEXT NOT NULL DEFAULT '18:00',
-            "overseasMarketOpen" TEXT NOT NULL DEFAULT '23:30',
-            "overseasMarketClose" TEXT NOT NULL DEFAULT '06:00',
-            "totalCycles" INTEGER NOT NULL DEFAULT 0,
-            "totalTrades" INTEGER NOT NULL DEFAULT 0,
-            "dailyPnL" DOUBLE PRECISION NOT NULL DEFAULT 0,
-            "lastCycleAt" TIMESTAMP(3),
-            "lastCycleResult" TEXT,
-            "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
-          );
-          CREATE TABLE IF NOT EXISTS "TradeHistory" (
-            "id" TEXT NOT NULL PRIMARY KEY DEFAULT gen_random_uuid(),
-            "stockCode" TEXT NOT NULL,
-            "stockName" TEXT NOT NULL,
-            "tradeType" TEXT NOT NULL,
-            "quantity" INTEGER NOT NULL,
-            "price" DOUBLE PRECISION NOT NULL,
-            "totalAmount" DOUBLE PRECISION NOT NULL,
-            "strategy" TEXT,
-            "profitLoss" DOUBLE PRECISION,
-            "profitRate" DOUBLE PRECISION,
-            "status" TEXT NOT NULL DEFAULT 'PENDING',
-            "orderNo" TEXT,
-            "signalReason" TEXT,
-            "market" TEXT NOT NULL DEFAULT 'DOMESTIC',
-            "exchangeCode" TEXT,
-            "currency" TEXT NOT NULL DEFAULT 'KRW',
-            "tradedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        // 각 테이블을 개별적으로 생성 (다중 문장 실행 지원 안 함)
+        // gen_random_uuid() 대신 Prisma가 앱 레벨에서 cuid() 생성
+        const createStatements = [
+          `CREATE TABLE IF NOT EXISTS "KisConfig" (
+            "id" TEXT NOT NULL PRIMARY KEY,
+            "appKey" TEXT NOT NULL, "appSecret" TEXT NOT NULL, "accountNo" TEXT NOT NULL,
+            "isDemo" BOOLEAN NOT NULL DEFAULT true, "accessToken" TEXT, "tokenExpiresAt" TIMESTAMP(3),
+            "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+          )`,
+          `CREATE TABLE IF NOT EXISTS "AgentConfig" (
+            "id" TEXT NOT NULL PRIMARY KEY,
+            "isRunning" BOOLEAN NOT NULL DEFAULT false, "currentSessionId" TEXT, "schedulerMode" TEXT NOT NULL DEFAULT 'SERVER',
+            "cycleIntervalMs" INTEGER NOT NULL DEFAULT 60000, "tradeOnlyMarketHours" BOOLEAN NOT NULL DEFAULT true,
+            "domesticMarketOpen" TEXT NOT NULL DEFAULT '08:30', "domesticMarketClose" TEXT NOT NULL DEFAULT '18:00',
+            "overseasMarketOpen" TEXT NOT NULL DEFAULT '23:30', "overseasMarketClose" TEXT NOT NULL DEFAULT '06:00',
+            "totalCycles" INTEGER NOT NULL DEFAULT 0, "totalTrades" INTEGER NOT NULL DEFAULT 0,
+            "dailyPnL" DOUBLE PRECISION NOT NULL DEFAULT 0, "lastCycleAt" TIMESTAMP(3), "lastCycleResult" TEXT,
+            "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+          )`,
+          `CREATE TABLE IF NOT EXISTS "TradeHistory" (
+            "id" TEXT NOT NULL PRIMARY KEY,
+            "stockCode" TEXT NOT NULL, "stockName" TEXT NOT NULL, "tradeType" TEXT NOT NULL,
+            "quantity" INTEGER NOT NULL, "price" DOUBLE PRECISION NOT NULL, "totalAmount" DOUBLE PRECISION NOT NULL,
+            "strategy" TEXT, "profitLoss" DOUBLE PRECISION, "profitRate" DOUBLE PRECISION,
+            "status" TEXT NOT NULL DEFAULT 'PENDING', "orderNo" TEXT, "signalReason" TEXT,
+            "market" TEXT NOT NULL DEFAULT 'DOMESTIC', "exchangeCode" TEXT, "currency" TEXT NOT NULL DEFAULT 'KRW',
+            "tradedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+          )`,
+          `CREATE TABLE IF NOT EXISTS "Position" (
+            "id" TEXT NOT NULL PRIMARY KEY,
+            "stockCode" TEXT NOT NULL, "stockName" TEXT NOT NULL, "quantity" INTEGER NOT NULL,
+            "avgPrice" DOUBLE PRECISION NOT NULL, "currentPrice" DOUBLE PRECISION, "profitLoss" DOUBLE PRECISION, "profitRate" DOUBLE PRECISION,
+            "strategy" TEXT, "market" TEXT NOT NULL DEFAULT 'DOMESTIC', "exchangeCode" TEXT, "currency" TEXT NOT NULL DEFAULT 'KRW',
+            "openedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+          )`,
+          `CREATE TABLE IF NOT EXISTS "TradingSession" (
+            "id" TEXT NOT NULL PRIMARY KEY,
+            "status" TEXT NOT NULL DEFAULT 'STOPPED', "strategyId" TEXT,
+            "startedAt" TIMESTAMP(3), "stoppedAt" TIMESTAMP(3),
+            "totalProfit" DOUBLE PRECISION NOT NULL DEFAULT 0, "totalTrades" INTEGER NOT NULL DEFAULT 0,
+            "winTrades" INTEGER NOT NULL DEFAULT 0, "lossTrades" INTEGER NOT NULL DEFAULT 0, "maxDrawdown" DOUBLE PRECISION NOT NULL DEFAULT 0,
+            "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+          )`,
+          `CREATE TABLE IF NOT EXISTS "WatchlistItem" (
+            "id" TEXT NOT NULL PRIMARY KEY,
+            "stockCode" TEXT NOT NULL, "stockName" TEXT NOT NULL, "sector" TEXT,
+            "market" TEXT NOT NULL DEFAULT 'DOMESTIC', "exchangeCode" TEXT, "isActive" BOOLEAN NOT NULL DEFAULT true,
             "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
-          );
-          CREATE TABLE IF NOT EXISTS "Position" (
-            "id" TEXT NOT NULL PRIMARY KEY DEFAULT gen_random_uuid(),
-            "stockCode" TEXT NOT NULL,
-            "stockName" TEXT NOT NULL,
-            "quantity" INTEGER NOT NULL,
-            "avgPrice" DOUBLE PRECISION NOT NULL,
-            "currentPrice" DOUBLE PRECISION,
-            "profitLoss" DOUBLE PRECISION,
-            "profitRate" DOUBLE PRECISION,
-            "strategy" TEXT,
-            "market" TEXT NOT NULL DEFAULT 'DOMESTIC',
-            "exchangeCode" TEXT,
-            "currency" TEXT NOT NULL DEFAULT 'KRW',
-            "openedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
-          );
-          CREATE TABLE IF NOT EXISTS "TradingSession" (
-            "id" TEXT NOT NULL PRIMARY KEY DEFAULT gen_random_uuid(),
-            "status" TEXT NOT NULL DEFAULT 'STOPPED',
-            "strategyId" TEXT,
-            "startedAt" TIMESTAMP(3),
-            "stoppedAt" TIMESTAMP(3),
-            "totalProfit" DOUBLE PRECISION NOT NULL DEFAULT 0,
-            "totalTrades" INTEGER NOT NULL DEFAULT 0,
-            "winTrades" INTEGER NOT NULL DEFAULT 0,
-            "lossTrades" INTEGER NOT NULL DEFAULT 0,
-            "maxDrawdown" DOUBLE PRECISION NOT NULL DEFAULT 0,
-            "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
-          );
-          CREATE TABLE IF NOT EXISTS "WatchlistItem" (
-            "id" TEXT NOT NULL PRIMARY KEY DEFAULT gen_random_uuid(),
-            "stockCode" TEXT NOT NULL,
-            "stockName" TEXT NOT NULL,
-            "sector" TEXT,
-            "market" TEXT NOT NULL DEFAULT 'DOMESTIC',
-            "exchangeCode" TEXT,
-            "isActive" BOOLEAN NOT NULL DEFAULT true,
+          )`,
+          `CREATE TABLE IF NOT EXISTS "AgentLog" (
+            "id" TEXT NOT NULL PRIMARY KEY,
+            "type" TEXT NOT NULL, "market" TEXT NOT NULL, "message" TEXT NOT NULL, "details" TEXT, "sessionId" TEXT,
             "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
-          );
-          CREATE TABLE IF NOT EXISTS "AgentLog" (
-            "id" TEXT NOT NULL PRIMARY KEY DEFAULT gen_random_uuid(),
-            "type" TEXT NOT NULL,
-            "market" TEXT NOT NULL,
-            "message" TEXT NOT NULL,
-            "details" TEXT,
-            "sessionId" TEXT,
-            "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
-          );
-          CREATE TABLE IF NOT EXISTS "RiskConfig" (
-            "id" TEXT NOT NULL PRIMARY KEY DEFAULT gen_random_uuid(),
-            "maxPositionSize" DOUBLE PRECISION NOT NULL DEFAULT 0.1,
-            "maxDailyLoss" DOUBLE PRECISION NOT NULL DEFAULT 0.03,
-            "maxTotalLoss" DOUBLE PRECISION NOT NULL DEFAULT 0.1,
-            "maxOpenPositions" INTEGER NOT NULL DEFAULT 5,
-            "stopLossPercent" DOUBLE PRECISION NOT NULL DEFAULT 0.05,
-            "takeProfitPercent" DOUBLE PRECISION NOT NULL DEFAULT 0.15,
-            "trailingStopPercent" DOUBLE PRECISION NOT NULL DEFAULT 0.03,
-            "isActive" BOOLEAN NOT NULL DEFAULT true,
-            "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
-          );
-          CREATE TABLE IF NOT EXISTS "MarketData" (
-            "id" TEXT NOT NULL PRIMARY KEY DEFAULT gen_random_uuid(),
-            "stockCode" TEXT NOT NULL,
-            "date" TEXT NOT NULL,
-            "open" DOUBLE PRECISION NOT NULL,
-            "high" DOUBLE PRECISION NOT NULL,
-            "low" DOUBLE PRECISION NOT NULL,
-            "close" DOUBLE PRECISION NOT NULL,
-            "volume" INTEGER NOT NULL,
-            "market" TEXT NOT NULL DEFAULT 'DOMESTIC',
-            "exchangeCode" TEXT,
-            "currency" TEXT NOT NULL DEFAULT 'KRW',
-            "exchangeRate" DOUBLE PRECISION,
+          )`,
+          `CREATE TABLE IF NOT EXISTS "RiskConfig" (
+            "id" TEXT NOT NULL PRIMARY KEY,
+            "maxPositionSize" DOUBLE PRECISION NOT NULL DEFAULT 0.1, "maxDailyLoss" DOUBLE PRECISION NOT NULL DEFAULT 0.03,
+            "maxTotalLoss" DOUBLE PRECISION NOT NULL DEFAULT 0.1, "maxOpenPositions" INTEGER NOT NULL DEFAULT 5,
+            "stopLossPercent" DOUBLE PRECISION NOT NULL DEFAULT 0.05, "takeProfitPercent" DOUBLE PRECISION NOT NULL DEFAULT 0.15,
+            "trailingStopPercent" DOUBLE PRECISION NOT NULL DEFAULT 0.03, "isActive" BOOLEAN NOT NULL DEFAULT true,
+            "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+          )`,
+          `CREATE TABLE IF NOT EXISTS "MarketData" (
+            "id" TEXT NOT NULL PRIMARY KEY,
+            "stockCode" TEXT NOT NULL, "date" TEXT NOT NULL,
+            "open" DOUBLE PRECISION NOT NULL, "high" DOUBLE PRECISION NOT NULL, "low" DOUBLE PRECISION NOT NULL, "close" DOUBLE PRECISION NOT NULL,
+            "volume" INTEGER NOT NULL, "market" TEXT NOT NULL DEFAULT 'DOMESTIC', "exchangeCode" TEXT,
+            "currency" TEXT NOT NULL DEFAULT 'KRW', "exchangeRate" DOUBLE PRECISION,
             "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
             CONSTRAINT "MarketData_stockCode_date_key" UNIQUE ("stockCode", "date")
-          );
-          CREATE TABLE IF NOT EXISTS "TradingStrategy" (
-            "id" TEXT NOT NULL PRIMARY KEY DEFAULT gen_random_uuid(),
-            "name" TEXT NOT NULL,
-            "description" TEXT,
-            "type" TEXT NOT NULL,
-            "parameters" TEXT NOT NULL,
-            "isActive" BOOLEAN NOT NULL DEFAULT false,
-            "profitRate" DOUBLE PRECISION,
-            "winRate" DOUBLE PRECISION,
-            "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
-          );
-        `);
-        console.log('[DB] Tables created via raw SQL');
+          )`,
+          `CREATE TABLE IF NOT EXISTS "TradingStrategy" (
+            "id" TEXT NOT NULL PRIMARY KEY,
+            "name" TEXT NOT NULL, "description" TEXT, "type" TEXT NOT NULL, "parameters" TEXT NOT NULL,
+            "isActive" BOOLEAN NOT NULL DEFAULT false, "profitRate" DOUBLE PRECISION, "winRate" DOUBLE PRECISION,
+            "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+          )`,
+        ];
+
+        for (const stmt of createStatements) {
+          try {
+            await client.$executeRawUnsafe(stmt);
+          } catch (stmtError) {
+            // CREATE TABLE IF NOT EXISTS는 테이블이 이미 있으면 에러가 아니므로
+            // 다른 에러만 로깅
+            const errMsg = stmtError instanceof Error ? stmtError.message : String(stmtError);
+            if (!errMsg.includes('already exists')) {
+              console.warn(`[DB] SQL statement failed: ${errMsg.substring(0, 200)}`);
+            }
+          }
+        }
+        console.log('[DB] All CREATE TABLE statements executed');
 
         // 테이블 재확인
         const recheck = await client.$queryRaw`SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE' ORDER BY table_name` as any[];
