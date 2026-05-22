@@ -462,6 +462,12 @@ function restartSchedulerInterval(): void {
 /**
  * 스케줄러 사이클 실행 (서버 사이드)
  * 타임아웃: 최대 120초, 초과 시 에러 카운트 증가
+ *
+ * 분석/주문 정책:
+ * - 분석은 항상 실행 (autoAnalysisEnabled, runAnalysisOnlyDuringMarketHours는
+ *   runAgentCycle() 내부에서 판단)
+ * - 주문은 runAgentCycle() 내부에서 tradeOnlyMarketHours/autoDomesticOrderEnabled 등으로 차단
+ * - 스케줄러는 사이클 실행 자체를 막지 않음
  */
 async function executeSchedulerCycle(): Promise<void> {
   if (schedulerState.isCycleRunning) {
@@ -469,37 +475,11 @@ async function executeSchedulerCycle(): Promise<void> {
     return;
   }
 
-  // 장시간 체크 (모의투자 모드에서는 장시간 무관하게 항상 실행)
-  if (schedulerState.config.tradeOnlyMarketHours) {
-    // KIS 설정이 모의투자인지 확인
-    let isDemoMode = false;
-    try {
-      const kisConfig = await db.kisConfig.findFirst();
-      isDemoMode = kisConfig?.isDemo ?? false;
-    } catch (e) {}
-    
-    if (!isDemoMode) {
-      // 실전투자: 장시간에만 거래
-      const isDomesticOpen = isMarketHours('DOMESTIC');
-      const isOverseasOpen = isMarketHours('OVERSEAS');
-      const { hours, minutes, dayOfWeek } = getKSTNow();
-      const kstTimeStr = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
-      const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
-
-      if (!isDomesticOpen && !isOverseasOpen) {
-        console.log(`[Scheduler] 장시간 외, 사이클 스킵 (실전투자) - KST ${kstTimeStr} ${dayNames[dayOfWeek]}요일`);
-        return;
-      }
-    } else {
-      console.log('[Scheduler] 모의투자 모드: 장시간 무관하게 실행');
-    }
-  }
-
   schedulerState.isCycleRunning = true;
   schedulerState.lastCycleStartTime = new Date();
 
   try {
-    console.log('[Scheduler] 에이전트 사이클 실행 시작');
+    console.log('[Scheduler] 에이전트 사이클 실행 시작 (분석은 항상 실행, 주문은 설정에 따라 차단)');
 
     // 타임아웃 래퍼 (120초)
     const timeoutMs = 120000;
@@ -516,7 +496,10 @@ async function executeSchedulerCycle(): Promise<void> {
     // DB에 결과 저장 (비동기, 블로킹하지 않음)
     saveCycleResult(result).catch(() => {});
 
-    console.log(`[Scheduler] 사이클 완료: 분석 ${result.stocksAnalyzed}종목, 신호 ${result.signalsGenerated}개, 주문 ${result.ordersPlaced}건`);
+    const orderInfo = result.ordersPlaced > 0
+      ? `, 주문 ${result.ordersPlaced}건`
+      : ', 주문 차단(장외/설정)';
+    console.log(`[Scheduler] 사이클 완료: 분석 ${result.stocksAnalyzed}종목, 신호 ${result.signalsGenerated}개${orderInfo}`);
   } catch (error) {
     schedulerState.errorCount++;
     console.error(`[Scheduler] 사이클 실행 실패 (${schedulerState.errorCount}/${MAX_CONSECUTIVE_ERRORS}):`, error);
@@ -612,20 +595,9 @@ export async function startScheduler(): Promise<{ success: boolean; message: str
     schedulerState.startedAt = new Date();
     schedulerState.errorCount = 0;
 
-    // 첫 사이클은 비동기로 실행 (응답을 블로킹하지 않도록)
-    // 모의투자 모드에서는 장시간 무관하게 항상 첫 사이클 실행
-    let shouldRunFirstCycle = !schedulerState.config.tradeOnlyMarketHours || isMarketHours('ALL');
-    if (!shouldRunFirstCycle) {
-      try {
-        const kisConfig = await db.kisConfig.findFirst();
-        if (kisConfig?.isDemo) {
-          shouldRunFirstCycle = true; // 모의투자: 장시간 무관
-        }
-      } catch (e) {}
-    }
-    if (shouldRunFirstCycle) {
-      setTimeout(() => executeSchedulerCycle(), 2000); // 2초 후 비동기 실행
-    }
+    // 에이전트 시작 시 즉시 1회 분석 실행 (장외에도 분석은 실행)
+    // 주문은 runAgentCycle() 내부에서 설정에 따라 자동 차단됨
+    setTimeout(() => executeSchedulerCycle(), 2000); // 2초 후 비동기 실행
 
     console.log(`[Scheduler] 서버 스케줄러 시작 (주기: ${schedulerState.config.cycleIntervalMs / 1000}초)`);
     return { success: true, message: `서버 스케줄러가 시작되었습니다. (주기: ${schedulerState.config.cycleIntervalMs / 1000}초)` };

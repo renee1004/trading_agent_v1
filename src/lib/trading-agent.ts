@@ -19,7 +19,9 @@ import {
   getEffectiveTradingSettings,
   buildRiskConfigFromSettings,
   formatSettingsSummary,
+  computeRuntimeDecision,
   EffectiveTradingSettings,
+  RuntimeDecision,
 } from './effective-settings';
 
 // 에이전트 로그 타입
@@ -748,11 +750,43 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
   let overseasFailed = 0;
   const candleErrors: string[] = [];
 
-  addLog('INFO', 'DOMESTIC', '에이전트 사이클 시작');
+  addLog('INFO', 'DOMESTIC', '자동 분석 사이클 시작');
 
   // 0. DB 저장 설정 로드 (DB > 환경변수 > 안전 기본값)
   const { settings: effectiveSettings, source: settingsSource } = await getEffectiveTradingSettings();
+  const runtime = computeRuntimeDecision(effectiveSettings);
+
   addLog('INFO', 'DOMESTIC', `실행 설정 로드 완료 (source=${settingsSource}): ${formatSettingsSummary(effectiveSettings)}`);
+  addLog('INFO', 'DOMESTIC', `런타임 판단: 분석=${runtime.canRunAnalysisNow ? '허용' : '차단(' + runtime.analysisBlockedReason + ')'}, 국내주문=${runtime.canPlaceDomesticOrderNow ? '허용' : '차단(' + runtime.domesticOrderBlockedReason + ')'}, 해외주문=${runtime.canPlaceOverseasOrderNow ? '허용' : '차단(' + runtime.overseasOrderBlockedReason + ')'}`);
+
+  // autoAnalysisEnabled=false면 분석 자체를 건너뜀
+  if (!effectiveSettings.autoAnalysisEnabled) {
+    addLog('INFO', 'DOMESTIC', '자동 분석 비활성화 (autoAnalysisEnabled=false), 사이클 건너뜀');
+    const endTime = new Date();
+    return {
+      success: true, startTime, endTime,
+      stocksAnalyzed: 0, signalsGenerated: 0, ordersPlaced: 0,
+      positionsMonitored: 0, exitsExecuted: 0, logs: agentState.logs.slice(0, 10), errors: [],
+      domesticSuccess: 0, domesticFailed: 0, overseasSuccess: 0, overseasFailed: 0,
+      zeroAnalysisReason: 'autoAnalysisEnabled=false',
+    };
+  }
+
+  // runAnalysisOnlyDuringMarketHours=true + 장외면 분석 건너뜀
+  if (effectiveSettings.runAnalysisOnlyDuringMarketHours) {
+    const domesticOpen = getDomesticSession().session === 'REGULAR';
+    if (!domesticOpen) {
+      addLog('INFO', 'DOMESTIC', `분석 차단: runAnalysisOnlyDuringMarketHours=true + 장외`);
+      const endTime = new Date();
+      return {
+        success: true, startTime, endTime,
+        stocksAnalyzed: 0, signalsGenerated: 0, ordersPlaced: 0,
+        positionsMonitored: 0, exitsExecuted: 0, logs: agentState.logs.slice(0, 10), errors: [],
+        domesticSuccess: 0, domesticFailed: 0, overseasSuccess: 0, overseasFailed: 0,
+        zeroAnalysisReason: 'runAnalysisOnlyDuringMarketHours + 장외',
+      };
+    }
+  }
 
   // 1. KIS 설정 로드
   const kisConfig = await loadKisConfig();
@@ -878,6 +912,15 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
         );
 
         if (riskCheck.allowed) {
+          // 자동 국내 주문 허용 여부 체크
+          if (!effectiveSettings.autoDomesticOrderEnabled) {
+            addLog('RISK', 'DOMESTIC',
+              `국내 주문 차단: autoDomesticOrderEnabled=false - ${stock.name} ${finalSignal.signalType} 신호 생성만 수행`,
+              { stockCode: stock.code, signalType: finalSignal.signalType, price: finalSignal.price }
+            );
+            continue;
+          }
+
           // 포지션 사이즈 계산
           const quantity = domesticRisk.calculatePositionSize(
             domesticPositions.accountBalance, finalSignal.price, finalSignal.confidence
@@ -914,16 +957,17 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
     }
   }
 
-  addLog('INFO', 'DOMESTIC', `국내 분석 결과: 성공 ${domesticSuccess}종목, 실패 ${domesticFailed}종목`, {
+  addLog('INFO', 'DOMESTIC', `국내 분석 결과: 성공 ${domesticSuccess}종목, 실패 ${domesticFailed}종목, 주문=${runtime.canPlaceDomesticOrderNow ? '허용' : '차단(' + runtime.domesticOrderBlockedReason + ')'}`, {
     domesticSuccess,
     domesticFailed,
+    domesticOrderAllowed: runtime.canPlaceDomesticOrderNow,
   });
 
   // ========================================
   // 해외주식 분석 & 매매 (DB 저장 설정 기반)
   // ========================================
   if (effectiveSettings.enableOverseasAnalysis) {
-    addLog('INFO', 'OVERSEAS', `해외주식 분석 시작 (주문=${effectiveSettings.enableOverseasOrder ? '허용' : '차단'})`);
+    addLog('INFO', 'OVERSEAS', `해외주식 분석 시작 (주문=${runtime.canPlaceOverseasOrderNow ? '허용' : '차단(' + runtime.overseasOrderBlockedReason + ')'})`);
 
     const overseasPositions = await fetchPositions(kisClient, 'OVERSEAS');
 
@@ -1043,7 +1087,7 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
       overseasFailed,
     });
   } else {
-    addLog('INFO', 'OVERSEAS', '해외주식 분석 건너뜀 (enableOverseasAnalysis=false)');
+    addLog('INFO', 'OVERSEAS', '해외주식 분석 건너뜀 (enableOverseasAnalysis=false, 신호 생성만 수행 안 함)');
   }
 
   // ========================================

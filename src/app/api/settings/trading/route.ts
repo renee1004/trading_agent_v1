@@ -1,7 +1,8 @@
 // 트레이딩 설정 API
 // 서버 DB를 진실의 원천으로 사용
 // 우선순위: DB 저장값 > 환경변수 > 안전 기본값
-// 위험 옵션(ENABLE_OVERSEAS_ORDER, ALLOW_AFTER_HOURS_TRADING)은 명시적 true가 아니면 false
+// 위험 옵션(enableOverseasOrder, allowAfterHoursTrading, autoDomesticOrderEnabled)은
+// 명시적 true가 아니면 false
 //
 // GET/POST 모두 getEffectiveTradingSettings() 공통 함수를 사용하여
 // 실제 에이전트 실행 설정과 100% 일치 보장
@@ -11,12 +12,15 @@ import { db } from '@/lib/db';
 import { getEffectiveTradingSettings, EffectiveTradingSettings } from '@/lib/effective-settings';
 
 // 안전 기본값 (effective-settings.ts와 동일)
-const DEFAULT_SETTINGS = {
+const DEFAULT_SETTINGS: EffectiveTradingSettings = {
+  autoAnalysisEnabled: true,
+  runAnalysisOnlyDuringMarketHours: false,
+  autoDomesticOrderEnabled: true,
   enableOverseasAnalysis: false,
   enableOverseasOrder: false,
   allowAfterHoursTrading: false,
-  cycleIntervalMs: 60000,
   tradeOnlyMarketHours: true,
+  cycleIntervalMs: 60000,
   domesticMarketOpen: '09:00',
   domesticMarketClose: '15:30',
   overseasMarketOpen: '23:30',
@@ -85,6 +89,12 @@ export async function POST(request: NextRequest) {
     if (safetyChecked.allowAfterHoursTrading !== true) {
       safetyChecked.allowAfterHoursTrading = false;
     }
+    // 실전 계좌에서 autoDomesticOrderEnabled=true는 명시적 저장 필요
+    // 모의투자에서는 true 기본 허용
+    if (safetyChecked.autoDomesticOrderEnabled !== true && safetyChecked.autoDomesticOrderEnabled !== false) {
+      // 값이 없으면 기본값 유지 (DB에 저장되지 않음 → 기본값 true 적용)
+      delete safetyChecked.autoDomesticOrderEnabled;
+    }
 
     // 유효성 검증
     const validated: Record<string, unknown> = {};
@@ -119,7 +129,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 저장 후 getEffectiveTradingSettings()로 최종 결과 재계산
-    // (안전 오버라이드 등이 정확히 반영되도록)
+    // (안전 오버라이드, isDemo 체크 등이 정확히 반영되도록)
     const { settings: effectiveResult } = await getEffectiveTradingSettings();
 
     return NextResponse.json({

@@ -1,12 +1,11 @@
 // 에이전트 상태 조회 라우트
 // 서버 스케줄러 상태 + 에이전트 상태 + 배포 버전 정보 통합
-// effectiveSettings는 getEffectiveTradingSettings() 공통 함수를 사용하여
-// 실제 에이전트 실행 설정과 100% 일치 보장
+// effectiveSettings + runtimeDecision으로 실제 실행 상태 명확히 표시
 
 import { NextResponse } from 'next/server';
 import { getAgentStatus, getAgentLogs } from '@/lib/trading-agent';
 import { getSchedulerStatus } from '@/lib/agent-scheduler';
-import { getEffectiveTradingSettings, formatSettingsSummary } from '@/lib/effective-settings';
+import { getEffectiveTradingSettings, computeRuntimeDecision } from '@/lib/effective-settings';
 import { db } from '@/lib/db';
 
 export async function GET() {
@@ -28,8 +27,9 @@ export async function GET() {
       nodeEnv: process.env.NODE_ENV || 'development',
     };
 
-    // 실제 실행 설정 (에이전트와 동일한 getEffectiveTradingSettings 사용)
+    // 실제 실행 설정 + 런타임 판단
     const { settings: effectiveSettings, source: settingsSource, sources: settingsSources } = await getEffectiveTradingSettings();
+    const runtimeDecision = computeRuntimeDecision(effectiveSettings);
 
     // DB에서 영속 로그 조회 (최근 30개)
     let dbLogs: Array<{
@@ -124,11 +124,14 @@ export async function GET() {
 
         // 실제 실행 설정 (에이전트와 100% 동일한 소스)
         effectiveSettings: {
+          autoAnalysisEnabled: effectiveSettings.autoAnalysisEnabled,
+          runAnalysisOnlyDuringMarketHours: effectiveSettings.runAnalysisOnlyDuringMarketHours,
+          autoDomesticOrderEnabled: effectiveSettings.autoDomesticOrderEnabled,
           enableOverseasAnalysis: effectiveSettings.enableOverseasAnalysis,
           enableOverseasOrder: effectiveSettings.enableOverseasOrder,
           allowAfterHoursTrading: effectiveSettings.allowAfterHoursTrading,
-          cycleIntervalMs: effectiveSettings.cycleIntervalMs,
           tradeOnlyMarketHours: effectiveSettings.tradeOnlyMarketHours,
+          cycleIntervalMs: effectiveSettings.cycleIntervalMs,
           domesticMarketOpen: effectiveSettings.domesticMarketOpen,
           domesticMarketClose: effectiveSettings.domesticMarketClose,
           overseasMarketOpen: effectiveSettings.overseasMarketOpen,
@@ -146,6 +149,16 @@ export async function GET() {
         },
         settingsSource,
         settingsSources,
+
+        // 런타임 판단 (현재 시각 기준 즉시 상태)
+        runtimeDecision: {
+          canRunAnalysisNow: runtimeDecision.canRunAnalysisNow,
+          canPlaceDomesticOrderNow: runtimeDecision.canPlaceDomesticOrderNow,
+          canPlaceOverseasOrderNow: runtimeDecision.canPlaceOverseasOrderNow,
+          analysisBlockedReason: runtimeDecision.analysisBlockedReason,
+          domesticOrderBlockedReason: runtimeDecision.domesticOrderBlockedReason,
+          overseasOrderBlockedReason: runtimeDecision.overseasOrderBlockedReason,
+        },
 
         // 로그
         recentLogs: mergedLogs,
