@@ -1,21 +1,24 @@
 // 계좌 잔고 조회 라우트
 // KisApiClient.getAccountBalance() 사용 (단일 진실 공급원)
+// DB + 환경변수 fallback 지원
 // KIS 설정만 있으면 자동으로 토큰을 확보한 뒤 잔고 조회
 
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { KisApiClient } from '@/lib/kis-api';
+import { getOrCreateKisConfigFromEnv } from '@/lib/kis-config-loader';
 
 export async function GET() {
   try {
-    const config = await db.kisConfig.findFirst();
+    // 공통 로더 사용: DB + env fallback
+    const config = await getOrCreateKisConfigFromEnv();
 
     // KIS 설정 자체가 없으면 명확한 에러 반환 (0원 mock이 아님)
     if (!config) {
       return NextResponse.json(
         {
           success: false,
-          error: 'KIS 설정이 없습니다. App Key, App Secret, 계좌번호를 먼저 저장해주세요.',
+          error: 'KIS 설정이 없습니다. KIS_APP_KEY/KIS_APP_SECRET/KIS_ACCOUNT_NO 또는 KIS_ACCOUNT 환경변수를 확인하세요.',
           code: 'NO_KIS_CONFIG',
         },
         { status: 400 }
@@ -39,15 +42,18 @@ export async function GET() {
       // (ensureToken이 자동 갱신한 토큰이 DB에 반영되지 않는 문제 방지)
       const tokenInfo = client.getTokenInfo();
       if (tokenInfo.accessToken && tokenInfo.tokenExpiresAt) {
-        await db.kisConfig.update({
-          where: { id: config.id },
-          data: {
-            accessToken: tokenInfo.accessToken,
-            tokenExpiresAt: tokenInfo.tokenExpiresAt,
-          },
-        }).catch(err => {
-          console.warn('[KIS Balance] 토큰 DB 저장 실패 (무시):', err);
-        });
+        const dbConfig = await db.kisConfig.findFirst();
+        if (dbConfig) {
+          await db.kisConfig.update({
+            where: { id: dbConfig.id },
+            data: {
+              accessToken: tokenInfo.accessToken,
+              tokenExpiresAt: tokenInfo.tokenExpiresAt,
+            },
+          }).catch(err => {
+            console.warn('[KIS Balance] 토큰 DB 저장 실패 (무시):', err);
+          });
+        }
       }
 
       return NextResponse.json({

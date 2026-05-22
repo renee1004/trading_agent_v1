@@ -15,6 +15,7 @@ import {
   OrderRequest, TradingSignal
 } from './types';
 import { getDomesticSession, getKSTNow, DomesticSession } from './agent-scheduler';
+import { getOrCreateKisConfigFromEnv } from './kis-config-loader';
 
 // 에이전트 로그 타입
 export interface AgentLog {
@@ -98,60 +99,25 @@ export function addLog(
 
 /**
  * KIS 설정 로드
- * 1순위: DB에 저장된 설정
- * 2순위: 환경변수 (KIS_APP_KEY, KIS_APP_SECRET, KIS_ACCOUNT_NO, KIS_IS_DEMO)
- * 환경변수가 있고 DB에 설정이 없으면 DB에 자동 저장 (서버 재시작 시 복구용)
+ * 공통 모듈(kis-config-loader)을 사용하여 DB + 환경변수 fallback 로드
+ * - 1순위: DB에 저장된 설정
+ * - 2순위: 환경변수 (KIS_APP_KEY/KIS_APPKEY/APP_KEY 등 fallback 우선순위 적용)
+ * - 환경변수에서 로드 시 DB에 자동 저장
+ * - 계좌번호 8자리 → 10자리 자동 정규화
+ * - App Secret 전체값 로그 미출력, App Key는 앞 4자리만 표시
  */
 async function loadKisConfig(): Promise<KisConfig | null> {
-  // 1. DB에서 설정 조회
-  const config = await db.kisConfig.findFirst();
+  const config = await getOrCreateKisConfigFromEnv();
+
   if (config) {
-    return {
-      appKey: config.appKey,
-      appSecret: config.appSecret,
-      accountNo: config.accountNo,
-      isDemo: config.isDemo,
-      accessToken: config.accessToken || undefined,
-      tokenExpiresAt: config.tokenExpiresAt ?? undefined,
-    };
+    // 에이전트 로그에 기록 (민감정보 마스킹)
+    const maskedKey = config.appKey.substring(0, 4) + '****';
+    addLog('INFO', 'DOMESTIC', `KIS 설정 로드 완료 (appKey=${maskedKey}, accountNo=${config.accountNo}, isDemo=${config.isDemo})`);
+  } else {
+    addLog('INFO', 'DOMESTIC', 'KIS 설정 없음 - 실제 매매 불가 (신호 분석만 수행). 필요 환경변수: KIS_APP_KEY/KIS_APP_SECRET/KIS_ACCOUNT_NO 또는 KIS_ACCOUNT');
   }
 
-  // 2. 환경변수에서 설정 로드 (서버 재시작 시 인메모리 DB 초기화 대비)
-  const envAppKey = process.env.KIS_APP_KEY;
-  const envAppSecret = process.env.KIS_APP_SECRET;
-  const envAccountNo = process.env.KIS_ACCOUNT_NO;
-  const envIsDemo = process.env.KIS_IS_DEMO;
-
-  if (envAppKey && envAppSecret && envAccountNo) {
-    const isDemo = envIsDemo !== 'false'; // 기본값: 모의투자
-    
-    addLog('INFO', 'DOMESTIC', '환경변수에서 KIS 설정 로드 (DB 자동 저장)');
-
-    // DB에 자동 저장 (다음 조회부터 DB에서 바로 로드)
-    try {
-      await db.kisConfig.create({
-        data: {
-          appKey: envAppKey,
-          appSecret: envAppSecret,
-          accountNo: envAccountNo,
-          isDemo,
-        },
-      });
-    } catch (dbError) {
-      addLog('ERROR', 'DOMESTIC', 'KIS 설정 DB 자동 저장 실패', {
-        error: dbError instanceof Error ? dbError.message : String(dbError),
-      });
-    }
-
-    return {
-      appKey: envAppKey,
-      appSecret: envAppSecret,
-      accountNo: envAccountNo,
-      isDemo,
-    };
-  }
-
-  return null;
+  return config;
 }
 
 /**

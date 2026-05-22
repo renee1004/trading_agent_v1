@@ -80,13 +80,22 @@ function getDateRangeByPeriod(period: string): { startDate: string; endDate: str
  * 계좌번호 파서
  * - 하이픈 제거 후 CANO(8자리) + ACNT_PRDT_CD(2자리) 분리
  * - KIS API는 계좌번호를 두 필드로 나누어 전송
- * - 형식 검증: 숫자 10자리 (예: 50123456-01 또는 5012345601)
+ * - 형식 검증:
+ *   - 8자리 → 상품코드 '01' 자동 추가
+ *   - 10자리 → 그대로 사용
+ *   - 하이픈 포함 → 제거 후 검증 (예: 50123456-01 → 5012345601)
  * - 잘못된 형식은 API 호출 전에 차단하여 불필요한 네트워크 요청 방지
  */
 function parseAccountNo(accountNo: string): { cano: string; productCode: string } {
-  const normalized = accountNo.replace(/-/g, '').trim();
+  const normalizedRaw = accountNo.replace(/-/g, '').trim();
+  const normalized = /^\d{8}$/.test(normalizedRaw)
+    ? `${normalizedRaw}01`
+    : normalizedRaw;
+
   if (!/^\d{10}$/.test(normalized)) {
-    throw new Error(`계좌번호 형식이 올바르지 않습니다: "${accountNo}" (예: 50123456-01 또는 5012345601)`);
+    throw new Error(
+      `계좌번호 형식이 올바르지 않습니다: "${accountNo}" (예: 50123456, 50123456-01 또는 5012345601)`
+    );
   }
   return {
     cano: normalized.substring(0, 8),
