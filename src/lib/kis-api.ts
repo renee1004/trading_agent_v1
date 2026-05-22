@@ -325,12 +325,10 @@ export class KisApiClient {
         FID_INPUT_DATE_1: startDate,
         FID_INPUT_DATE_2: endDate,
         FID_PERIOD_DIV_CODE: 'D',
-        // KIS 응답 기준으로 FID_ORG_ADJ_PRC는 invalid field로 확인됨.
-        // 현재 사용 중인 서버는 FID_ORIG_ADJ_PRC를 요구한다.
         FID_ORIG_ADJ_PRC: '1',
       });
 
-      console.log(`[KIS API] Daily candles request: ${stockCode}, base=${baseUrl}, period=${period}, date=${startDate}~${endDate}, params=${params.toString()}`);
+      console.log(`[KIS API] Daily candles request: stockCode=${stockCode}, base=${baseUrl}, period=${period}, date=${startDate}~${endDate}`);
 
       try {
         const response = await fetch(`${url}?${params.toString()}`, {
@@ -377,8 +375,8 @@ export class KisApiClient {
         })).reverse();
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : String(error);
-        errors.push(`${baseUrl}: ${errorMsg}`);
-        console.warn(`[KIS API] Daily candles failed on ${baseUrl}: ${stockCode} - ${errorMsg}`);
+        errors.push(`[${baseUrl}] ${errorMsg}`);
+        console.warn(`[KIS API] Daily candles failed: stockCode=${stockCode}, baseUrl=${baseUrl}, error=${errorMsg}`);
       }
     }
 

@@ -1,5 +1,5 @@
 // 에이전트 상태 조회 라우트
-// 서버 스케줄러 상태 + 에이전트 상태 통합
+// 서버 스케줄러 상태 + 에이전트 상태 + 배포 버전 정보 통합
 
 import { NextResponse } from 'next/server';
 import { getAgentStatus, getAgentLogs } from '@/lib/trading-agent';
@@ -14,6 +14,16 @@ export async function GET() {
 
     // 서버 스케줄러 상태
     const schedulerStatus = await getSchedulerStatus();
+
+    // 배포 버전 정보 (Railway 환경변수 + APP_VERSION)
+    const versionInfo = {
+      gitCommitSha: process.env.RAILWAY_GIT_COMMIT_SHA || null,
+      gitBranch: process.env.RAILWAY_GIT_BRANCH || null,
+      appVersion: process.env.APP_VERSION || null,
+      railwayServiceId: process.env.RAILWAY_SERVICE_ID || null,
+      railwayDeploymentId: process.env.RAILWAY_DEPLOYMENT_ID || null,
+      nodeEnv: process.env.NODE_ENV || 'development',
+    };
 
     // DB에서 영속 로그 조회 (최근 30개)
     let dbLogs: Array<{
@@ -79,6 +89,11 @@ export async function GET() {
           positionsMonitored: agentStatus.lastCycleResult.positionsMonitored,
           exitsExecuted: agentStatus.lastCycleResult.exitsExecuted,
           duration: agentStatus.lastCycleResult.endTime.getTime() - agentStatus.lastCycleResult.startTime.getTime(),
+          domesticSuccess: agentStatus.lastCycleResult.domesticSuccess,
+          domesticFailed: agentStatus.lastCycleResult.domesticFailed,
+          overseasSuccess: agentStatus.lastCycleResult.overseasSuccess,
+          overseasFailed: agentStatus.lastCycleResult.overseasFailed,
+          zeroAnalysisReason: agentStatus.lastCycleResult.zeroAnalysisReason,
         } : null,
 
         // 서버 스케줄러 상태
@@ -97,6 +112,9 @@ export async function GET() {
           currentKST: schedulerStatus.currentKST,
           domesticSession: schedulerStatus.domesticSession,
         },
+
+        // 배포 버전 정보
+        version: versionInfo,
 
         // 로그
         recentLogs: mergedLogs,

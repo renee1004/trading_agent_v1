@@ -1,5 +1,5 @@
 // 자동매매 에이전트 코어
-// 시그널 생성 → 리스크 체크 → 주문 실행 → 포지션 모니터링 전체 파이프라인
+// 시그널 생성 → 리스크 체크 → 주문 실행 → 포지션 모니토링 전체 파이프라인
 // 국내주식 + 해외주식 지원
 
 import { db } from './db';
@@ -16,6 +16,9 @@ import {
 } from './types';
 import { getDomesticSession, getKSTNow, DomesticSession } from './agent-scheduler';
 import { getOrCreateKisConfigFromEnv } from './kis-config-loader';
+
+// 해외주식 분석/매매 활성화 여부 (기본값: false, 국내 검증 우선)
+const ENABLE_OVERSEAS_TRADING = process.env.ENABLE_OVERSEAS_TRADING === 'true';
 
 // 에이전트 로그 타입
 export interface AgentLog {
@@ -39,6 +42,13 @@ export interface AgentCycleResult {
   exitsExecuted: number;
   logs: AgentLog[];
   errors: string[];
+  // 분석 성공/실패 종목 수
+  domesticSuccess: number;
+  domesticFailed: number;
+  overseasSuccess: number;
+  overseasFailed: number;
+  // stocksAnalyzed가 0일 때 원인
+  zeroAnalysisReason?: string;
 }
 
 // 에이전트 상태
@@ -140,17 +150,20 @@ async function loadTargetStocks(
 
 /**
  * 캔들 데이터 조회 (실제 API만 사용, 모의 데이터 사용 안 함)
+ * 실패 시 상세 에러 정보를 로그에 남김
  */
 async function fetchCandles(
   kisClient: KisApiClient | null,
   stockCode: string,
+  stockName: string,
   market: MarketType,
   exchangeCode?: string
-): Promise<StockCandle[]> {
+): Promise<{ candles: StockCandle[]; error?: string }> {
   // KIS 클라이언트가 없으면 조회 불가
   if (!kisClient) {
-    addLog('ERROR', market, `${stockCode} 캔들 조회 불가 - KIS 클라이언트 없음`);
-    return [];
+    const reason = 'KIS 클라이언트 없음';
+    addLog('ERROR', market, `${stockName}(${stockCode}) 캔들 조회 불가 - ${reason}`);
+    return { candles: [], error: reason };
   }
 
   try {
@@ -159,7 +172,7 @@ async function fetchCandles(
         stockCode, exchangeCode, '3M'
       );
       // OverseasStockCandle → StockCandle 변환
-      return overseasCandles.map(c => ({
+      const candles = overseasCandles.map(c => ({
         date: c.date,
         open: c.open,
         high: c.high,
@@ -167,15 +180,20 @@ async function fetchCandles(
         close: c.close,
         volume: c.volume,
       }));
+      return { candles };
     } else {
-      return await kisClient.getStockDailyCandles(stockCode, '3M');
+      const candles = await kisClient.getStockDailyCandles(stockCode, '3M');
+      return { candles };
     }
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error);
-    addLog('ERROR', market, `${stockCode} 캔들 데이터 조회 실패`, {
+    addLog('ERROR', market, `${stockName}(${stockCode}) 캔들 데이터 조회 실패`, {
+      stockCode,
+      stockName,
+      market,
       error: errorMsg,
     });
-    return [];
+    return { candles: [], error: errorMsg };
   }
 }
 
@@ -456,11 +474,11 @@ async function executeOrder(
 
   // PENDING: success true 반환, 포지션 DB는 업데이트하지 않음
   // FILLED: success true 반환, 포지션 DB 업데이트 완료
-  return { success: true, orderNo, message: `주문 접수 완료 (${status}) - ${message}` };
+  return { success: true, orderNo, message: `주문 접수 (${status}) - ${message}` };
 }
 
 /**
- * 포지션 모니터링 - 손절/익절/트레일링스톱 체크
+ * 포지션 모니토링 - 손절/익절/트레일링스톱 체크
  */
 async function monitorPositions(
   kisClient: KisApiClient | null,
@@ -514,13 +532,13 @@ async function monitorPositions(
         if (result.success) {
           exitsExecuted++;
           addLog('TRADE', market, 
-            `${position.stockName} 청산 주문 완료: ${position.quantity}주 (${result.orderNo})`,
+            `${position.stockName} 청산 주문 접수: ${position.quantity}주 (${result.orderNo})`,
             { orderNo: result.orderNo, quantity: position.quantity, reason: exitCheck.reason }
           );
         }
       }
     } catch (error) {
-      addLog('ERROR', market, `${position.stockName} 포지션 모니터링 오류`, {
+      addLog('ERROR', market, `${position.stockName} 포지션 모니토링 오류`, {
         error: error instanceof Error ? error.message : String(error),
       });
     }
@@ -628,8 +646,53 @@ async function reconcilePositions(
 }
 
 /**
+ * stocksAnalyzed가 0일 때 원인을 진단하여 반환
+ */
+function diagnoseZeroAnalysis(
+  kisConfig: KisConfig | null,
+  kisClient: KisApiClient | null,
+  domesticStocks: number,
+  overseasStocks: number,
+  domesticSuccess: number,
+  domesticFailed: number,
+  candleErrors: string[]
+): string {
+  const reasons: string[] = [];
+
+  if (!kisConfig) {
+    reasons.push('KIS 설정 없음');
+  } else if (!kisClient) {
+    reasons.push('KIS 토큰 없음 (연결 실패)');
+  }
+
+  if (kisClient && domesticStocks > 0 && domesticSuccess === 0 && domesticFailed > 0) {
+    reasons.push(`캔들 조회 실패 (${domesticFailed}종목)`);
+  }
+
+  if (kisClient && domesticStocks > 0 && domesticFailed === 0 && domesticSuccess === 0) {
+    reasons.push('캔들 개수 30개 미만');
+  }
+
+  if (domesticStocks === 0 && overseasStocks === 0) {
+    reasons.push('분석 대상 종목 없음');
+  }
+
+  // 장외 시간 체크
+  const session = getDomesticSession();
+  if (session.session === 'CLOSED') {
+    reasons.push('장외 시간 (주문 차단됨)');
+  }
+
+  if (candleErrors.length > 0) {
+    reasons.push(`캔들 에러: ${candleErrors.slice(0, 3).join(', ')}${candleErrors.length > 3 ? ` 외 ${candleErrors.length - 3}건` : ''}`);
+  }
+
+  return reasons.length > 0 ? reasons.join(' | ') : '원인 불명';
+}
+
+/**
  * 에이전트 1사이클 실행
- * 시그널 분석 → 리스크 체크 → 주문 실행 → 포지션 모니터링
+ * 시그널 분석 → 리스크 체크 → 주문 실행 → 포지션 모니토링
  */
 export async function runAgentCycle(): Promise<AgentCycleResult> {
   const startTime = new Date();
@@ -639,6 +702,13 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
   let ordersPlaced = 0;
   let positionsMonitored = 0;
   let exitsExecuted = 0;
+
+  // 분석 성공/실패 카운트
+  let domesticSuccess = 0;
+  let domesticFailed = 0;
+  let overseasSuccess = 0;
+  let overseasFailed = 0;
+  const candleErrors: string[] = [];
 
   addLog('INFO', 'DOMESTIC', '에이전트 사이클 시작');
 
@@ -686,7 +756,6 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
 
   // 4. 현재 포지션 조회
   const domesticPositions = await fetchPositions(kisClient, 'DOMESTIC');
-  const overseasPositions = await fetchPositions(kisClient, 'OVERSEAS');
 
   // ========================================
   // 국내주식 분석 & 매매
@@ -696,16 +765,39 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
   for (const stock of domesticStocks) {
     try {
       // 캔들 데이터 조회
-      const candles = await fetchCandles(kisClient, stock.code, 'DOMESTIC');
-      if (candles.length < 30) {
-        addLog('INFO', 'DOMESTIC', `${stock.name} 데이터 부족 (${candles.length}개)`);
+      const { candles, error: candleError } = await fetchCandles(kisClient, stock.code, stock.name, 'DOMESTIC');
+
+      if (candleError) {
+        domesticFailed++;
+        candleErrors.push(`${stock.name}: ${candleError}`);
+        // 실패해도 다음 종목으로 계속
         continue;
       }
 
+      if (candles.length < 30) {
+        domesticFailed++;
+        addLog('INFO', 'DOMESTIC', `${stock.name} 데이터 부족 (캔들 ${candles.length}개, 최소 30개 필요)`, {
+          stockCode: stock.code,
+          candlesLength: candles.length,
+          lastClose: candles.length > 0 ? candles[candles.length - 1].close : null,
+        });
+        continue;
+      }
+
+      domesticSuccess++;
       stocksAnalyzed++;
 
       // 전략 분석
       const signal = TradingEngine.analyze(candles, stock.code, stock.name, 'ALL', 'DOMESTIC');
+
+      // 종목별 상세 정보 로그
+      addLog('INFO', 'DOMESTIC', `${stock.name} 분석 결과: ${signal.signalType} (신뢰도: ${signal.confidence}%)`, {
+        stockCode: stock.code,
+        candlesLength: candles.length,
+        lastClose: candles[candles.length - 1].close,
+        signalType: signal.signalType,
+        strategy: signal.strategy,
+      });
 
       if (signal.signalType !== 'HOLD') {
         signalsGenerated++;
@@ -755,12 +847,12 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
           if (result.success) {
             ordersPlaced++;
             addLog('TRADE', 'DOMESTIC',
-              `${stock.name} ${finalSignal.signalType} 주문 완료: ${quantity}주 @ ${finalSignal.price}원 (${result.orderNo})`,
+              `${stock.name} ${finalSignal.signalType} 주문 접수: ${quantity}주 @ ${finalSignal.price}원 (${result.orderNo})`,
               { orderNo: result.orderNo, quantity, price: finalSignal.price }
             );
           } else {
             addLog('ERROR', 'DOMESTIC',
-              `${stock.name} ${finalSignal.signalType} 주문 미체결/실패: ${result.message}`,
+              `${stock.name} ${finalSignal.signalType} 주문 실패: ${result.message}`,
               { orderNo: result.orderNo, quantity, price: finalSignal.price }
             );
           }
@@ -774,116 +866,155 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
     } catch (error) {
       const errMsg = error instanceof Error ? error.message : String(error);
       errors.push(`국내 ${stock.name}: ${errMsg}`);
+      domesticFailed++;
       addLog('ERROR', 'DOMESTIC', `${stock.name} 분석 오류: ${errMsg}`);
+      // 개별 종목 오류가 전체 사이클을 죽이지 않음
     }
   }
 
+  addLog('INFO', 'DOMESTIC', `국내 분석 결과: 성공 ${domesticSuccess}종목, 실패 ${domesticFailed}종목`, {
+    domesticSuccess,
+    domesticFailed,
+  });
+
   // ========================================
-  // 해외주식 분석 & 매매
+  // 해외주식 분석 & 매매 (ENABLE_OVERSEAS_TRADING=true일 때만)
   // ========================================
-  addLog('INFO', 'OVERSEAS', '해외주식 분석 시작');
+  if (ENABLE_OVERSEAS_TRADING) {
+    addLog('INFO', 'OVERSEAS', '해외주식 분석 시작');
 
-  for (const stock of overseasStocks) {
-    try {
-      const candles = await fetchCandles(kisClient, stock.code, 'OVERSEAS', stock.exchange);
-      if (candles.length < 30) {
-        addLog('INFO', 'OVERSEAS', `${stock.name} 데이터 부족 (${candles.length}개)`);
-        continue;
-      }
+    const overseasPositions = await fetchPositions(kisClient, 'OVERSEAS');
 
-      stocksAnalyzed++;
+    for (const stock of overseasStocks) {
+      try {
+        const { candles, error: candleError } = await fetchCandles(kisClient, stock.code, stock.name, 'OVERSEAS', stock.exchange);
 
-      // 전략 분석
-      const signal = TradingEngine.analyze(candles, stock.code, stock.name, 'ALL', 'OVERSEAS');
-
-      if (signal.signalType !== 'HOLD') {
-        signalsGenerated++;
-        addLog('SIGNAL', 'OVERSEAS',
-          `${stock.name} ${signal.signalType} 신호 (신뢰도: ${signal.confidence}%) - ${signal.reason}`,
-          { signalType: signal.signalType, confidence: signal.confidence, price: signal.price, strategy: signal.strategy }
-        );
-
-        // AI 분석으로 신호 검증 (비동기, 실패 시 기술적 신호만 사용)
-        let finalSignal = signal;
-        try {
-          const aiResult = await aiAnalyzer.analyzeStock(
-            stock.name, stock.code, 'OVERSEAS', signal
-          );
-          if (aiResult.confidence > 0) {
-            finalSignal = aiAnalyzer.combineSignals(signal, aiResult);
-            addLog('SIGNAL', 'OVERSEAS',
-              `${stock.name} AI 검증: ${signal.signalType}→${finalSignal.signalType} (신뢰도: ${signal.confidence}%→${finalSignal.confidence}%) - AI심리: ${aiResult.sentiment}`,
-              { aiRecommendation: aiResult.recommendation, aiConfidence: aiResult.confidence, aiRiskLevel: aiResult.riskLevel }
-            );
-          }
-        } catch (aiError) {
-          addLog('INFO', 'OVERSEAS', `${stock.name} AI 분석 스킵 (기술적 신호만 사용)`);
-        }
-
-        // AI 검증 후 HOLD로 변경된 경우 매매 차단
-        if (finalSignal.signalType === 'HOLD') {
-          addLog('RISK', 'OVERSEAS', `${stock.name} AI 검증 결과 HOLD로 변경 - 매매 차단`);
+        if (candleError) {
+          overseasFailed++;
+          candleErrors.push(`해외 ${stock.name}: ${candleError}`);
           continue;
         }
 
-        // 리스크 체크
-        const riskCheck = overseasRisk.canTrade(
-          finalSignal, overseasPositions.positions, overseasPositions.accountBalance
-        );
+        if (candles.length < 30) {
+          overseasFailed++;
+          addLog('INFO', 'OVERSEAS', `${stock.name} 데이터 부족 (캔들 ${candles.length}개)`, {
+            stockCode: stock.code,
+            candlesLength: candles.length,
+            lastClose: candles.length > 0 ? candles[candles.length - 1].close : null,
+          });
+          continue;
+        }
 
-        if (riskCheck.allowed) {
-          const quantity = overseasRisk.calculatePositionSize(
-            overseasPositions.accountBalance, finalSignal.price, finalSignal.confidence
+        overseasSuccess++;
+        stocksAnalyzed++;
+
+        // 전략 분석
+        const signal = TradingEngine.analyze(candles, stock.code, stock.name, 'ALL', 'OVERSEAS');
+
+        addLog('INFO', 'OVERSEAS', `${stock.name} 분석 결과: ${signal.signalType} (신뢰도: ${signal.confidence}%)`, {
+          stockCode: stock.code,
+          candlesLength: candles.length,
+          lastClose: candles[candles.length - 1].close,
+          signalType: signal.signalType,
+          strategy: signal.strategy,
+        });
+
+        if (signal.signalType !== 'HOLD') {
+          signalsGenerated++;
+          addLog('SIGNAL', 'OVERSEAS',
+            `${stock.name} ${signal.signalType} 신호 (신뢰도: ${signal.confidence}%) - ${signal.reason}`,
+            { signalType: signal.signalType, confidence: signal.confidence, price: signal.price, strategy: signal.strategy }
           );
 
-          const result = await executeOrder(kisClient, { ...finalSignal, price: finalSignal.price }, 'OVERSEAS', stock.exchange, quantity);
-
-          if (result.success) {
-            ordersPlaced++;
-            addLog('TRADE', 'OVERSEAS',
-              `${stock.name} ${finalSignal.signalType} 주문 완료: ${quantity}주 @ $${finalSignal.price} (${result.orderNo})`,
-              { orderNo: result.orderNo, quantity, price: finalSignal.price, exchange: stock.exchange }
+          // AI 분석으로 신호 검증
+          let finalSignal = signal;
+          try {
+            const aiResult = await aiAnalyzer.analyzeStock(
+              stock.name, stock.code, 'OVERSEAS', signal
             );
+            if (aiResult.confidence > 0) {
+              finalSignal = aiAnalyzer.combineSignals(signal, aiResult);
+              addLog('SIGNAL', 'OVERSEAS',
+                `${stock.name} AI 검증: ${signal.signalType}→${finalSignal.signalType} (신뢰도: ${signal.confidence}%→${finalSignal.confidence}%) - AI심리: ${aiResult.sentiment}`,
+                { aiRecommendation: aiResult.recommendation, aiConfidence: aiResult.confidence, aiRiskLevel: aiResult.riskLevel }
+              );
+            }
+          } catch (aiError) {
+            addLog('INFO', 'OVERSEAS', `${stock.name} AI 분석 스킵 (기술적 신호만 사용)`);
+          }
+
+          if (finalSignal.signalType === 'HOLD') {
+            addLog('RISK', 'OVERSEAS', `${stock.name} AI 검증 결과 HOLD로 변경 - 매매 차단`);
+            continue;
+          }
+
+          // 리스크 체크
+          const riskCheck = overseasRisk.canTrade(
+            finalSignal, overseasPositions.positions, overseasPositions.accountBalance
+          );
+
+          if (riskCheck.allowed) {
+            const quantity = overseasRisk.calculatePositionSize(
+              overseasPositions.accountBalance, finalSignal.price, finalSignal.confidence
+            );
+
+            const result = await executeOrder(kisClient, { ...finalSignal, price: finalSignal.price }, 'OVERSEAS', stock.exchange, quantity);
+
+            if (result.success) {
+              ordersPlaced++;
+              addLog('TRADE', 'OVERSEAS',
+                `${stock.name} ${finalSignal.signalType} 주문 접수: ${quantity}주 @ $${finalSignal.price} (${result.orderNo})`,
+                { orderNo: result.orderNo, quantity, price: finalSignal.price, exchange: stock.exchange }
+              );
+            } else {
+              addLog('ERROR', 'OVERSEAS',
+                `${stock.name} ${finalSignal.signalType} 주문 실패: ${result.message}`,
+                { orderNo: result.orderNo, quantity, price: finalSignal.price, exchange: stock.exchange }
+              );
+            }
           } else {
-            addLog('ERROR', 'OVERSEAS',
-              `${stock.name} ${finalSignal.signalType} 주문 미체결/실패: ${result.message}`,
-              { orderNo: result.orderNo, quantity, price: finalSignal.price, exchange: stock.exchange }
+            addLog('RISK', 'OVERSEAS',
+              `${stock.name} 매매 차단: ${riskCheck.reason}`,
+              { reason: riskCheck.reason }
             );
           }
-        } else {
-          addLog('RISK', 'OVERSEAS',
-            `${stock.name} 매매 차단: ${riskCheck.reason}`,
-            { reason: riskCheck.reason }
-          );
         }
+      } catch (error) {
+        const errMsg = error instanceof Error ? error.message : String(error);
+        errors.push(`해외 ${stock.name}: ${errMsg}`);
+        overseasFailed++;
+        addLog('ERROR', 'OVERSEAS', `${stock.name} 분석 오류: ${errMsg}`);
       }
-    } catch (error) {
-      const errMsg = error instanceof Error ? error.message : String(error);
-      errors.push(`해외 ${stock.name}: ${errMsg}`);
-      addLog('ERROR', 'OVERSEAS', `${stock.name} 분석 오류: ${errMsg}`);
     }
+
+    addLog('INFO', 'OVERSEAS', `해외 분석 결과: 성공 ${overseasSuccess}종목, 실패 ${overseasFailed}종목`, {
+      overseasSuccess,
+      overseasFailed,
+    });
+  } else {
+    addLog('INFO', 'OVERSEAS', '해외주식 분석 건너뜀 (ENABLE_OVERSEAS_TRADING=false)');
   }
 
   // ========================================
   // 포지션 동기화 (Reconciliation)
-  // KIS 잔고 API에서 실제 보유 종목을 가져와 로컬 DB 동기화
-  // 주문 후 낙관적 업데이트된 포지션을 실제 잔고 기준으로 보정
   // ========================================
   if (kisClient) {
     addLog('INFO', 'DOMESTIC', '포지션 동기화 시작 (잔고 기준)');
     await reconcilePositions(kisClient, 'DOMESTIC');
-    await reconcilePositions(kisClient, 'OVERSEAS');
+    if (ENABLE_OVERSEAS_TRADING) {
+      await reconcilePositions(kisClient, 'OVERSEAS');
+    }
   }
 
   // ========================================
-  // 포지션 모니터링 (손절/익절/트레일링스톱)
+  // 포지션 모니토링 (손절/익절/트레일링스톱)
   // ========================================
   addLog('INFO', 'DOMESTIC', '포지션 모니터링 시작');
   
   const domesticExits = await monitorPositions(kisClient, 'DOMESTIC');
-  const overseasExits = await monitorPositions(kisClient, 'OVERSEAS');
+  const overseasExits = ENABLE_OVERSEAS_TRADING ? await monitorPositions(kisClient, 'OVERSEAS') : 0;
   exitsExecuted = domesticExits + overseasExits;
-  positionsMonitored = domesticPositions.positions.length + overseasPositions.positions.length;
+  positionsMonitored = domesticPositions.positions.length + (ENABLE_OVERSEAS_TRADING ? (await fetchPositions(kisClient, 'OVERSEAS')).positions.length : 0);
 
   // ========================================
   // 세션 업데이트
@@ -907,6 +1038,18 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
     }
   }
 
+  // stocksAnalyzed가 0이면 원인 진단
+  let zeroAnalysisReason: string | undefined;
+  if (stocksAnalyzed === 0) {
+    zeroAnalysisReason = diagnoseZeroAnalysis(
+      kisConfig, kisClient,
+      domesticStocks.length, overseasStocks.length,
+      domesticSuccess, domesticFailed,
+      candleErrors
+    );
+    addLog('INFO', 'DOMESTIC', `분석된 종목 없음 - 원인: ${zeroAnalysisReason}`);
+  }
+
   // 결과 정리
   const endTime = new Date();
   const result: AgentCycleResult = {
@@ -920,6 +1063,11 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
     exitsExecuted,
     logs: [...agentState.logs].slice(0, 50), // 최근 50개
     errors,
+    domesticSuccess,
+    domesticFailed,
+    overseasSuccess,
+    overseasFailed,
+    zeroAnalysisReason,
   };
 
   agentState.lastCycleTime = endTime;
@@ -928,7 +1076,7 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
   agentState.totalTrades += ordersPlaced;
 
   addLog('INFO', 'DOMESTIC', 
-    `에이전트 사이클 완료: 분석 ${stocksAnalyzed}종목, 신호 ${signalsGenerated}개, 주문 ${ordersPlaced}건, 청산 ${exitsExecuted}건`
+    `에이전트 사이클 완료: 분석 ${stocksAnalyzed}종목 (국내 성공 ${domesticSuccess}/실패 ${domesticFailed}), 신호 ${signalsGenerated}개, 주문 접수 ${ordersPlaced}건, 청산 ${exitsExecuted}건`
   );
 
   return result;
