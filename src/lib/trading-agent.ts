@@ -485,15 +485,16 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
       await kisClient.ensureToken();
       addLog('INFO', 'DOMESTIC', 'KIS API 연결 성공');
       
-      // 토큰 갱신 내용을 DB에도 업데이트
-      if (kisClient['accessToken'] && kisClient['tokenExpiresAt']) {
+      // 토큰 갱신 내용을 DB에도 업데이트 (getTokenInfo 공식 메서드 사용)
+      const tokenInfo = kisClient.getTokenInfo();
+      if (tokenInfo.accessToken && tokenInfo.tokenExpiresAt) {
         const configRecord = await db.kisConfig.findFirst();
         if (configRecord) {
           await db.kisConfig.update({
             where: { id: configRecord.id },
             data: {
-              accessToken: kisClient['accessToken'],
-              tokenExpiresAt: kisClient['tokenExpiresAt'],
+              accessToken: tokenInfo.accessToken,
+              tokenExpiresAt: tokenInfo.tokenExpiresAt,
             },
           });
         }

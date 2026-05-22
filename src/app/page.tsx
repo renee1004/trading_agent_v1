@@ -171,7 +171,8 @@ export default function TradingDashboard() {
   const [accountBalance, setAccountBalance] = useState(0);
   const [todayProfit, setTodayProfit] = useState(0);
   const [totalProfitRate, setTotalProfitRate] = useState(0);
-  const [dataSource, setDataSource] = useState<'api' | 'mock'>('mock'); // 데이터 출처
+  const [dataSource, setDataSource] = useState<'api' | 'mock' | 'error'>('mock'); // 데이터 출처
+  const [kisConnectionError, setKisConnectionError] = useState(''); // KIS 연결 에러 메시지
   const [kisConfigured, setKisConfigured] = useState(false);
   const [kisHasToken, setKisHasToken] = useState(false);
   const [kisTokenError, setKisTokenError] = useState('');
@@ -278,7 +279,23 @@ export default function TradingDashboard() {
           setAccountBalance(balanceData.data.totalDeposit);
           setTotalProfitRate(balanceData.data.totalProfitRate);
           setPositions(balanceData.data.positions || []);
-          setDataSource(balanceData.source || 'mock');
+          setDataSource(balanceData.source || 'api');
+          setKisConnectionError(''); // 연결 성공 시 에러 초기화
+        } else {
+          // success: false but HTTP 200 — 비정상 케이스
+          setKisConnectionError(balanceData.error || '잔고 조회 실패');
+          setDataSource('error');
+        }
+      } else {
+        // HTTP 에러 (400, 502 등)
+        const errorData = await balanceRes.json().catch(() => null);
+        const errorMsg = errorData?.error || `잔고 조회 실패 (HTTP ${balanceRes.status})`;
+        const errorCode = errorData?.code || '';
+        setKisConnectionError(errorMsg);
+        setDataSource('error');
+        // 설정 없음이면 configured도 false로
+        if (errorCode === 'NO_KIS_CONFIG') {
+          setKisConfigured(false);
         }
       }
 
@@ -506,7 +523,8 @@ export default function TradingDashboard() {
             setSavedIsDemo(config.isDemo ?? true);
             setIsDemo(config.isDemo ?? true);
             setAccountNo(config.accountNo || '');
-            return; // 서버에 데이터가 있으면 종료
+            // return 하지 않음 — "설정 있음"과 "토큰 있음"은 다른 상태
+            // 항상 토큰 상태도 확인해야 함
           }
         }
       }
@@ -553,7 +571,9 @@ export default function TradingDashboard() {
     let mounted = true;
     const fetchData = async () => {
       if (!mounted) return;
-      await Promise.all([loadDashboardData(), loadOverseasData(), loadAgentStatus(), loadKisConfig()]);
+      // KIS 설정/토큰 상태를 먼저 확인한 뒤 잔고 조회
+      await loadKisConfig();
+      await Promise.all([loadDashboardData(), loadOverseasData(), loadAgentStatus()]);
     };
     fetchData();
     const interval = setInterval(fetchData, 30000);
@@ -1049,13 +1069,32 @@ export default function TradingDashboard() {
 
           {/* ===== 대시보드 탭 ===== */}
           <TabsContent value="dashboard" className="space-y-6">
-            {/* KIS 미연결 안내 */}
-            {dataSource === 'mock' && !kisHasToken && (
+            {/* KIS 연결 에러 표시 — 실패 사유를 명확히 보여줌 */}
+            {kisConnectionError && (
+              <Alert className="border-red-200 bg-red-50">
+                <AlertTriangle className="h-4 w-4 text-red-600" />
+                <AlertDescription className="text-red-800">
+                  <strong>KIS 연결 실패</strong> — {kisConnectionError}
+                </AlertDescription>
+              </Alert>
+            )}
+            {/* KIS 미설정 안내 (설정 자체가 없는 경우) */}
+            {dataSource === 'mock' && !kisConfigured && !kisConnectionError && (
               <Alert className="border-amber-200 bg-amber-50">
                 <AlertTriangle className="h-4 w-4 text-amber-600" />
                 <AlertDescription className="text-amber-800">
-                  <strong>KIS API 미연결 상태</strong> — 토큰이 발급되지 않아 실시간 데이터를 불러올 수 없습니다. 
-                  API 설정에서 토큰을 발급받으면 실제 모의투자 잔고와 거래가 연동됩니다.
+                  <strong>KIS API 미설정</strong> — App Key, App Secret, 계좌번호를 먼저 저장해주세요. 
+                  API 설정을 완료하면 실제 모의투자 잔고와 거래가 연동됩니다.
+                </AlertDescription>
+              </Alert>
+            )}
+            {/* KIS 설정은 있으나 토큰 미발급 안내 */}
+            {dataSource === 'mock' && kisConfigured && !kisHasToken && !kisConnectionError && (
+              <Alert className="border-amber-200 bg-amber-50">
+                <AlertTriangle className="h-4 w-4 text-amber-600" />
+                <AlertDescription className="text-amber-800">
+                  <strong>KIS 토큰 미발급</strong> — API 설정은 있으나 토큰이 발급되지 않았습니다. 
+                  잔고 조회 시 자동 발급을 시도합니다. 계속 안 되면 API 설정에서 토큰을 수동 발급받으세요.
                 </AlertDescription>
               </Alert>
             )}

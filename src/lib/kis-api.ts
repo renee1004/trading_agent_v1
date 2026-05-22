@@ -30,6 +30,23 @@ function safeNumber(value: unknown): number {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+/**
+ * 계좌번호 파서
+ * - 하이픈 제거 후 CANO(8자리) + ACNT_PRDT_CD(2자리) 분리
+ * - KIS API는 계좌번호를 두 필드로 나누어 전송
+ * - 길이 검증: 정규화 후 최소 8자리, CANO는 항상 8자리
+ */
+function parseAccountNo(accountNo: string): { cano: string; productCode: string } {
+  const normalized = accountNo.replace(/-/g, '').trim();
+  if (normalized.length < 8) {
+    console.warn(`[KIS API] 계좌번호가 너무 짧음: "${accountNo}" → 정규화: "${normalized}" (최소 8자리 필요)`);
+  }
+  return {
+    cano: normalized.substring(0, 8),
+    productCode: normalized.substring(8, 10) || '01',
+  };
+}
+
 // 서버 사이드 토큰 캐시 - 프로세스 내에서 토큰 재사용
 // KisApiClient 인스턴스가 매번 새로 생성되어도 이 캐시를 통해 토큰 공유
 const serverTokenCache: {
@@ -118,7 +135,6 @@ export class KisApiClient {
 
     const responseText = await response.text();
     console.log(`[KIS API] Token response status: ${response.status}`);
-    console.log(`[KIS API] Token response body: ${responseText.substring(0, 200)}`);
 
     if (!response.ok) {
       // 에러 응답에서 상세 정보 추출
@@ -156,12 +172,26 @@ export class KisApiClient {
 
   /**
    * 유효한 토큰 확인 및 갱신
+   * 만료 버퍼 5분: 토큰이 5분 이내에 만료되면 미리 갱신
+   * 네트워크 지연으로 요청 중 토큰 만료되는 것을 방지
    */
   async ensureToken(): Promise<string> {
-    if (this.accessToken && this.tokenExpiresAt && this.tokenExpiresAt > new Date()) {
+    const BUFFER_MS = 5 * 60 * 1000; // 5분 버퍼
+    if (this.accessToken && this.tokenExpiresAt && this.tokenExpiresAt.getTime() - BUFFER_MS > Date.now()) {
       return this.accessToken;
     }
     return this.issueToken();
+  }
+
+  /**
+   * 현재 토큰 정보 반환 (API 라우트에서 DB 저장용)
+   * ensureToken/issueToken 이후 새 토큰이 발급되었는지 확인 가능
+   */
+  getTokenInfo(): { accessToken: string | null; tokenExpiresAt: Date | null } {
+    return {
+      accessToken: this.accessToken,
+      tokenExpiresAt: this.tokenExpiresAt,
+    };
   }
 
   /**
@@ -308,9 +338,10 @@ export class KisApiClient {
       ? (this.config.isDemo ? 'VTTC0802U' : 'TTTC0802U')
       : (this.config.isDemo ? 'VTTC0801U' : 'TTTC0801U');
 
+    const account = parseAccountNo(this.config.accountNo);
     const orderData = {
-      CANO: this.config.accountNo.substring(0, 8),
-      ACNT_PRDT_CD: this.config.accountNo.substring(8) || '01',
+      CANO: account.cano,
+      ACNT_PRDT_CD: account.productCode,
       PDNO: order.stockCode,
       ORD_DVSN: order.orderKind,
       ORD_QTY: String(order.quantity),
@@ -358,9 +389,10 @@ export class KisApiClient {
     const token = await this.ensureToken();
     const url = `${this.baseUrl}/uapi/domestic-stock/v1/trading/inquire-balance`;
     
+    const account = parseAccountNo(this.config.accountNo);
     const params = new URLSearchParams({
-      CANO: this.config.accountNo.substring(0, 8),
-      ACNT_PRDT_CD: this.config.accountNo.substring(8) || '01',
+      CANO: account.cano,
+      ACNT_PRDT_CD: account.productCode,
       AFHR_FLPR_YN: 'N',
       OFL_YN: '',
       INQR_DVSN: '02',
@@ -457,9 +489,10 @@ export class KisApiClient {
     
     const trId = this.config.isDemo ? 'VTTC0803U' : 'TTTC0803U';
 
+    const account = parseAccountNo(this.config.accountNo);
     const cancelData = {
-      CANO: this.config.accountNo.substring(0, 8),
-      ACNT_PRDT_CD: this.config.accountNo.substring(8) || '01',
+      CANO: account.cano,
+      ACNT_PRDT_CD: account.productCode,
       KRX_FWDG_ORD_ORGNO: orderNo,
       ORG_ODNO: orderNo,
       ORD_DVSN: '00',
@@ -645,10 +678,11 @@ export class KisApiClient {
       ? (this.config.isDemo ? 'VTTT1002U' : 'TTTT1002U')
       : (this.config.isDemo ? 'VTTT1001U' : 'TTTT1001U');
 
+    const account = parseAccountNo(this.config.accountNo);
     // 해외주식 주문 데이터
     const orderData = {
-      CANO: this.config.accountNo.substring(0, 8),
-      ACNT_PRDT_CD: this.config.accountNo.substring(8) || '01',
+      CANO: account.cano,
+      ACNT_PRDT_CD: account.productCode,
       OVRS_EXCG_CD: order.exchangeCode || 'NAS',
       PDNO: order.stockCode,
       ORD_QTY: String(order.quantity),
@@ -705,9 +739,10 @@ export class KisApiClient {
     const token = await this.ensureToken();
     const url = `${this.baseUrl}/uapi/overseas-stock/v1/trading/inquire-balance`;
     
+    const account = parseAccountNo(this.config.accountNo);
     const params = new URLSearchParams({
-      CANO: this.config.accountNo.substring(0, 8),
-      ACNT_PRDT_CD: this.config.accountNo.substring(8) || '01',
+      CANO: account.cano,
+      ACNT_PRDT_CD: account.productCode,
       OVRS_EXCG_CD: 'NAS', // 미국 전체 (NAS+NYSE+AMEX)
       TR_CRCY_CD: 'USD',
       CTX_AREA_FK200: '',
@@ -807,11 +842,10 @@ export class KisApiClient {
     const token = await this.ensureToken();
     const url = `${this.baseUrl}/uapi/overseas-stock/v1/trading/order`;
     
-    const trId = this.config.isDemo ? 'VTTT1004U' : 'TTTT1004U';
-
+    const account = parseAccountNo(this.config.accountNo);
     const cancelData = {
-      CANO: this.config.accountNo.substring(0, 8),
-      ACNT_PRDT_CD: this.config.accountNo.substring(8) || '01',
+      CANO: account.cano,
+      ACNT_PRDT_CD: account.productCode,
       OVRS_EXCG_CD: exchangeCode,
       ORG_ODNO: orderNo,
       ORD_DVSN: '00',

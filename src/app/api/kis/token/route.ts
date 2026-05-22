@@ -54,21 +54,33 @@ export async function POST() {
 
     const token = await client.issueToken();
 
+    // getTokenInfo()로 실제 만료시간 획득 (KIS API 응답의 expires_in 기반)
+    const tokenInfo = client.getTokenInfo();
+
     // 토큰 정보 DB 업데이트
     await db.kisConfig.update({
       where: { id: config.id },
       data: {
         accessToken: token,
-        tokenExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+        tokenExpiresAt: tokenInfo.tokenExpiresAt || new Date(Date.now() + 24 * 60 * 60 * 1000),
       },
     });
+
+    // 남은 시간 계산 (실제 만료시간 기반)
+    let expiresInStr = '24시간';
+    if (tokenInfo.tokenExpiresAt) {
+      const remainingMs = tokenInfo.tokenExpiresAt.getTime() - Date.now();
+      const hours = Math.floor(remainingMs / 3600000);
+      const minutes = Math.floor((remainingMs % 3600000) / 60000);
+      expiresInStr = `${hours}시간 ${minutes}분`;
+    }
 
     console.log('[KIS Token] Token issued successfully');
     return NextResponse.json({ 
       success: true, 
       data: { 
         tokenIssued: true,
-        expiresIn: '24시간',
+        expiresIn: expiresInStr,
         reused: false,
       }
     });
