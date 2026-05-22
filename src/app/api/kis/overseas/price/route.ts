@@ -30,32 +30,11 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // 모의 데이터
-    const stockNames: Record<string, string> = {
-      'AAPL': '애플',
-      'MSFT': '마이크로소프트',
-      'GOOGL': '알파벳',
-      'AMZN': '아마존',
-      'NVDA': '엔비디아',
-      'TSLA': '테슬라',
-      'META': '메타',
-      'NFLX': '넷플릭스',
-      'AMD': 'AMD',
-      'INTC': '인텔',
-      'CRM': '세일즈포스',
-      'ORCL': '오라클',
-      'COST': '코스트코',
-      'AVGO': '브로드컴',
-      'PYPL': '페이팔',
-    };
-    
-    const mockPrice = KisApiClient.generateMockOverseasPrice(
-      stockCode,
-      stockNames[stockCode] || stockCode,
-      exchangeCode
+    // KIS API 미연결 - 시세 데이터 없음
+    return NextResponse.json(
+      { success: false, error: 'KIS API 미연결: 토큰을 먼저 발급받으세요.', source: 'mock' },
+      { status: 403 }
     );
-    
-    return NextResponse.json({ success: true, data: mockPrice, source: 'mock' });
   } catch (error) {
     return NextResponse.json(
       { success: false, error: '해외주식 시세 조회 실패' },

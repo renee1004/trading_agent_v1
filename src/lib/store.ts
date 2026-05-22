@@ -95,7 +95,7 @@ export const useTradingStore = create<TradingState>((set) => ({
   selectedStrategy: 'ALL',
   setSelectedStrategy: (strategy) => set({ selectedStrategy: strategy }),
   
-  accountBalance: 50000000,
+  accountBalance: 0,
   setAccountBalance: (balance) => set({ accountBalance: balance }),
   
   todayProfit: 0,

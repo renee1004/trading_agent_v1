@@ -185,18 +185,9 @@ async function fetchCandles(
     }
   }
 
-  // 모의 데이터 폴백
-  if (market === 'OVERSEAS') {
-    return KisApiClient.generateMockOverseasCandles(120).map(c => ({
-      date: c.date,
-      open: c.open,
-      high: c.high,
-      low: c.low,
-      close: c.close,
-      volume: c.volume,
-    }));
-  }
-  return KisApiClient.generateMockCandles(120);
+  // KIS 미연결 시 모의 데이터를 사용하지 않음 - 가짜 매매 신호 방지
+  addLog('ERROR', market, `${stockCode} 캔들 데이터 없음 (KIS 미연결)`);
+  return [];
 }
 
 /**
@@ -303,10 +294,12 @@ async function executeOrder(
       });
     }
   } else {
-    // KIS 미설정 상태에서만 명시적 모의 주문 처리
-    orderNo = `MOCK-${Date.now()}`;
-    status = 'FILLED';
-    message = 'KIS 미설정: 모의 주문 완료';
+    // KIS 미설정 상태에서는 주문을 실행하지 않음
+    addLog('ERROR', market, 'KIS 미연결: 주문 불가', {
+      stockCode: signal.stockCode,
+      signalType: signal.signalType,
+    });
+    return { success: false, orderNo: '', message: 'KIS API 미연결: 주문을 실행할 수 없습니다. API 설정을 완료하고 토큰을 발급받으세요.' };
   }
 
   // 거래 내역 DB 기록
@@ -506,13 +499,13 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
         }
       }
     } catch (error) {
-      addLog('ERROR', 'DOMESTIC', 'KIS API 연결 실패, 모의 모드로 동작', {
+      addLog('ERROR', 'DOMESTIC', 'KIS API 연결 실패 - 실제 매매 불가', {
         error: error instanceof Error ? error.message : String(error),
       });
       kisClient = null;
     }
   } else {
-    addLog('INFO', 'DOMESTIC', 'KIS 설정 없음, 모의 모드로 동작');
+    addLog('INFO', 'DOMESTIC', 'KIS 설정 없음 - 실제 매매 불가 (신호 분석만 수행)');
   }
 
   // 2. 분석 대상 종목 로드

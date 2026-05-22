@@ -30,26 +30,11 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // 모의 데이터
-    const stockNames: Record<string, string> = {
-      '005930': '삼성전자',
-      '000660': 'SK하이닉스',
-      '373220': 'LG에너지솔루션',
-      '006400': '삼성SDI',
-      '051910': 'LG화학',
-      '005380': '현대차',
-      '035420': 'NAVER',
-      '055550': '신한지주',
-      '003670': '포스코홀딩스',
-      '068270': '셀트리온',
-    };
-    
-    const mockPrice = KisApiClient.generateMockPrice(
-      stockCode, 
-      stockNames[stockCode] || `종목${stockCode}`
+    // KIS API 미연결 - 시세 데이터 없음
+    return NextResponse.json(
+      { success: false, error: 'KIS API 미연결: 토큰을 먼저 발급받으세요.', source: 'mock' },
+      { status: 403 }
     );
-    
-    return NextResponse.json({ success: true, data: mockPrice, source: 'mock' });
   } catch (error) {
     console.error('[KIS Price] Unexpected error:', error);
     return NextResponse.json(

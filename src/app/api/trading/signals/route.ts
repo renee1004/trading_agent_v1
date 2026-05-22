@@ -1,6 +1,6 @@
 // 매매 신호 분석 라우트
 // 국내주식 + 해외주식 지원
-// 실제 KIS API 캔들 데이터 우선, 실패 시 모의 데이터 사용
+// 실제 KIS API 캔들 데이터만 사용 (모의 데이터 사용 안함)
 
 import { NextRequest, NextResponse } from 'next/server';
 import { KisApiClient } from '@/lib/kis-api';
@@ -9,7 +9,7 @@ import { StrategyParameters, MarketType } from '@/lib/types';
 import { db } from '@/lib/db';
 
 /**
- * KIS 설정 로드 후 캔들 데이터 조회 (실데이터 우선)
+ * KIS 설정 로드 후 캔들 데이터 조회 (실데이터만)
  */
 async function fetchCandlesWithFallback(
   stockCode: string,
@@ -18,7 +18,6 @@ async function fetchCandlesWithFallback(
 ) {
   // KIS 설정 확인
   const config = await db.kisConfig.findFirst();
-  let useRealData = false;
 
   if (config?.accessToken) {
     try {
@@ -33,7 +32,6 @@ async function fetchCandlesWithFallback(
 
       if (market === 'OVERSEAS' && exchangeCode) {
         const overseasCandles = await client.getOverseasDailyCandles(stockCode, exchangeCode, '3M');
-        // OverseasStockCandle → StockCandle 변환
         return overseasCandles.map(c => ({
           date: c.date,
           open: c.open,
@@ -46,22 +44,12 @@ async function fetchCandlesWithFallback(
         return await client.getStockDailyCandles(stockCode, '3M');
       }
     } catch {
-      useRealData = false;
+      // API 실패 시 빈 배열 반환
     }
   }
 
-  // 모의 데이터 폴백
-  if (market === 'OVERSEAS') {
-    return KisApiClient.generateMockOverseasCandles(120).map(c => ({
-      date: c.date,
-      open: c.open,
-      high: c.high,
-      low: c.low,
-      close: c.close,
-      volume: c.volume,
-    }));
-  }
-  return KisApiClient.generateMockCandles(120);
+  // KIS 미연결 또는 API 실패 시 빈 배열 반환 (가짜 데이터 사용 안함)
+  return [];
 }
 
 export async function POST(request: NextRequest) {

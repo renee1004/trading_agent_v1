@@ -259,9 +259,9 @@ export default function TradingDashboard() {
   // 해외주식 상태
   const [marketType, setMarketType] = useState<'DOMESTIC' | 'OVERSEAS'>('DOMESTIC');
   const [overseasPositions, setOverseasPositions] = useState<OverseasPositionData[]>([]);
-  const [overseasBalance, setOverseasBalance] = useState(30000000);
-  const [overseasProfitRate, setOverseasProfitRate] = useState(5.2);
-  const [overseasAvailable, setOverseasAvailable] = useState(15000000);
+  const [overseasBalance, setOverseasBalance] = useState(0);
+  const [overseasProfitRate, setOverseasProfitRate] = useState(0);
+  const [overseasAvailable, setOverseasAvailable] = useState(0);
   const [overseasSearchResults, setOverseasSearchResults] = useState<OverseasSearchResult[]>([]);
   const [isOverseasSearching, setIsOverseasSearching] = useState(false);
   const [overseasSearchQuery, setOverseasSearchQuery] = useState('');
@@ -1125,11 +1125,11 @@ export default function TradingDashboard() {
                   <LineChart className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className={`text-2xl font-bold ${totalProfitRate >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                    {totalProfitRate >= 0 ? '+' : ''}{totalProfitRate.toFixed(1)}%
+                  <div className={`text-2xl font-bold ${dataSource === 'mock' ? 'text-muted-foreground' : totalProfitRate >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                    {dataSource === 'mock' ? '—' : `${totalProfitRate >= 0 ? '+' : ''}${totalProfitRate.toFixed(1)}%`}
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    보유 포지션 {positions.length}개
+                    {dataSource === 'api' ? `보유 포지션 ${positions.length}개` : 'KIS API 연결 시 표시됩니다'}
                   </p>
                 </CardContent>
               </Card>
@@ -1843,9 +1843,11 @@ export default function TradingDashboard() {
                   <Coins className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{formatMoney(overseasBalance)}원</div>
+                  <div className="text-2xl font-bold">
+                    {dataSource === 'mock' && overseasBalance === 0 ? '—' : `${formatMoney(overseasBalance)}원`}
+                  </div>
                   <p className="text-xs text-muted-foreground">
-                    출금가능: {formatMoney(overseasAvailable)}원
+                    {dataSource === 'api' ? `출금가능: ${formatMoney(overseasAvailable)}원` : 'KIS API 연결 시 표시됩니다'}
                   </p>
                 </CardContent>
               </Card>
@@ -1856,11 +1858,11 @@ export default function TradingDashboard() {
                   <LineChart className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className={`text-2xl font-bold ${overseasProfitRate >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                    {overseasProfitRate >= 0 ? '+' : ''}{overseasProfitRate.toFixed(1)}%
+                  <div className={`text-2xl font-bold ${dataSource === 'mock' ? 'text-muted-foreground' : overseasProfitRate >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                    {dataSource === 'mock' ? '—' : `${overseasProfitRate >= 0 ? '+' : ''}${overseasProfitRate.toFixed(1)}%`}
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    환율: 1,330 KRW/USD
+                    {dataSource === 'api' ? '환율: 1,330 KRW/USD' : 'KIS API 연결 시 표시됩니다'}
                   </p>
                 </CardContent>
               </Card>

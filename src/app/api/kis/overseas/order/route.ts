@@ -79,19 +79,27 @@ export async function POST(request: NextRequest) {
             orderNo: orderResult.orderNo,
           },
         });
-      } catch {
-        orderResult = { orderNo: `MOCK-OV-${Date.now()}`, status: 'FILLED', message: '해외주식 모의 주문 완료' };
+      } catch (apiError: any) {
+        // KIS API 호출 실패 시 주문 실패로 처리 (모의 체결 금지)
         await db.tradeHistory.update({
           where: { id: tradeRecord.id },
-          data: { status: 'FILLED', orderNo: orderResult.orderNo },
+          data: { status: 'FAILED' },
         });
+        return NextResponse.json(
+          { success: false, error: `해외주식 주문 실패: ${apiError.message || 'KIS API 오류'}` },
+          { status: 502 }
+        );
       }
     } else {
-      orderResult = { orderNo: `MOCK-OV-${Date.now()}`, status: 'FILLED', message: '해외주식 모의 주문 완료' };
+      // 토큰 없으면 주문 거부 (가짜 주문 생성 금지)
       await db.tradeHistory.update({
         where: { id: tradeRecord.id },
-        data: { status: 'FILLED', orderNo: orderResult.orderNo },
+        data: { status: 'REJECTED' },
       });
+      return NextResponse.json(
+        { success: false, error: 'KIS API 미연결: 토큰을 먼저 발급받으세요.' },
+        { status: 403 }
+      );
     }
 
     return NextResponse.json({ 
