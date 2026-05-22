@@ -173,14 +173,26 @@ async function executeSchedulerCycle(): Promise<void> {
     return;
   }
 
-  // 장시간 체크
+  // 장시간 체크 (모의투자 모드에서는 장시간 무관하게 항상 실행)
   if (schedulerState.config.tradeOnlyMarketHours) {
-    const isDomesticOpen = isMarketHours('DOMESTIC');
-    const isOverseasOpen = isMarketHours('OVERSEAS');
+    // KIS 설정이 모의투자인지 확인
+    let isDemoMode = false;
+    try {
+      const kisConfig = await db.kisConfig.findFirst();
+      isDemoMode = kisConfig?.isDemo ?? false;
+    } catch (e) {}
+    
+    if (!isDemoMode) {
+      // 실전투자: 장시간에만 거래
+      const isDomesticOpen = isMarketHours('DOMESTIC');
+      const isOverseasOpen = isMarketHours('OVERSEAS');
 
-    if (!isDomesticOpen && !isOverseasOpen) {
-      console.log('[Scheduler] 장시간 외, 사이클 스킵');
-      return;
+      if (!isDomesticOpen && !isOverseasOpen) {
+        console.log('[Scheduler] 장시간 외, 사이클 스킵 (실전투자)');
+        return;
+      }
+    } else {
+      console.log('[Scheduler] 모의투자 모드: 장시간 무관하게 실행');
     }
   }
 

@@ -168,9 +168,9 @@ export default function TradingDashboard() {
   const [strategies, setStrategies] = useState<StrategyData[]>([]);
   const [selectedStrategy, setSelectedStrategy] = useState('ALL');
   const [isLoading, setIsLoading] = useState(false);
-  const [accountBalance, setAccountBalance] = useState(50000000);
-  const [todayProfit, setTodayProfit] = useState(1250000);
-  const [totalProfitRate, setTotalProfitRate] = useState(4.6);
+  const [accountBalance, setAccountBalance] = useState(0);
+  const [todayProfit, setTodayProfit] = useState(0);
+  const [totalProfitRate, setTotalProfitRate] = useState(0);
   const [dataSource, setDataSource] = useState<'api' | 'mock'>('mock'); // 데이터 출처
   const [kisConfigured, setKisConfigured] = useState(false);
   const [kisHasToken, setKisHasToken] = useState(false);
@@ -1049,6 +1049,26 @@ export default function TradingDashboard() {
 
           {/* ===== 대시보드 탭 ===== */}
           <TabsContent value="dashboard" className="space-y-6">
+            {/* KIS 미연결 안내 */}
+            {dataSource === 'mock' && !kisHasToken && (
+              <Alert className="border-amber-200 bg-amber-50">
+                <AlertTriangle className="h-4 w-4 text-amber-600" />
+                <AlertDescription className="text-amber-800">
+                  <strong>KIS API 미연결 상태</strong> — 토큰이 발급되지 않아 실시간 데이터를 불러올 수 없습니다. 
+                  API 설정에서 토큰을 발급받으면 실제 모의투자 잔고와 거래가 연동됩니다.
+                </AlertDescription>
+              </Alert>
+            )}
+            {/* 에이전트 미실행 안내 */}
+            {tradingStatus !== 'RUNNING' && (
+              <Alert className="border-blue-200 bg-blue-50">
+                <Bot className="h-4 w-4 text-blue-600" />
+                <AlertDescription className="text-blue-800">
+                  <strong>에이전트 대기 중</strong> — 자동매매를 시작하려면 상단의 <strong>시작</strong> 버튼을 클릭하세요. 
+                  에이전트가 실행되면 관심종목을 분석하여 매매 신호를 생성하고 주문을 실행합니다.
+                </AlertDescription>
+              </Alert>
+            )}
             {/* 요약 카드 */}
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
               <Card>
@@ -1062,9 +1082,11 @@ export default function TradingDashboard() {
                   <Coins className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{formatFullMoney(accountBalance + todayProfit)}원</div>
+                  <div className="text-2xl font-bold">
+                    {dataSource === 'mock' && accountBalance === 0 ? '—' : `${formatFullMoney(accountBalance + todayProfit)}원`}
+                  </div>
                   <p className="text-xs text-muted-foreground">
-                    예수금: {formatMoney(accountBalance)}원
+                    {dataSource === 'api' ? `예수금: ${formatMoney(accountBalance)}원` : 'KIS API 연결 시 표시됩니다'}
                   </p>
                 </CardContent>
               </Card>
@@ -1075,8 +1097,8 @@ export default function TradingDashboard() {
                   {todayProfit >= 0 ? <ArrowUpRight className="h-4 w-4 text-emerald-500" /> : <ArrowDownRight className="h-4 w-4 text-red-500" />}
                 </CardHeader>
                 <CardContent>
-                  <div className={`text-2xl font-bold ${todayProfit >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                    {todayProfit >= 0 ? '+' : ''}{formatFullMoney(todayProfit)}원
+                  <div className={`text-2xl font-bold ${dataSource === 'mock' ? 'text-muted-foreground' : todayProfit >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                    {dataSource === 'mock' ? '—' : `${todayProfit >= 0 ? '+' : ''}${formatFullMoney(todayProfit)}원`}
                   </div>
                   <p className={`text-xs ${todayProfit >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
                     {todayProfit >= 0 ? '+' : ''}{todayProfitRate}%

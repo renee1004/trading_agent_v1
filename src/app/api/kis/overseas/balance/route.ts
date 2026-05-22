@@ -29,8 +29,15 @@ export async function GET() {
       console.log('[KIS Overseas Balance] No access token configured, using mock data');
     }
 
-    // 모의 잔고 데이터
-    const mockBalance = KisApiClient.generateMockOverseasBalance();
+    // 모의 잔고 데이터 (토큰 미발급 또는 API 실패 시 - 0원으로 표시)
+    const mockBalance = {
+      totalDeposit: 0,
+      totalEvaluation: 0,
+      totalProfitLoss: 0,
+      totalProfitRate: 0,
+      availableAmount: 0,
+      positions: [],
+    };
 
     return NextResponse.json({ success: true, data: mockBalance, source: 'mock' });
   } catch (error) {

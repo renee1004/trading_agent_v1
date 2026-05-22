@@ -211,7 +211,7 @@ async function fetchPositions(
   accountBalance: number;
 }> {
   if (!kisClient) {
-    return { positions: [], overseasPositions: [], accountBalance: 50000000 };
+    return { positions: [], overseasPositions: [], accountBalance: 0 };
   }
 
   try {
@@ -249,7 +249,7 @@ async function fetchPositions(
     addLog('ERROR', market, '포지션 조회 실패', {
       error: error instanceof Error ? error.message : String(error),
     });
-    return { positions: [], overseasPositions: [], accountBalance: 50000000 };
+    return { positions: [], overseasPositions: [], accountBalance: 0 };
   }
 }
 

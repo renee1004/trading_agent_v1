@@ -2,7 +2,6 @@
 
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { KisApiClient } from '@/lib/kis-api';
 
 function toNumber(value: unknown): number {
   if (value === null || value === undefined || value === '') return 0;
@@ -123,12 +122,17 @@ export async function GET() {
       }
     }
 
-    const client = null as KisApiClient | null;
-    void client;
-    return NextResponse.json(
-      { success: false, error: 'KIS access token이 없습니다. API 설정에서 토큰을 발급해주세요.', source: 'none' },
-      { status: 400 }
-    );
+    // 토큰 미발급 시 - 0원으로 표시 (가짜 수익 방지)
+    const mockBalance = {
+      totalDeposit: 0,
+      totalEvaluation: 0,
+      totalProfitLoss: 0,
+      totalProfitRate: 0,
+      availableAmount: 0,
+      positions: [],
+    };
+
+    return NextResponse.json({ success: true, data: mockBalance, source: 'mock' });
   } catch (error) {
     console.error('[KIS Balance] Unexpected error:', error);
     return NextResponse.json(
