@@ -23,9 +23,10 @@ export async function GET(request: NextRequest) {
         });
 
         const price = await client.getStockPrice(stockCode);
+        console.log(`[KIS Price] API success - ${stockCode}: ${price.currentPrice}`);
         return NextResponse.json({ success: true, data: price, source: 'api' });
-      } catch {
-        // API 실패 시 모의 데이터 반환
+      } catch (apiError: any) {
+        console.error(`[KIS Price] API failed for ${stockCode}, falling back to mock:`, apiError.message || apiError);
       }
     }
 
@@ -50,6 +51,7 @@ export async function GET(request: NextRequest) {
     
     return NextResponse.json({ success: true, data: mockPrice, source: 'mock' });
   } catch (error) {
+    console.error('[KIS Price] Unexpected error:', error);
     return NextResponse.json(
       { success: false, error: '시세 조회 실패' },
       { status: 500 }

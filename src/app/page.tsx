@@ -171,6 +171,7 @@ export default function TradingDashboard() {
   const [accountBalance, setAccountBalance] = useState(50000000);
   const [todayProfit, setTodayProfit] = useState(1250000);
   const [totalProfitRate, setTotalProfitRate] = useState(4.6);
+  const [dataSource, setDataSource] = useState<'api' | 'mock'>('mock'); // 데이터 출처
   const [kisConfigured, setKisConfigured] = useState(false);
   const [kisHasToken, setKisHasToken] = useState(false);
   const [kisTokenError, setKisTokenError] = useState('');
@@ -277,6 +278,7 @@ export default function TradingDashboard() {
           setAccountBalance(balanceData.data.totalDeposit);
           setTotalProfitRate(balanceData.data.totalProfitRate);
           setPositions(balanceData.data.positions || []);
+          setDataSource(balanceData.source || 'mock');
         }
       }
 
@@ -1051,7 +1053,12 @@ export default function TradingDashboard() {
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">총 자산</CardTitle>
+                  <div className="flex items-center gap-2">
+                    <CardTitle className="text-sm font-medium">총 자산</CardTitle>
+                    <Badge variant={dataSource === 'api' ? "default" : "outline"} className="text-[10px] px-1.5 py-0 h-4">
+                      {dataSource === 'api' ? '실시간' : '모의데이터'}
+                    </Badge>
+                  </div>
                   <Coins className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>

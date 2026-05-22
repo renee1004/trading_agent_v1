@@ -20,10 +20,14 @@ export async function GET() {
         });
 
         const balance = await client.getAccountBalance();
+        console.log('[KIS Balance] API success - totalDeposit:', balance.totalDeposit, 'positions:', balance.positions.length);
         return NextResponse.json({ success: true, data: balance, source: 'api' });
-      } catch {
-        // API 실패 시 모의 데이터
+      } catch (apiError: any) {
+        // API 실패 시 에러 로깅 후 모의 데이터로 폴백
+        console.error('[KIS Balance] API failed, falling back to mock:', apiError.message || apiError);
       }
+    } else {
+      console.log('[KIS Balance] No access token configured, using mock data');
     }
 
     // 모의 잔고 데이터
@@ -69,6 +73,7 @@ export async function GET() {
 
     return NextResponse.json({ success: true, data: mockBalance, source: 'mock' });
   } catch (error) {
+    console.error('[KIS Balance] Unexpected error:', error);
     return NextResponse.json(
       { success: false, error: '잔고 조회 실패' },
       { status: 500 }
