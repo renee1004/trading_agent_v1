@@ -19,13 +19,15 @@ export async function POST() {
 
     console.log(`[KIS Token] Config found: appKey=${(config.appKey || '').substring(0, 8)}****, isDemo=${config.isDemo}, accountNo=${config.accountNo}`);
 
-    // 기존 토큰이 유효한지 먼저 확인 (1분 이상 남아있으면 재사용)
+    // 기존 토큰이 유효한지 먼저 확인 (5분 이상 남아있으면 재사용)
+    // ensureToken()의 5분 버퍼와 동일한 기준으로 통일
+    const TOKEN_EXPIRY_BUFFER_MS = 5 * 60 * 1000; // 5분 버퍼
     if (config.accessToken && config.tokenExpiresAt) {
       const expiresAt = new Date(config.tokenExpiresAt);
       const now = new Date();
       const remainingMs = expiresAt.getTime() - now.getTime();
-      // 1분 이상 남아있으면 기존 토큰 재사용 (불필요한 발급 방지)
-      if (remainingMs > 60 * 1000) {
+      // 5분 이상 남아있으면 기존 토큰 재사용 (불필요한 발급 방지)
+      if (remainingMs > TOKEN_EXPIRY_BUFFER_MS) {
         console.log(`[KIS Token] Existing token is still valid (expires in ${Math.round(remainingMs / 60000)}min), reusing`);
         return NextResponse.json({ 
           success: true, 

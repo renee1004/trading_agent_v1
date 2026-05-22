@@ -34,16 +34,17 @@ function safeNumber(value: unknown): number {
  * 계좌번호 파서
  * - 하이픈 제거 후 CANO(8자리) + ACNT_PRDT_CD(2자리) 분리
  * - KIS API는 계좌번호를 두 필드로 나누어 전송
- * - 길이 검증: 정규화 후 최소 8자리, CANO는 항상 8자리
+ * - 형식 검증: 숫자 10자리 (예: 50123456-01 또는 5012345601)
+ * - 잘못된 형식은 API 호출 전에 차단하여 불필요한 네트워크 요청 방지
  */
 function parseAccountNo(accountNo: string): { cano: string; productCode: string } {
   const normalized = accountNo.replace(/-/g, '').trim();
-  if (normalized.length < 8) {
-    console.warn(`[KIS API] 계좌번호가 너무 짧음: "${accountNo}" → 정규화: "${normalized}" (최소 8자리 필요)`);
+  if (!/^\d{10}$/.test(normalized)) {
+    throw new Error(`계좌번호 형식이 올바르지 않습니다: "${accountNo}" (예: 50123456-01 또는 5012345601)`);
   }
   return {
     cano: normalized.substring(0, 8),
-    productCode: normalized.substring(8, 10) || '01',
+    productCode: normalized.substring(8, 10),
   };
 }
 

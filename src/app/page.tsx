@@ -504,11 +504,14 @@ export default function TradingDashboard() {
   }, []);
 
   // KIS 설정 로드 (localStorage + 서버 동기화)
+  // 핵심: 서버 설정이 있으면 localStorage 값을 절대 서버에 덮어쓰지 않음
   const loadKisConfig = useCallback(async () => {
-    // 1. 먼저 localStorage에서 즉시 복원
+    // 1. 먼저 localStorage에서 즉시 복원 (UI 깜빡임 방지용)
     const storedConfig = loadKisConfigFromStorage();
 
-    // 2. 서버에서도 확인 (서버에 데이터가 있으면 동기화)
+    // 2. 서버에서 확인 (서버가 진실의 원천)
+    let hasServerConfig = false;
+
     try {
       const res = await fetch('/api/kis/config');
       if (res.ok) {
@@ -517,20 +520,21 @@ export default function TradingDashboard() {
           const configs = Array.isArray(data.data) ? data.data : [data.data];
           if (configs.length > 0) {
             const config = configs[0];
+            hasServerConfig = true;
             setKisConfigured(true);
             setSavedAppKeyMasked(config.appKey || '');
             setSavedAccountNo(config.accountNo || '');
             setSavedIsDemo(config.isDemo ?? true);
             setIsDemo(config.isDemo ?? true);
             setAccountNo(config.accountNo || '');
-            // return 하지 않음 — "설정 있음"과 "토큰 있음"은 다른 상태
-            // 항상 토큰 상태도 확인해야 함
+            // return 하지 않음 — 토큰 상태도 항상 확인해야 함
           }
         }
       }
 
-      // 3. 서버에 데이터가 없는데 localStorage에 있으면 서버에 복원
-      if (storedConfig) {
+      // 3. 서버에 데이터가 없을 때만 localStorage → 서버 복원
+      //    hasServerConfig가 true면 localStorage 값이 있어도 POST하지 않음
+      if (!hasServerConfig && storedConfig) {
         console.log('[KIS Config] Restoring config to server from localStorage...');
         fetch('/api/kis/config', {
           method: 'POST',
@@ -542,7 +546,7 @@ export default function TradingDashboard() {
             isDemo: storedConfig.isDemo,
           }),
         }).catch(console.error);
-      } else {
+      } else if (!hasServerConfig && !storedConfig) {
         // 둘 다 데이터 없음
         setKisConfigured(false);
       }
