@@ -1,5 +1,6 @@
 // 환경변수 및 DB 상태 진단 API
 // Railway 배포 시 KIS 설정, DATABASE_URL, DB 연결 상태를 한번에 확인
+// POST: 스키마 동기화 (prisma db push 대체)
 
 import { NextResponse } from 'next/server';
 import { db, isDbAvailable, getDbType } from '@/lib/db';
@@ -167,6 +168,70 @@ export async function GET() {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',
       },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * POST /api/agent/env-check
+ * 스키마 동기화: AppSetting 등 새 테이블이 DB에 없으면 생성
+ */
+export async function POST() {
+  try {
+    if (!process.env.DATABASE_URL) {
+      return NextResponse.json(
+        { success: false, error: 'DATABASE_URL이 없어 스키마 동기화 불가' },
+        { status: 400 }
+      );
+    }
+
+    const results: string[] = [];
+
+    try {
+      const { PrismaClient } = require('@prisma/client');
+      const client = new PrismaClient();
+
+      // AppSetting 테이블 존재 확인
+      const tablesResult = await client.$queryRaw`SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE' ORDER BY table_name` as any[];
+      const tables = tablesResult?.map((r: any) => r.table_name) || [];
+      results.push(`기존 테이블: ${tables.join(', ')}`);
+
+      const hasAppSetting = tables.some((t: string) => t.toLowerCase() === 'appsetting');
+
+      if (!hasAppSetting) {
+        // AppSetting 테이블 직접 생성
+        await client.$executeRawUnsafe(`
+          CREATE TABLE IF NOT EXISTS "AppSetting" (
+            "id" TEXT NOT NULL,
+            "key" TEXT NOT NULL,
+            "value" JSONB NOT NULL,
+            "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            CONSTRAINT "AppSetting_pkey" PRIMARY KEY ("id")
+          )
+        `);
+        await client.$executeRawUnsafe(`
+          CREATE UNIQUE INDEX IF NOT EXISTS "AppSetting_key_key" ON "AppSetting"("key")
+        `);
+        results.push('AppSetting 테이블 생성 완료');
+      } else {
+        results.push('AppSetting 테이블 이미 존재');
+      }
+
+      await client.$disconnect();
+    } catch (dbError) {
+      results.push(`DB 작업 오류: ${dbError instanceof Error ? dbError.message : String(dbError)}`);
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: '스키마 동기화 완료',
+      results,
+    });
+  } catch (error) {
+    return NextResponse.json(
+      { success: false, error: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }
