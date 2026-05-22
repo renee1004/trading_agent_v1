@@ -854,24 +854,32 @@ export class KisApiClient {
     const token = await this.ensureToken();
     const url = `${this.baseUrl}/uapi/overseas-price/v1/quotations/dailyprice`;
 
-    const periodMap: Record<string, string> = {
-      '1W': '1W',
-      '1M': '1M',
-      '3M': '3M',
-      '6M': '6M',
-      '1Y': '1Y',
+    // KIS 해외 일봉 API GUBN 파라미터는 1글자 코드만 허용:
+    // '0' = 일봉, '1' = 주봉, '2' = 월봉
+    // '3M', '6M' 등 2글자 값을 보내면 WRONG VALUE SIZE 에러 발생
+    const gubnMap: Record<string, string> = {
+      '1W': '1',   // 주봉
+      '1M': '0',   // 일봉 (1개월치)
+      '3M': '0',   // 일봉 (3개월치)
+      '6M': '0',   // 일봉 (6개월치)
+      '1Y': '0',   // 일봉 (1년치)
     };
+
+    // BYMD: 조회 기준일 (YYYYMMDD), 빈 값이면 당일 기준
+    const bymd = formatYmd(new Date());
 
     const params = new URLSearchParams({
       AUTH: '',
       EXCD: exchangeCode,
       SYMB: stockCode,
-      GUBN: periodMap[period] || '1M',
-      BYMD: '',
+      GUBN: gubnMap[period] || '0',
+      BYMD: bymd,
       MODP: '1',
     });
 
     const trId = 'HHDFS76240000';
+
+    console.log(`[KIS API] Overseas daily candles request: ${stockCode}, EXCD=${exchangeCode}, GUBN=${gubnMap[period] || '0'}, BYMD=${bymd}`);
 
     const response = await fetch(`${url}?${params.toString()}`, {
       method: 'GET',
