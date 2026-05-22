@@ -14,6 +14,7 @@ import {
   BalanceItem, OverseasBalanceItem, MarketType,
   OrderRequest, TradingSignal
 } from './types';
+import { getDomesticSession, getKSTNow, DomesticSession } from './agent-scheduler';
 
 // 에이전트 로그 타입
 export interface AgentLog {
@@ -225,12 +226,72 @@ async function fetchPositions(
 }
 
 /**
+ * 국내 주문 정책 체크
+ * 현재 거래세션과 시그널 타입에 따라 주문 허용 여부 결정
+ *
+ * 규칙:
+ * - BUY: 정규장 09:00~15:10만 허용
+ * - SELL/RISK_EXIT: 정규장 09:00~15:20만 허용
+ * - PREMARKET_CLOSE, OPENING_CALL_AUCTION, CLOSING_CALL_AUCTION,
+ *   POSTMARKET_CLOSE, AFTERHOURS_SINGLE: 기본 차단
+ * - 시간외 주문은 ALLOW_AFTER_HOURS_TRADING=true 환경변수 설정 시에만 허용
+ */
+function getDomesticOrderPolicy(signal: TradingSignal): { allowed: boolean; reason: string; session: DomesticSession } {
+  const sessionInfo = getDomesticSession();
+  const { session } = sessionInfo;
+
+  // 장외: 항상 차단
+  if (session === 'CLOSED') {
+    return { allowed: false, reason: `장외 시간 (${sessionInfo.label})`, session };
+  }
+
+  // 정규장: BUY/SELL 시간 제한
+  if (session === 'REGULAR') {
+    const { totalMinutes } = getKSTNow();
+
+    if (signal.signalType === 'BUY') {
+      // BUY: 09:00~15:10만 허용
+      if (totalMinutes >= 540 && totalMinutes <= 910) {
+        return { allowed: true, reason: `정규장 매수 허용`, session };
+      }
+      const curH = Math.floor(totalMinutes / 60);
+      const curM = totalMinutes % 60;
+      return { allowed: false, reason: `정규장 매수 마감 (15:10 이후, 현재 ${String(curH).padStart(2,'0')}:${String(curM).padStart(2,'0')})`, session };
+    }
+
+    // SELL (RISK_EXIT 포함): 09:00~15:20만 허용
+    if (signal.signalType === 'SELL') {
+      if (totalMinutes >= 540 && totalMinutes <= 920) {
+        return { allowed: true, reason: `정규장 매도 허용`, session };
+      }
+      const curH = Math.floor(totalMinutes / 60);
+      const curM = totalMinutes % 60;
+      return { allowed: false, reason: `정규장 매도 마감 (15:20 이후, 현재 ${String(curH).padStart(2,'0')}:${String(curM).padStart(2,'0')})`, session };
+    }
+  }
+
+  // 시간외 세션: 기본 차단, ALLOW_AFTER_HOURS_TRADING=true인 경우만 허용
+  const afterHoursSessions: DomesticSession[] = [
+    'PREMARKET_CLOSE', 'OPENING_CALL_AUCTION', 'CLOSING_CALL_AUCTION',
+    'POSTMARKET_CLOSE', 'AFTERHOURS_SINGLE',
+  ];
+  if (afterHoursSessions.includes(session)) {
+    if (process.env.ALLOW_AFTER_HOURS_TRADING === 'true') {
+      return { allowed: true, reason: `시간외 거래 허용 (${sessionInfo.label}, ALLOW_AFTER_HOURS_TRADING=true)`, session };
+    }
+    return { allowed: false, reason: `시간외 거래 차단 (${sessionInfo.label})`, session };
+  }
+
+  return { allowed: false, reason: `알 수 없는 세션 (${sessionInfo.label})`, session };
+}
+
+/**
  * 주문 실행 및 기록
  * - 리스크 매니저가 계산한 quantity를 실제 주문에 반영
  * - KIS API 주문 실패를 모의 체결로 바꾸지 않음
- * - 시장가(01) 주문은 장중에 즉시 체결되므로 PENDING도 성공으로 처리
- * - 포지션 DB는 즉시 업데이트 (낙관적 업데이트)
- * - 다음 사이클에서 잔고 조회로 실제 포지션과 동기화 (reconcilePositions)
+ * - 국내 주문은 getDomesticOrderPolicy()로 세션별 허용 여부 사전 체크
+ * - PENDING: success true 반환, 포지션 DB는 업데이트하지 않음
+ * - FILLED: success true 반환, 포지션 DB 업데이트
  */
 async function executeOrder(
   kisClient: KisApiClient | null,
@@ -239,6 +300,20 @@ async function executeOrder(
   exchangeCode?: string,
   quantity: number = 1
 ): Promise<{ success: boolean; orderNo: string; message: string }> {
+  // 국내 주문: 거래세션 정책 체크 (KIS placeOrder 호출 전)
+  if (market === 'DOMESTIC') {
+    const policy = getDomesticOrderPolicy(signal);
+    if (!policy.allowed) {
+      addLog('RISK', market, `${signal.stockName} 주문 차단: ${policy.reason}`, {
+        stockCode: signal.stockCode,
+        signalType: signal.signalType,
+        strategy: signal.strategy,
+        session: policy.session,
+      });
+      return { success: false, orderNo: '', message: `주문 차단: ${policy.reason}` };
+    }
+  }
+
   const safeQuantity = Math.max(1, Math.floor(quantity));
   const orderRequest: OrderRequest = {
     stockCode: signal.stockCode,
@@ -314,64 +389,65 @@ async function executeOrder(
     });
   }
 
-  // 포지션 DB 업데이트 (낙관적 업데이트)
-  // 시장가 주문은 장중에 즉시 체결되므로 PENDING도 포지션에 반영
-  // 이후 사이클에서 reconcilePositions()이 실제 잔고와 동기화
-  try {
-    if (signal.signalType === 'BUY') {
-      const positionId = `${market}-${exchangeCode || 'KR'}-${signal.stockCode}`;
-      await db.position.upsert({
-        where: {
-          id: positionId,
-        },
-        create: {
-          id: positionId,
-          stockCode: signal.stockCode,
-          stockName: signal.stockName,
-          quantity: safeQuantity,
-          avgPrice: signal.price,
-          currentPrice: signal.price,
-          profitLoss: 0,
-          profitRate: 0,
-          strategy: signal.strategy,
-          market,
-          exchangeCode: exchangeCode || null,
-          currency: market === 'OVERSEAS' ? 'USD' : 'KRW',
-        },
-        update: {
-          quantity: { increment: safeQuantity },
-          currentPrice: signal.price,
-        },
-      });
-    } else if (signal.signalType === 'SELL') {
-      // 매도 시 포지션 삭제 또는 수량 감소
-      const positionId = `${market}-${exchangeCode || 'KR'}-${signal.stockCode}`;
-      const existingPos = await db.position.findUnique({
-        where: { id: positionId },
-      });
-      if (existingPos) {
-        if (existingPos.quantity <= safeQuantity) {
-          await db.position.delete({
-            where: { id: positionId },
-          });
-        } else {
-          await db.position.update({
-            where: { id: positionId },
-            data: {
-              quantity: existingPos.quantity - safeQuantity,
-              currentPrice: signal.price,
-            },
-          });
+  // 포지션 DB 업데이트: status === 'FILLED'일 때만 반영
+  if (status === 'FILLED') {
+    try {
+      if (signal.signalType === 'BUY') {
+        const positionId = `${market}-${exchangeCode || 'KR'}-${signal.stockCode}`;
+        await db.position.upsert({
+          where: {
+            id: positionId,
+          },
+          create: {
+            id: positionId,
+            stockCode: signal.stockCode,
+            stockName: signal.stockName,
+            quantity: safeQuantity,
+            avgPrice: signal.price,
+            currentPrice: signal.price,
+            profitLoss: 0,
+            profitRate: 0,
+            strategy: signal.strategy,
+            market,
+            exchangeCode: exchangeCode || null,
+            currency: market === 'OVERSEAS' ? 'USD' : 'KRW',
+          },
+          update: {
+            quantity: { increment: safeQuantity },
+            currentPrice: signal.price,
+          },
+        });
+      } else if (signal.signalType === 'SELL') {
+        // 매도 시 포지션 삭제 또는 수량 감소
+        const positionId = `${market}-${exchangeCode || 'KR'}-${signal.stockCode}`;
+        const existingPos = await db.position.findUnique({
+          where: { id: positionId },
+        });
+        if (existingPos) {
+          if (existingPos.quantity <= safeQuantity) {
+            await db.position.delete({
+              where: { id: positionId },
+            });
+          } else {
+            await db.position.update({
+              where: { id: positionId },
+              data: {
+                quantity: existingPos.quantity - safeQuantity,
+                currentPrice: signal.price,
+              },
+            });
+          }
         }
       }
+    } catch (posError) {
+      addLog('ERROR', market, '포지션 업데이트 실패', {
+        error: posError instanceof Error ? posError.message : String(posError),
+      });
     }
-  } catch (posError) {
-    addLog('ERROR', market, '포지션 업데이트 실패', {
-      error: posError instanceof Error ? posError.message : String(posError),
-    });
   }
 
-  // PENDING도 성공으로 처리 (시장가 주문은 즉시 체결)
+  // PENDING: success true 반환, 포지션 DB는 업데이트하지 않음
+  // FILLED: success true 반환, 포지션 DB 업데이트 완료
   return { success: true, orderNo, message: `주문 접수 완료 (${status}) - ${message}` };
 }
 

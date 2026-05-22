@@ -54,7 +54,7 @@ const MAX_CONSECUTIVE_ERRORS = 5;
  *   getTimezoneOffset() 기반 직접 계산 사용
  * - KST = UTC+9
  */
-function getKSTNow(): { hours: number; minutes: number; totalMinutes: number; dayOfWeek: number } {
+export function getKSTNow(): { hours: number; minutes: number; totalMinutes: number; dayOfWeek: number } {
   const now = new Date();
   // UTC 밀리초 = 로컬 시간 + 로컬 타임존 오프셋(분→ms)
   const utcMs = now.getTime() + now.getTimezoneOffset() * 60000;
@@ -260,9 +260,14 @@ export function getDomesticSession(): DomesticSessionInfo {
     return { session: 'OPENING_CALL_AUCTION', orderDivision: '00', label: '시초가 동시호가' };
   }
 
-  // 09:00~15:30: 정규장
-  if (totalMinutes >= 540 && totalMinutes <= 930) { // 09:00~15:30
+  // 09:00~15:20: 정규장
+  if (totalMinutes >= 540 && totalMinutes < 920) { // 09:00~15:20
     return { session: 'REGULAR', orderDivision: '01', label: '정규장' };
+  }
+
+  // 15:20~15:30: 장마감 동시호가
+  if (totalMinutes >= 920 && totalMinutes <= 930) { // 15:20~15:30
+    return { session: 'CLOSING_CALL_AUCTION', orderDivision: '00', label: '장마감 동시호가' };
   }
 
   // 15:30~15:40: 정규장 직후 대기 (주문 불가)
@@ -730,4 +735,3 @@ export async function autoRecoverScheduler(): Promise<void> {
 
 // 서버 시작 시 자동 복구는 API 라우트를 통해 수동 호출
 // (모듈 로드 시 자동 실행은 서버 크래시 방지를 위해 제거)
-export { autoRecoverScheduler };
