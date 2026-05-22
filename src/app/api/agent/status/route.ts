@@ -129,6 +129,10 @@ export async function GET() {
           allowAfterHoursTrading: effectiveSettings.allowAfterHoursTrading,
           cycleIntervalMs: effectiveSettings.cycleIntervalMs,
           tradeOnlyMarketHours: effectiveSettings.tradeOnlyMarketHours,
+          domesticMarketOpen: effectiveSettings.domesticMarketOpen,
+          domesticMarketClose: effectiveSettings.domesticMarketClose,
+          overseasMarketOpen: effectiveSettings.overseasMarketOpen,
+          overseasMarketClose: effectiveSettings.overseasMarketClose,
           riskSummary: {
             maxPositionSize: effectiveSettings.maxPositionSize,
             maxDailyLoss: effectiveSettings.maxDailyLoss,
