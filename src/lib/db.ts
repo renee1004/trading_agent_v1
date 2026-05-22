@@ -271,23 +271,36 @@ async function initPrisma(): Promise<boolean> {
     await client.$connect();
     
     // 마이그레이션 테이블 존재 확인 - 스키마가 적용되었는지 검증
+    // prisma migrate deploy: _prisma_migrations 테이블 생성
+    // prisma db push: 데이터 테이블만 생성 (_prisma_migrations 없음)
+    // 따라서 두 가지 경우 모두 처리해야 함
     try {
-      const result = await client.$queryRaw`SELECT COUNT(*) as cnt FROM information_schema.tables WHERE table_name = '_prisma_migrations'` as any[];
-      const migrationExists = Number(result?.[0]?.cnt) > 0;
-      
-      if (migrationExists) {
-        // 실제 데이터 테이블도 확인 (Prisma는 따옴표로 대소문자 구분)
-        const watchlistCheck = await client.$queryRaw`SELECT COUNT(*) as cnt FROM information_schema.tables WHERE table_name IN ('WatchlistItem', 'watchlistitem')` as any[];
-        const tableExists = Number(watchlistCheck?.[0]?.cnt) > 0;
-        
-        if (tableExists) {
-          console.log('[DB] Prisma connected and schema verified - using PostgreSQL');
-          _prismaClient = client;
-          return true;
-        }
+      // 먼저 실제 데이터 테이블이 있는지 확인 (db push로 생성된 경우)
+      const watchlistCheck = await client.$queryRaw`SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE' ORDER BY table_name` as any[];
+      const tableNames = watchlistCheck?.map((r: any) => r.table_name) || [];
+      const hasDataTables = tableNames.some((t: string) =>
+        ['KisConfig', 'kisconfig', 'AgentConfig', 'agentconfig', 'WatchlistItem', 'watchlistitem'].includes(t)
+      );
+
+      if (hasDataTables) {
+        console.log('[DB] Prisma connected and data tables found - using PostgreSQL');
+        console.log('[DB] Tables:', tableNames.join(', '));
+        _prismaClient = client;
+        return true;
       }
-      
-      console.warn('[DB] Database connected but Prisma schema not migrated, falling back to in-memory');
+
+      // 데이터 테이블이 없으면 마이그레이션 테이블 확인
+      const migrationResult = await client.$queryRaw`SELECT COUNT(*) as cnt FROM information_schema.tables WHERE table_name = '_prisma_migrations'` as any[];
+      const migrationExists = Number(migrationResult?.[0]?.cnt) > 0;
+
+      if (migrationExists) {
+        console.log('[DB] Prisma connected with migrations - using PostgreSQL');
+        _prismaClient = client;
+        return true;
+      }
+
+      console.warn('[DB] Database connected but no data tables found, falling back to in-memory');
+      console.warn('[DB] Available tables:', tableNames.join(', ') || '(none)');
       await client.$disconnect().catch(() => {});
       return false;
     } catch (queryError) {
