@@ -7,6 +7,7 @@ import { KisApiClient } from './kis-api';
 import { TradingEngine } from './trading-engine';
 import { RiskManager } from './risk-manager';
 import { getMarketRiskConfig } from './market-defaults';
+import { scanTargetStocks } from './market-scanner';
 import { 
   KisConfig, StockCandle, OverseasStockCandle, 
   BalanceItem, OverseasBalanceItem, MarketType,
@@ -110,44 +111,21 @@ async function loadKisConfig(): Promise<KisConfig | null> {
 }
 
 /**
- * 관심종목 + 보유종목 로드
+ * 분석 대상 종목 로드
+ * 보유종목 + 관심종목 + 우량 대형주 풀 병합 (market-scanner 사용)
+ * 중복 자동 제거, 보유종목 우선
  */
-async function loadTargetStocks(): Promise<{
+async function loadTargetStocks(
+  kisClient: KisApiClient | null
+): Promise<{
   domestic: Array<{ code: string; name: string }>;
   overseas: Array<{ code: string; name: string; exchange: string }>;
 }> {
-  // 관심종목
-  const watchlist = await db.watchlistItem.findMany({
-    where: { isActive: true },
-  });
-
-  const domestic = watchlist
-    .filter(w => w.market === 'DOMESTIC')
-    .map(w => ({ code: w.stockCode, name: w.stockName }));
-
-  const overseas = watchlist
-    .filter(w => w.market === 'OVERSEAS')
-    .map(w => ({ 
-      code: w.stockCode, 
-      name: w.stockName, 
-      exchange: w.exchangeCode || 'NAS' 
-    }));
-
-  // 관심종목이 없으면 기본 국내 종목 사용
-  if (domestic.length === 0) {
-    domestic.push(
-      { code: '005930', name: '삼성전자' },
-      { code: '000660', name: 'SK하이닉스' },
-      { code: '373220', name: 'LG에너지솔루션' },
-      { code: '005380', name: '현대차' },
-      { code: '035420', name: 'NAVER' },
-    );
-  }
-
-  // 해외주식은 관심종목에 있는 것만 분석 (기본값 없음)
-  // 사용자가 명시적으로 추가한 해외종목만 매매 대상
-
-  return { domestic, overseas };
+  const result = await scanTargetStocks(kisClient);
+  return {
+    domestic: result.domestic,
+    overseas: result.overseas,
+  };
 }
 
 /**
@@ -296,7 +274,7 @@ async function executeOrder(
     }
   } else {
     // KIS 미설정 상태에서는 주문을 실행하지 않음
-    addLog('ERROR', market, 'KIS 미연결: 주문 불가', {
+    addLog('ERROR', market, 'KIS 클라이언트 없음: 주문 불가', {
       stockCode: signal.stockCode,
       signalType: signal.signalType,
     });
@@ -510,8 +488,8 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
     addLog('INFO', 'DOMESTIC', 'KIS 설정 없음 - 실제 매매 불가 (신호 분석만 수행)');
   }
 
-  // 2. 분석 대상 종목 로드
-  const { domestic: domesticStocks, overseas: overseasStocks } = await loadTargetStocks();
+  // 2. 분석 대상 종목 로드 (보유종목 + 관심종목 + 우량 대형주)
+  const { domestic: domesticStocks, overseas: overseasStocks } = await loadTargetStocks(kisClient);
   addLog('INFO', 'DOMESTIC', `분석 대상: 국내 ${domesticStocks.length}개, 해외 ${overseasStocks.length}개`);
 
   // 3. 리스크 매니저 초기화

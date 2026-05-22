@@ -46,14 +46,26 @@ let schedulerState: SchedulerState = {
 const MAX_CONSECUTIVE_ERRORS = 5;
 
 /**
+ * 한국시간(Asia/Seoul) 기준 현재 시간 정보 반환
+ * Railway 등 UTC 서버에서도 정확한 장시간 판단을 위해 필수
+ */
+function getKSTNow(): { hours: number; minutes: number; totalMinutes: number } {
+  // toLocaleString('ko-KR')은 서버 로케일과 무관하게 Asia/Seoul 시간 반환
+  const now = new Date();
+  const kstParts = now.toLocaleString('en-US', { timeZone: 'Asia/Seoul', hour12: false });
+  const kstDate = new Date(kstParts);
+  const hours = kstDate.getHours();
+  const minutes = kstDate.getMinutes();
+  return { hours, minutes, totalMinutes: hours * 60 + minutes };
+}
+
+/**
  * 장시간 체크
  * 국내: 09:00~15:30, 해외: 23:30~06:00 (한국시간)
+ * Railway 등 UTC 서버에서도 정확한 판단을 위해 getKSTNow() 사용
  */
 export function isMarketHours(market: 'DOMESTIC' | 'OVERSEAS' | 'ALL'): boolean {
-  const now = new Date();
-  const hours = now.getHours();
-  const minutes = now.getMinutes();
-  const currentMinutes = hours * 60 + minutes;
+  const { totalMinutes: currentMinutes } = getKSTNow();
 
   if (market === 'DOMESTIC' || market === 'ALL') {
     const [openH, openM] = schedulerState.config.domesticMarketOpen.split(':').map(Number);
