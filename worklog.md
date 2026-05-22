@@ -1,122 +1,26 @@
 ---
 Task ID: 1
 Agent: Main Agent
-Task: 자동매매 에이전트 작동 구현
+Task: KIS 설정 env fallback 우선순위 + 계좌번호 정규화 + 공통 로더 구현
 
 Work Log:
-- 프로젝트 전체 구조 분석: 전략 엔진, KIS API, 리스크 매니저는 구현되어 있으나 시그널→주문 자동화 파이프라인이 없음을 확인
-- trading-agent.ts 코어 로직 구현: runAgentCycle(), startAgent(), stopAgent(), getAgentStatus()
-- 5개 에이전트 API 라우트 생성: /api/agent/{run,start,stop,status,logs}
-- signals 라우트 실데이터 연동: Mock → KIS API 우선 시도, 실패 시 폴백
-- 대시보드 UI 업데이트: 포지션 탭 → 에이전트 탭으로 교체, 제어 패널, 실행 로그, 자동실행 스위치 추가
-- 빌드 테스트 성공, API 엔드포인트 전체 정상 동작 확인
+- 기존 코드 분석: trading-agent.ts loadKisConfig(), kis-api.ts parseAccountNo(), API 라우트 3개
+- src/lib/kis-config-loader.ts 신규 생성 (공통 모듈)
+  - normalizeKisAccountNo(): 8자리→10자리, 하이픈 제거, 유효성 검증
+  - readKisConfigFromEnv(): env fallback 우선순위 적용
+    - appKey: KIS_APP_KEY > KIS_APPKEY > APP_KEY
+    - appSecret: KIS_APP_SECRET > KIS_APPSECRET > APP_SECRET
+    - accountNo: KIS_ACCOUNT_NO > KIS_ACCOUNT > ACCOUNT_NO
+    - isDemo: KIS_IS_DEMO > KIS_VIRTUAL > KIS_BASE_URL(openapivts) > 기본값 true
+  - getOrCreateKisConfigFromEnv(): DB 1순위, env 2순위, 자동 DB 저장
+- src/lib/kis-api.ts parseAccountNo() 수정: 8자리 계좌번호 '01' 자동 추가
+- src/lib/trading-agent.ts loadKisConfig() 수정: 공통 로더 사용, 마스킹 로그
+- /api/kis/config: env fallback 반영, 계좌번호 정규화 POST에 적용
+- /api/kis/token: env fallback으로 configured:true 가능
+- /api/kis/balance: env fallback으로 잔고 조회 가능
+- 빌드 성공, GitHub push 완료 (commit 5f34c23)
 
 Stage Summary:
-- 자동매매 에이전트가 완전히 작동 가능한 상태가 됨
-- 에이전트 시작/중지/1사이클실행/자동실행(60초간격) 모두 정상
-- 시그널 분석→리스크체크→주문실행→포지션모니터링 전체 파이프라인 구현
-- KIS API 설정 시 실데이터 사용, 미설정 시 모의 데이터로 동작
-
----
-Task ID: 1
-Agent: Main Agent
-Task: GitHub 저장소 생성 및 코드 푸시, Railway 배포 준비
-
-Work Log:
-- .env.example 환경변수 템플릿 작성
-- .github/workflows/railway-deploy.yml CI/CD 추가 (후에 token 권한 이슈로 제거)
-- README.md 프로젝트 문서 작성
-- package.json 이름을 trading_agent_v1로 변경
-- .gitignore .env.example 추적 허용 추가
-- setup-and-deploy.sh 원클릭 배포 스크립트 작성
-- GitHub CLI (gh v2.63.2) 설치
-- Fine-grained PAT로 인증 시도 → 저장소 생성/쓰기 권한 부족
-- Classic PAT (ghp_)로 전환 후 인증 성공
-- GitHub 저장소 https://github.com/renee1004/trading_agent_v1 생성 (Private)
-- 코드 푸시 완료 (main 브랜치)
-- 저장소 Private으로 변경 완료
-
-Stage Summary:
-- GitHub 저장소 생성 및 코드 푸시 완료
-- Dockerfile, railway.toml, start.sh 등 Railway 배포 파일 이미 준비됨
-- 다음 단계: 사용자가 Railway에서 프로젝트 생성 후 배포
-
----
-Task ID: 2
-Agent: Main Agent
-Task: Railway 배포 후 URL 에러 + 대시보드 종목 미표시 + 설정 미적용 문제 수정
-
-Work Log:
-- Railway 배포 앱 진단: /api/watchlist 500 에러, /api/kis-config 404 에러 확인
-- 근본 원인 파악: db.ts에서 PrismaClient 생성자는 성공하지만 실제 쿼리는 실패 (스키마 미마이그레이션)
-- db.ts 완전 재작성: Proxy 기반 DB 객체 + Prisma 스키마 검증 후 인메모리 폴백
-  - $connect() 후 _prisma_migrations + WatchlistItem 테이블 존재 확인
-  - 스키마 없으면 자동 인메모리 DB 사용
-  - select 필드 선택 지원 추가
-  - 백그라운드 Prisma 연결 시도, 실패해도 앱 정상 동작
-- watchlist/route.ts: 상세 로깅, 시드 에러 핸들링 개선
-- kis/config/route.ts: 마스킹 로직 단순화, findFirst 실패 시 안전 처리, 에러 핸들링 강화
-- kis/token/route.ts: 동적 임포트, 상세 로깅 추가
-- 로컬 빌드 + API 테스트 성공: watchlist 10개 종목 반환, KIS config 저장/조회 정상
-- GitHub 푸시 후 Railway 자동 재배포
-- Railway 배포 확인: 모든 API 200 응답, watchlist 10개 종목, KIS config 저장/조회 정상
-
-Stage Summary:
-- Railway 배포 앱이 정상 작동: 대시보드 종목 표시, API 설정 저장/유지 모두 정상
-- 핵심 수정: Prisma 스키마 검증 후 인메모리 DB 폴백으로 DB 없이도 완전 동작
-
----
-Task ID: 3
-Agent: Main Agent
-Task: 핵심 버그 수정 + 타임존/주말 체크 + 마켓 스캐너 스코어링 + 자동 복구
-
-Work Log:
-- cancelOverseasOrder()에서 trId 미정의 버그 발견 및 수정 (VTTT1004U/TTTT1004U)
-- getKSTNow()를 toLocaleString 파싱 → UTC 오프셋 직접 계산으로 변경 (환경 무관 안정적)
-- isMarketHours()에 주말 체크 추가 (dayOfWeek 0,6 → 항상 false)
-- isMarketHours() 반환값에 dayOfWeek 포함하도록 getKSTNow() 시그니처 변경
-- 마켓 스캐너 스코어링/Top-N 선택 기능 추가:
-  - SOURCE_PRIORITY: POSITION(100) > WATCHLIST(50) > BLUE_CHIP(10)
-  - MAX_DOMESTIC_STOCKS=10, MAX_OVERSEAS_STOCKS=5
-  - 스코어 기반 정렬 후 상위 N개만 선택, 제외 종목 로그 출력
-  - filtered 카운트를 ScanResult에 추가
-- instrumentation.ts 추가: 서버 시작 5초 후 autoRecoverScheduler() 호출
-- 모의투자 모드 첫 사이클 장시간 무관 실행 로직 추가
-- getSchedulerStatus()에 currentKST 필드 추가 (디버깅용)
-- /api/agent/status에 currentKST 노출
-- page.tsx에 KST 시간 배지 표시 추가
-- 장시간 스킵 로그에 KST 시간/요일 정보 추가
-- 빌드 테스트 성공, GitHub push 완료
-
-Stage Summary:
-- 치명적 버그 1건 수정 (cancelOverseasOrder 런타임 크래시)
-- 타임존 계산을 환경 독립적 방식으로 개선
-- 주말 장시간 오인식 문제 해결
-- 마켓 스캐너가 API 호출 한도를 보호하며 우선순위 기반 종목 선정
-- 서버 재시작 시 스케줄러 자동 복구 활성화
-- Railway 자동 재배포 예정
-
----
-Task ID: 4
-Agent: Main Agent
-Task: 국내 주식 전체 거래세션 지원 (08:30~18:00)
-
-Work Log:
-- 스케줄러 장시간 기본값 09:00~15:30 → 08:30~18:00 확장
-- getDomesticSession() 세션 감지 유틸리티 추가:
-  08:30~08:40 장전 시간외 종가 → ORD_DVSN='61'
-  08:40~09:00 시초가 동시호가 → ORD_DVSN='00'
-  09:00~15:30 정규장 → ORD_DVSN='01'
-  15:30~15:40 장간 대기 → 주문 불가
-  15:40~16:00 장후 시간외 종가 → ORD_DVSN='81'
-  16:00~18:00 시간외 단일가 → ORD_DVSN='62'
-- placeOrder() 주문구분코드 자동 선택 로직 추가
-- OrderRequest.orderKind 타입에 '61'|'62'|'81' 추가
-- 상태 API에 domesticSession 필드 노출
-- page.tsx에 현재 세션명 배지 표시
-- 빌드 성공, GitHub push 완료
-
-Stage Summary:
-- 에이전트가 국내 주식 전체 거래세션에서 활성화됨
-- 주문 시 세션에 맞는 주문구분코드 자동 적용
-- 대시보드에서 현재 세션 상태 실시간 확인 가능
+- 6개 파일 변경 (1개 신규, 5개 수정), 337줄 추가, 115줄 삭제
+- 기존 환경변수명(KIS_ACCOUNT, KIS_VIRTUAL)과 새 환경변수명 모두 지원
+- FID_ORIG_ADJ_PRC, 국내 주문 정책, PENDING/FILLED 로직 유지 확인
