@@ -72,6 +72,8 @@ server.log
 !tsconfig.json
 !components.json
 !composite_strategy.json
+# Stock master data files (required for symbol search)
+!data/*.json
 
 # Mini services
 /mini-services/

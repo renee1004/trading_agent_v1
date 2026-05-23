@@ -1,0 +1,5762 @@
+[
+  {
+    "symbol": "AAPL",
+    "excd": "NAS",
+    "koreanName": "애플",
+    "englishName": "Apple Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "MSFT",
+    "excd": "NAS",
+    "koreanName": "마이크로소프트",
+    "englishName": "Microsoft Corp",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "NVDA",
+    "excd": "NAS",
+    "koreanName": "엔비디아",
+    "englishName": "NVIDIA Corp",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "GOOGL",
+    "excd": "NAS",
+    "koreanName": "알파벳 A",
+    "englishName": "Alphabet Inc Class A",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "GOOG",
+    "excd": "NAS",
+    "koreanName": "알파벳 C",
+    "englishName": "Alphabet Inc Class C",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "AMZN",
+    "excd": "NAS",
+    "koreanName": "아마존",
+    "englishName": "Amazon.com Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "META",
+    "excd": "NAS",
+    "koreanName": "메타플랫폼스",
+    "englishName": "Meta Platforms Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "TSLA",
+    "excd": "NAS",
+    "koreanName": "테슬라",
+    "englishName": "Tesla Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "AMD",
+    "excd": "NAS",
+    "koreanName": "AMD",
+    "englishName": "Advanced Micro Devices Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "AVGO",
+    "excd": "NAS",
+    "koreanName": "브로드컴",
+    "englishName": "Broadcom Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "PLTR",
+    "excd": "NAS",
+    "koreanName": "팔란티어",
+    "englishName": "Palantir Technologies Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "MSTR",
+    "excd": "NAS",
+    "koreanName": "마이크로스트래티지",
+    "englishName": "MicroStrategy Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "NFLX",
+    "excd": "NAS",
+    "koreanName": "넷플릭스",
+    "englishName": "Netflix Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "COST",
+    "excd": "NAS",
+    "koreanName": "코스트코",
+    "englishName": "Costco Wholesale Corp",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "ADBE",
+    "excd": "NAS",
+    "koreanName": "어도비",
+    "englishName": "Adobe Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "INTC",
+    "excd": "NAS",
+    "koreanName": "인텔",
+    "englishName": "Intel Corp",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "CSCO",
+    "excd": "NAS",
+    "koreanName": "시스코",
+    "englishName": "Cisco Systems Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "PEP",
+    "excd": "NAS",
+    "koreanName": "펩시코",
+    "englishName": "PepsiCo Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "QCOM",
+    "excd": "NAS",
+    "koreanName": "퀄컴",
+    "englishName": "Qualcomm Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "TXN",
+    "excd": "NAS",
+    "koreanName": "텍사스인스트루먼트",
+    "englishName": "Texas Instruments Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "AMAT",
+    "excd": "NAS",
+    "koreanName": "어플라이드머티리얼즈",
+    "englishName": "Applied Materials Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "MU",
+    "excd": "NAS",
+    "koreanName": "마이크론",
+    "englishName": "Micron Technology Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "MRVL",
+    "excd": "NAS",
+    "koreanName": "마벨",
+    "englishName": "Marvell Technology Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "SMCI",
+    "excd": "NAS",
+    "koreanName": "슈퍼마이크로컴퓨터",
+    "englishName": "Super Micro Computer Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "ZS",
+    "excd": "NAS",
+    "koreanName": "제스케일러",
+    "englishName": "Zscaler Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "CRWD",
+    "excd": "NAS",
+    "koreanName": "크라우드스트라이크",
+    "englishName": "CrowdStrike Holdings Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "PANW",
+    "excd": "NAS",
+    "koreanName": "팔로알토네트웍스",
+    "englishName": "Palo Alto Networks Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "FTNT",
+    "excd": "NAS",
+    "koreanName": "포티넷",
+    "englishName": "Fortinet Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "DDOG",
+    "excd": "NAS",
+    "koreanName": "데이터독",
+    "englishName": "Datadog Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "NET",
+    "excd": "NAS",
+    "koreanName": "클라우드플레어",
+    "englishName": "Cloudflare Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "MDB",
+    "excd": "NAS",
+    "koreanName": "몽고DB",
+    "englishName": "MongoDB Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "OKTA",
+    "excd": "NAS",
+    "koreanName": "옥타",
+    "englishName": "Okta Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "SPLK",
+    "excd": "NAS",
+    "koreanName": "스플렁크",
+    "englishName": "Splunk Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "TEAM",
+    "excd": "NAS",
+    "koreanName": "아틀라시안",
+    "englishName": "Atlassian Corp",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "DOCU",
+    "excd": "NAS",
+    "koreanName": "도큐사인",
+    "englishName": "DocuSign Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "ZM",
+    "excd": "NAS",
+    "koreanName": "줌비디오",
+    "englishName": "Zoom Video Communications Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "RNG",
+    "excd": "NAS",
+    "koreanName": "링센트럴",
+    "englishName": "RingCentral Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "HUBS",
+    "excd": "NAS",
+    "koreanName": "허브스팟",
+    "englishName": "HubSpot Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "TTD",
+    "excd": "NAS",
+    "koreanName": "트레이드데스크",
+    "englishName": "The Trade Desk Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "ANSS",
+    "excd": "NAS",
+    "koreanName": "앤시스",
+    "englishName": "Ansys Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "INTU",
+    "excd": "NAS",
+    "koreanName": "인튜잇",
+    "englishName": "Intuit Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "MRNA",
+    "excd": "NAS",
+    "koreanName": "모더나",
+    "englishName": "Moderna Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "VRTX",
+    "excd": "NAS",
+    "koreanName": "버텍스파마",
+    "englishName": "Vertex Pharmaceuticals Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "GILD",
+    "excd": "NAS",
+    "koreanName": "길리어드사이언스",
+    "englishName": "Gilead Sciences Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "REGN",
+    "excd": "NAS",
+    "koreanName": "리제네론",
+    "englishName": "Regeneron Pharmaceuticals Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "BIIB",
+    "excd": "NAS",
+    "koreanName": "바이오젠",
+    "englishName": "Biogen Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "AMGN",
+    "excd": "NAS",
+    "koreanName": "암젠",
+    "englishName": "Amgen Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "ILMN",
+    "excd": "NAS",
+    "koreanName": "일루미나",
+    "englishName": "Illumina Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "DXCM",
+    "excd": "NAS",
+    "koreanName": "덱스콤",
+    "englishName": "DexCom Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "IDXX",
+    "excd": "NAS",
+    "koreanName": "아이덱스랩",
+    "englishName": "IDEXX Laboratories Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "ALGN",
+    "excd": "NAS",
+    "koreanName": "얼라인테크놀로지",
+    "englishName": "Align Technology Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "SBUX",
+    "excd": "NAS",
+    "koreanName": "스타벅스",
+    "englishName": "Starbucks Corp",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "CMCSA",
+    "excd": "NAS",
+    "koreanName": "컴캐스트",
+    "englishName": "Comcast Corp",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "PYPL",
+    "excd": "NAS",
+    "koreanName": "페이팔",
+    "englishName": "PayPal Holdings Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "KDP",
+    "excd": "NAS",
+    "koreanName": "커리그드르페퍼",
+    "englishName": "Keurig Dr Pepper Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "DLTR",
+    "excd": "NAS",
+    "koreanName": "달러트리",
+    "englishName": "Dollar Tree Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "ROST",
+    "excd": "NAS",
+    "koreanName": "로스스토어스",
+    "englishName": "Ross Stores Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "CHTR",
+    "excd": "NAS",
+    "koreanName": "차터커뮤니케이션스",
+    "englishName": "Charter Communications Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "MDLZ",
+    "excd": "NAS",
+    "koreanName": "몬델리즈",
+    "englishName": "Mondelez International Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "KHC",
+    "excd": "NAS",
+    "koreanName": "크래프트하인즈",
+    "englishName": "The Kraft Heinz Co",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "WBA",
+    "excd": "NAS",
+    "koreanName": "월그린스부츠알리안스",
+    "englishName": "Walgreens Boots Alliance Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "SIRI",
+    "excd": "NAS",
+    "koreanName": "시리우스XM",
+    "englishName": "Sirius XM Holdings Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "BKNG",
+    "excd": "NAS",
+    "koreanName": "부킹홀딩스",
+    "englishName": "Booking Holdings Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "CTAS",
+    "excd": "NAS",
+    "koreanName": "신타스",
+    "englishName": "Cintas Corp",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "LULU",
+    "excd": "NAS",
+    "koreanName": "룰루레몬",
+    "englishName": "Lululemon Athletica Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "EXPE",
+    "excd": "NAS",
+    "koreanName": "익스피디아",
+    "englishName": "Expedia Group Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "MELI",
+    "excd": "NAS",
+    "koreanName": "메르카도리브레",
+    "englishName": "MercadoLibre Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "ARM",
+    "excd": "NAS",
+    "koreanName": "ARM홀딩스",
+    "englishName": "ARM Holdings PLC",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "SNPS",
+    "excd": "NAS",
+    "koreanName": "시놉시스",
+    "englishName": "Synopsys Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "CDNS",
+    "excd": "NAS",
+    "koreanName": "캐던스디자인",
+    "englishName": "Cadence Design Systems Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "KLAC",
+    "excd": "NAS",
+    "koreanName": "KLA",
+    "englishName": "KLA Corp",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "LRCX",
+    "excd": "NAS",
+    "koreanName": "램리서치",
+    "englishName": "Lam Research Corp",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "ASML",
+    "excd": "NAS",
+    "koreanName": "ASML홀딩",
+    "englishName": "ASML Holding NV",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "SWKS",
+    "excd": "NAS",
+    "koreanName": "스카이웍스솔루션스",
+    "englishName": "Skyworks Solutions Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "MCHP",
+    "excd": "NAS",
+    "koreanName": "마이크로칩테크놀로지",
+    "englishName": "Microchip Technology Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "ON",
+    "excd": "NAS",
+    "koreanName": "온세미컨덕터",
+    "englishName": "ON Semiconductor Corp",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "WDC",
+    "excd": "NAS",
+    "koreanName": "웨스턴디지털",
+    "englishName": "Western Digital Corp",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "STX",
+    "excd": "NAS",
+    "koreanName": "시게이트테크놀로지",
+    "englishName": "Seagate Technology Holdings PLC",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "NXPI",
+    "excd": "NAS",
+    "koreanName": "NXP반도체",
+    "englishName": "NXP Semiconductors NV",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "VRSN",
+    "excd": "NAS",
+    "koreanName": "베리사인",
+    "englishName": "VeriSign Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "ABNB",
+    "excd": "NAS",
+    "koreanName": "에어비앤비",
+    "englishName": "Airbnb Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "RIVN",
+    "excd": "NAS",
+    "koreanName": "리비안",
+    "englishName": "Rivian Automotive Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "LCID",
+    "excd": "NAS",
+    "koreanName": "루시드모터스",
+    "englishName": "Lucid Group Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "RKLB",
+    "excd": "NAS",
+    "koreanName": "로켓랩",
+    "englishName": "Rocket Lab USA Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "LUNR",
+    "excd": "NAS",
+    "koreanName": "인튜이티브머신스",
+    "englishName": "Intuitive Machines Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "ASTS",
+    "excd": "NAS",
+    "koreanName": "AST스페이스모빌",
+    "englishName": "AST SpaceMobile Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "SOUN",
+    "excd": "NAS",
+    "koreanName": "사운드하운드AI",
+    "englishName": "SoundHound AI Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "SERV",
+    "excd": "NAS",
+    "koreanName": "서브로보틱스",
+    "englishName": "Serve Robotics Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "HOOD",
+    "excd": "NAS",
+    "koreanName": "로빈후드",
+    "englishName": "Robinhood Markets Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "SOFI",
+    "excd": "NAS",
+    "koreanName": "소피테크놀로지스",
+    "englishName": "SoFi Technologies Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "COIN",
+    "excd": "NAS",
+    "koreanName": "코인베이스",
+    "englishName": "Coinbase Global Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "RIOT",
+    "excd": "NAS",
+    "koreanName": "라이옷플랫폼스",
+    "englishName": "Riot Platforms Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "CLSK",
+    "excd": "NAS",
+    "koreanName": "클린스파크",
+    "englishName": "CleanSpark Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "MARA",
+    "excd": "NAS",
+    "koreanName": "마라패트롤디지털",
+    "englishName": "Marathon Digital Holdings Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "BHVN",
+    "excd": "NAS",
+    "koreanName": "바이오해븐",
+    "englishName": "Biohaven Ltd",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "AI",
+    "excd": "NAS",
+    "koreanName": "C3.ai",
+    "englishName": "C3.ai Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "DKNG",
+    "excd": "NAS",
+    "koreanName": "드래프트킹스",
+    "englishName": "DraftKings Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "ZI",
+    "excd": "NAS",
+    "koreanName": "줌인포",
+    "englishName": "ZoomInfo Technologies Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "AFRM",
+    "excd": "NAS",
+    "koreanName": "어펌",
+    "englishName": "Affirm Holdings Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "UPST",
+    "excd": "NAS",
+    "koreanName": "업스타트",
+    "englishName": "Upstart Holdings Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "DASH",
+    "excd": "NAS",
+    "koreanName": "도어대시",
+    "englishName": "DoorDash Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "LYFT",
+    "excd": "NAS",
+    "koreanName": "리프트",
+    "englishName": "Lyft Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "PTON",
+    "excd": "NAS",
+    "koreanName": "펠로톤",
+    "englishName": "Peloton Interactive Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "ETSY",
+    "excd": "NAS",
+    "koreanName": "에츠이",
+    "englishName": "Etsy Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "OPEN",
+    "excd": "NAS",
+    "koreanName": "오픈도어",
+    "englishName": "Opendoor Technologies Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "S",
+    "excd": "NAS",
+    "koreanName": "센티넬원",
+    "englishName": "SentinelOne Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "CYBR",
+    "excd": "NAS",
+    "koreanName": "사이버아크",
+    "englishName": "CyberArk Software Ltd",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "FSLY",
+    "excd": "NAS",
+    "koreanName": "패스트리",
+    "englishName": "Fastly Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "RXT",
+    "excd": "NAS",
+    "koreanName": "락스페이스",
+    "englishName": "Rackspace Technology Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "AYX",
+    "excd": "NAS",
+    "koreanName": "얼터릭스",
+    "englishName": "Alteryx Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "BIDU",
+    "excd": "NAS",
+    "koreanName": "바이두",
+    "englishName": "Baidu Inc ADR",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "ADR",
+    "currency": "USD"
+  },
+  {
+    "symbol": "JD",
+    "excd": "NAS",
+    "koreanName": "징둥",
+    "englishName": "JD.com Inc ADR",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "ADR",
+    "currency": "USD"
+  },
+  {
+    "symbol": "PDD",
+    "excd": "NAS",
+    "koreanName": "핀둬둬",
+    "englishName": "PDD Holdings Inc ADR",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "ADR",
+    "currency": "USD"
+  },
+  {
+    "symbol": "NIO",
+    "excd": "NAS",
+    "koreanName": "니오",
+    "englishName": "NIO Inc ADR",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "ADR",
+    "currency": "USD"
+  },
+  {
+    "symbol": "XPEV",
+    "excd": "NAS",
+    "koreanName": "샤오펑",
+    "englishName": "XPeng Inc ADR",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "ADR",
+    "currency": "USD"
+  },
+  {
+    "symbol": "LI",
+    "excd": "NAS",
+    "koreanName": "리오토",
+    "englishName": "Li Auto Inc ADR",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "ADR",
+    "currency": "USD"
+  },
+  {
+    "symbol": "BILI",
+    "excd": "NAS",
+    "koreanName": "빌리빌리",
+    "englishName": "Bilibili Inc ADR",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "ADR",
+    "currency": "USD"
+  },
+  {
+    "symbol": "TME",
+    "excd": "NAS",
+    "koreanName": "텐센트뮤직",
+    "englishName": "Tencent Music Entertainment ADR",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "ADR",
+    "currency": "USD"
+  },
+  {
+    "symbol": "TCOM",
+    "excd": "NAS",
+    "koreanName": "트립닷컴",
+    "englishName": "Trip.com Group Ltd ADR",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "ADR",
+    "currency": "USD"
+  },
+  {
+    "symbol": "NTES",
+    "excd": "NAS",
+    "koreanName": "넷이즈",
+    "englishName": "NetEase Inc ADR",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "ADR",
+    "currency": "USD"
+  },
+  {
+    "symbol": "FUTU",
+    "excd": "NAS",
+    "koreanName": "푸투홀딩스",
+    "englishName": "Futu Holdings Ltd ADR",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "ADR",
+    "currency": "USD"
+  },
+  {
+    "symbol": "VIPS",
+    "excd": "NAS",
+    "koreanName": "VIP쇼핑",
+    "englishName": "Vipshop Holdings Ltd ADR",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "ADR",
+    "currency": "USD"
+  },
+  {
+    "symbol": "ISRG",
+    "excd": "NAS",
+    "koreanName": "인튜이티브서지컬",
+    "englishName": "Intuitive Surgical Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "CPRT",
+    "excd": "NAS",
+    "koreanName": "코파트",
+    "englishName": "Copart Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "FAST",
+    "excd": "NAS",
+    "koreanName": "패스터널",
+    "englishName": "Fastenal Co",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "VRSK",
+    "excd": "NAS",
+    "koreanName": "베리스크애널리틱스",
+    "englishName": "Verisk Analytics Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "CDW",
+    "excd": "NAS",
+    "koreanName": "CDW",
+    "englishName": "CDW Corp",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "PCAR",
+    "excd": "NAS",
+    "koreanName": "PACCAR",
+    "englishName": "PACCAR Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "EXC",
+    "excd": "NAS",
+    "koreanName": "엑셀론",
+    "englishName": "Exelon Corp",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "XEL",
+    "excd": "NAS",
+    "koreanName": "엑셀에너지",
+    "englishName": "Xcel Energy Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "FANG",
+    "excd": "NAS",
+    "koreanName": "다이아몬드백에너지",
+    "englishName": "Diamondback Energy Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "BKR",
+    "excd": "NAS",
+    "koreanName": "베이커휴즈",
+    "englishName": "Baker Hughes Co",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "EA",
+    "excd": "NAS",
+    "koreanName": "일렉트로닉아츠",
+    "englishName": "Electronic Arts Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "TTWO",
+    "excd": "NAS",
+    "koreanName": "테이크투인터랙티브",
+    "englishName": "Take-Two Interactive Software Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "TRMB",
+    "excd": "NAS",
+    "koreanName": "트림블",
+    "englishName": "Trimble Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "PAYX",
+    "excd": "NAS",
+    "koreanName": "페이첵스",
+    "englishName": "Paychex Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "ORLY",
+    "excd": "NAS",
+    "koreanName": "오라일리오토모티브",
+    "englishName": "O'Reilly Automotive Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "ROP",
+    "excd": "NAS",
+    "koreanName": "로퍼테크놀로지스",
+    "englishName": "Roper Technologies Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "CSX",
+    "excd": "NAS",
+    "koreanName": "CSX",
+    "englishName": "CSX Corp",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "TMUS",
+    "excd": "NAS",
+    "koreanName": "T모바일US",
+    "englishName": "T-Mobile US Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "FOXA",
+    "excd": "NAS",
+    "koreanName": "폭스코퍼레이션A",
+    "englishName": "Fox Corp Class A",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "FOX",
+    "excd": "NAS",
+    "koreanName": "폭스코퍼레이션B",
+    "englishName": "Fox Corp Class B",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "MNST",
+    "excd": "NAS",
+    "koreanName": "몬스터베버리지",
+    "englishName": "Monster Beverage Corp",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "DLB",
+    "excd": "NAS",
+    "koreanName": "돌비랩",
+    "englishName": "Dolby Laboratories Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "STLD",
+    "excd": "NAS",
+    "koreanName": "스틸다이내믹스",
+    "englishName": "Steel Dynamics Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "CTSH",
+    "excd": "NAS",
+    "koreanName": "코그니전트",
+    "englishName": "Cognizant Technology Solutions Corp",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "MAR",
+    "excd": "NAS",
+    "koreanName": "메리어트인터내셔널",
+    "englishName": "Marriott International Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "ALXN",
+    "excd": "NAS",
+    "koreanName": "알렉시온파마",
+    "englishName": "Alexion Pharmaceuticals Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "WDAY",
+    "excd": "NAS",
+    "koreanName": "워크데이",
+    "englishName": "Workday Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "SE",
+    "excd": "NAS",
+    "koreanName": "시게임",
+    "englishName": "Sea Ltd ADR",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "ADR",
+    "currency": "USD"
+  },
+  {
+    "symbol": "SGEN",
+    "excd": "NAS",
+    "koreanName": "시아젠",
+    "englishName": "Seagen Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "INCY",
+    "excd": "NAS",
+    "koreanName": "인사이트",
+    "englishName": "Incyte Corp",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "HALO",
+    "excd": "NAS",
+    "koreanName": "할로지닉",
+    "englishName": "Halozyne Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "MRVI",
+    "excd": "NAS",
+    "koreanName": "마벨리어스",
+    "englishName": "Maravai LifeSciences Holdings Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "LAZR",
+    "excd": "NAS",
+    "koreanName": "Luminar테크놀로지스",
+    "englishName": "Luminar Technologies Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "KTOS",
+    "excd": "NAS",
+    "koreanName": "크라토스디펜스",
+    "englishName": "Kratos Defense & Security Solutions Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "SEDG",
+    "excd": "NAS",
+    "koreanName": "솔러리지",
+    "englishName": "SolarEdge Technologies Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "ENPH",
+    "excd": "NAS",
+    "koreanName": "인페이스에너지",
+    "englishName": "Enphase Energy Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "RUN",
+    "excd": "NAS",
+    "koreanName": "선런",
+    "englishName": "Sunrun Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "VLDR",
+    "excd": "NAS",
+    "koreanName": "벨로다인",
+    "englishName": "Velodyne Lidar Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "NKLA",
+    "excd": "NAS",
+    "koreanName": "니콜라",
+    "englishName": "Nikola Corp",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "FSR",
+    "excd": "NAS",
+    "koreanName": "피스커",
+    "englishName": "Fisker Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "PSNY",
+    "excd": "NAS",
+    "koreanName": "폴스타",
+    "englishName": "Polestar Automotive Holding UK PLC",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "JMIA",
+    "excd": "NAS",
+    "koreanName": "주미아",
+    "englishName": "Jumia Technologies AG ADR",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "ADR",
+    "currency": "USD"
+  },
+  {
+    "symbol": "GDRX",
+    "excd": "NAS",
+    "koreanName": "굿Rx",
+    "englishName": "GoodRx Holdings Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "RBLX",
+    "excd": "NAS",
+    "koreanName": "로블록스",
+    "englishName": "Roblox Corp",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "TLRY",
+    "excd": "NAS",
+    "koreanName": "틸레이",
+    "englishName": "Tilray Brands Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "CGC",
+    "excd": "NAS",
+    "koreanName": "카나비그로우스",
+    "englishName": "Canopy Growth Corp",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "ACB",
+    "excd": "NAS",
+    "koreanName": "오로라캐나비스",
+    "englishName": "Aurora Cannabis Corp",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "SNDL",
+    "excd": "NAS",
+    "koreanName": "선딜그룹",
+    "englishName": "Sundial Growers Inc",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "QQQ",
+    "excd": "NAS",
+    "koreanName": "인베스코QQQ",
+    "englishName": "Invesco QQQ Trust",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "TQQQ",
+    "excd": "NAS",
+    "koreanName": "프로쉐어울트라프로QQQ",
+    "englishName": "ProShares UltraPro QQQ",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "SQQQ",
+    "excd": "NAS",
+    "koreanName": "프로쉐어울트라프로쇼트QQQ",
+    "englishName": "ProShares UltraPro Short QQQ",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "SOXX",
+    "excd": "NAS",
+    "koreanName": "이셰어반도체ETF",
+    "englishName": "iShares Semiconductor ETF",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "TLT",
+    "excd": "NAS",
+    "koreanName": "이셰어20년국채ETF",
+    "englishName": "iShares 20+ Year Treasury Bond ETF",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "IBB",
+    "excd": "NAS",
+    "koreanName": "이셰어바이오테크ETF",
+    "englishName": "iShares Biotechnology ETF",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "VGT",
+    "excd": "NAS",
+    "koreanName": "뱅가드정보기술ETF",
+    "englishName": "Vanguard Information Technology ETF",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "QQQM",
+    "excd": "NAS",
+    "koreanName": "인베스코NASDAQ100",
+    "englishName": "Invesco NASDAQ 100 ETF",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "UVXY",
+    "excd": "NAS",
+    "koreanName": "울트라VIX단기선물ETF",
+    "englishName": "ProShares Ultra VIX Short-Term Futures ETF",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "ONEQ",
+    "excd": "NAS",
+    "koreanName": "피델리티NASDAQ종합지수ETF",
+    "englishName": "Fidelity NASDAQ Composite Index ETF",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "QQQX",
+    "excd": "NAS",
+    "koreanName": "NuveenNASDAQ다이내믹스ETF",
+    "englishName": "Nuveen NASDAQ Dynamic Target ETF",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "COMP",
+    "excd": "NAS",
+    "koreanName": "인베스코NASDAQ종합ETF",
+    "englishName": "Invesco NASDAQ Composite ETF",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "TQQ",
+    "excd": "NAS",
+    "koreanName": "인베스코EQQQ",
+    "englishName": "Invesco EQQQ Nasdaq-100 ETF",
+    "marketName": "나스닥",
+    "exchangeName": "나스닥",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "JPM",
+    "excd": "NYS",
+    "koreanName": "JP모건체이스",
+    "englishName": "JPMorgan Chase & Co",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "BAC",
+    "excd": "NYS",
+    "koreanName": "뱅크오브아메리카",
+    "englishName": "Bank of America Corp",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "GS",
+    "excd": "NYS",
+    "koreanName": "골드만삭스",
+    "englishName": "Goldman Sachs Group Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "V",
+    "excd": "NYS",
+    "koreanName": "비자",
+    "englishName": "Visa Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "MA",
+    "excd": "NYS",
+    "koreanName": "마스터카드",
+    "englishName": "Mastercard Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "BLK",
+    "excd": "NYS",
+    "koreanName": "블랙록",
+    "englishName": "BlackRock Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "SCHW",
+    "excd": "NYS",
+    "koreanName": "찰스슈왑",
+    "englishName": "Charles Schwab Corp",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "MS",
+    "excd": "NYS",
+    "koreanName": "모건스탠리",
+    "englishName": "Morgan Stanley",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "C",
+    "excd": "NYS",
+    "koreanName": "시티그룹",
+    "englishName": "Citigroup Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "WFC",
+    "excd": "NYS",
+    "koreanName": "웰스파고",
+    "englishName": "Wells Fargo & Co",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "USB",
+    "excd": "NYS",
+    "koreanName": "US뱅콥",
+    "englishName": "U.S. Bancorp",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "PNC",
+    "excd": "NYS",
+    "koreanName": "PNC파이낸셜",
+    "englishName": "PNC Financial Services Group Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "AXP",
+    "excd": "NYS",
+    "koreanName": "아메리칸익스프레스",
+    "englishName": "American Express Co",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "COF",
+    "excd": "NYS",
+    "koreanName": "캐피털원파이낸셜",
+    "englishName": "Capital One Financial Corp",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "BK",
+    "excd": "NYS",
+    "koreanName": "BNY멜론",
+    "englishName": "Bank of New York Mellon Corp",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "STT",
+    "excd": "NYS",
+    "koreanName": "스테이트스트리트",
+    "englishName": "State Street Corp",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "TFC",
+    "excd": "NYS",
+    "koreanName": "트루이스트파이낸셜",
+    "englishName": "Truist Financial Corp",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "RJF",
+    "excd": "NYS",
+    "koreanName": "레이몬드제임스",
+    "englishName": "Raymond James Financial Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "ICE",
+    "excd": "NYS",
+    "koreanName": "인터콘티넨탈익스체인지",
+    "englishName": "Intercontinental Exchange Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "FIS",
+    "excd": "NYS",
+    "koreanName": "피델리티국제정보서비스",
+    "englishName": "Fidelity National Information Services Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "FITB",
+    "excd": "NYS",
+    "koreanName": "피프스서드은행",
+    "englishName": "Fifth Third Bancorp",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "HBAN",
+    "excd": "NYS",
+    "koreanName": "헌팅턴은행셰어스",
+    "englishName": "Huntington Bancshares Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "KEY",
+    "excd": "NYS",
+    "koreanName": "키코프",
+    "englishName": "KeyCorp",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "MCO",
+    "excd": "NYS",
+    "koreanName": "무디스",
+    "englishName": "Moody's Corp",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "NTRS",
+    "excd": "NYS",
+    "koreanName": "노던트러스트",
+    "englishName": "Northern Trust Corp",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "PFG",
+    "excd": "NYS",
+    "koreanName": "프린시파파이낸셜",
+    "englishName": "Principal Financial Group Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "SYF",
+    "excd": "NYS",
+    "koreanName": "Synchrony파이낸셜",
+    "englishName": "Synchrony Financial",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "TROW",
+    "excd": "NYS",
+    "koreanName": "T.로우프라이스",
+    "englishName": "T. Rowe Price Group Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "BEN",
+    "excd": "NYS",
+    "koreanName": "프랭클린템플턴",
+    "englishName": "Franklin Resources Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "ZION",
+    "excd": "NYS",
+    "koreanName": "자이온스은행",
+    "englishName": "Zions Bancorp",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "CFG",
+    "excd": "NYS",
+    "koreanName": "시티즌스파이낸셜",
+    "englishName": "Citizens Financial Group Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "RF",
+    "excd": "NYS",
+    "koreanName": "리전스파이낸셜",
+    "englishName": "Regions Financial Corp",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "LNC",
+    "excd": "NYS",
+    "koreanName": "링컨내셔널",
+    "englishName": "Lincoln National Corp",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "AFL",
+    "excd": "NYS",
+    "koreanName": "아플락",
+    "englishName": "Aflac Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "AIG",
+    "excd": "NYS",
+    "koreanName": "AIG",
+    "englishName": "American International Group Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "MET",
+    "excd": "NYS",
+    "koreanName": "메트라이프",
+    "englishName": "MetLife Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "PRU",
+    "excd": "NYS",
+    "koreanName": "프루덴셜파이낸셜",
+    "englishName": "Prudential Financial Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "ALL",
+    "excd": "NYS",
+    "koreanName": "올스테이트",
+    "englishName": "Allstate Corp",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "TRV",
+    "excd": "NYS",
+    "koreanName": "트래블러스",
+    "englishName": "The Travelers Companies Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "CME",
+    "excd": "NYS",
+    "koreanName": "CME그룹",
+    "englishName": "CME Group Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "SPGI",
+    "excd": "NYS",
+    "koreanName": "S&P글로벌",
+    "englishName": "S&P Global Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "UNH",
+    "excd": "NYS",
+    "koreanName": "유나이티드헬스",
+    "englishName": "UnitedHealth Group Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "JNJ",
+    "excd": "NYS",
+    "koreanName": "존슨앤드존슨",
+    "englishName": "Johnson & Johnson",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "LLY",
+    "excd": "NYS",
+    "koreanName": "일라이릴리",
+    "englishName": "Eli Lilly and Co",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "PFE",
+    "excd": "NYS",
+    "koreanName": "파이저",
+    "englishName": "Pfizer Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "MRK",
+    "excd": "NYS",
+    "koreanName": "머크",
+    "englishName": "Merck & Co Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "ABT",
+    "excd": "NYS",
+    "koreanName": "애보트랩",
+    "englishName": "Abbott Laboratories",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "TMO",
+    "excd": "NYS",
+    "koreanName": "서모피셔사이언티픽",
+    "englishName": "Thermo Fisher Scientific Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "DHR",
+    "excd": "NYS",
+    "koreanName": "다나허",
+    "englishName": "Danaher Corp",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "BMY",
+    "excd": "NYS",
+    "koreanName": "브리스톨마이어스스퀴브",
+    "englishName": "Bristol-Myers Squibb Co",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "CVS",
+    "excd": "NYS",
+    "koreanName": "CVS헬스",
+    "englishName": "CVS Health Corp",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "CI",
+    "excd": "NYS",
+    "koreanName": "시그나",
+    "englishName": "Cigna Group",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "HUM",
+    "excd": "NYS",
+    "koreanName": "휴마나",
+    "englishName": "Humana Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "ELV",
+    "excd": "NYS",
+    "koreanName": "엘레반스헬스",
+    "englishName": "Elevance Health Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "HCA",
+    "excd": "NYS",
+    "koreanName": "HCA헬스케어",
+    "englishName": "HCA Healthcare Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "SYK",
+    "excd": "NYS",
+    "koreanName": "스트라이커",
+    "englishName": "Stryker Corp",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "MDT",
+    "excd": "NYS",
+    "koreanName": "메드트로닉",
+    "englishName": "Medtronic PLC",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "MCK",
+    "excd": "NYS",
+    "koreanName": "맥케슨",
+    "englishName": "McKesson Corp",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "BSX",
+    "excd": "NYS",
+    "koreanName": "보스톤사이언티픽",
+    "englishName": "Boston Scientific Corp",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "ZBH",
+    "excd": "NYS",
+    "koreanName": "짐머바이오메트",
+    "englishName": "Zimmer Biomet Holdings Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "EW",
+    "excd": "NYS",
+    "koreanName": "에드워즈라이프사이언스",
+    "englishName": "Edwards Lifesciences Corp",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "COO",
+    "excd": "NYS",
+    "koreanName": "쿠퍼컴퍼니",
+    "englishName": "The Cooper Companies Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "RMD",
+    "excd": "NYS",
+    "koreanName": "레스메드",
+    "englishName": "ResMed Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "VTRS",
+    "excd": "NYS",
+    "koreanName": "비어리스파마",
+    "englishName": "Viatris Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "LH",
+    "excd": "NYS",
+    "koreanName": "랩코프홀딩스",
+    "englishName": "LabCorp Holdings Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "DGX",
+    "excd": "NYS",
+    "koreanName": "퀘스트다이애그노스틱스",
+    "englishName": "Quest Diagnostics Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "WMT",
+    "excd": "NYS",
+    "koreanName": "월마트",
+    "englishName": "Walmart Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "NKE",
+    "excd": "NYS",
+    "koreanName": "나이키",
+    "englishName": "Nike Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "MCD",
+    "excd": "NYS",
+    "koreanName": "맥도날드",
+    "englishName": "McDonald's Corp",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "HD",
+    "excd": "NYS",
+    "koreanName": "홈디포",
+    "englishName": "The Home Depot Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "DIS",
+    "excd": "NYS",
+    "koreanName": "월트디즈니",
+    "englishName": "The Walt Disney Co",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "KO",
+    "excd": "NYS",
+    "koreanName": "코카콜라",
+    "englishName": "The Coca-Cola Co",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "PG",
+    "excd": "NYS",
+    "koreanName": "프록터앤드갬블",
+    "englishName": "Procter & Gamble Co",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "CL",
+    "excd": "NYS",
+    "koreanName": "콜게이트팔몰리브",
+    "englishName": "Colgate-Palmolive Co",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "KMB",
+    "excd": "NYS",
+    "koreanName": "킴벌리클라크",
+    "englishName": "Kimberly-Clark Corp",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "CLX",
+    "excd": "NYS",
+    "koreanName": "클로록스",
+    "englishName": "The Clorox Co",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "TGT",
+    "excd": "NYS",
+    "koreanName": "타겟",
+    "englishName": "Target Corp",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "LOW",
+    "excd": "NYS",
+    "koreanName": "로우스",
+    "englishName": "Lowe's Companies Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "TJX",
+    "excd": "NYS",
+    "koreanName": "TJX컴퍼니스",
+    "englishName": "The TJX Companies Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "YUM",
+    "excd": "NYS",
+    "koreanName": "양브랜즈",
+    "englishName": "Yum! Brands Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "DG",
+    "excd": "NYS",
+    "koreanName": "달러제너럴",
+    "englishName": "Dollar General Corp",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "EBAY",
+    "excd": "NYS",
+    "koreanName": "이베이",
+    "englishName": "eBay Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "RL",
+    "excd": "NYS",
+    "koreanName": "랄프로렌",
+    "englishName": "Ralph Lauren Corp",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "VFC",
+    "excd": "NYS",
+    "koreanName": "VF코퍼레이션",
+    "englishName": "VF Corp",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "KSS",
+    "excd": "NYS",
+    "koreanName": "콜스",
+    "englishName": "Kohl's Corp",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "M",
+    "excd": "NYS",
+    "koreanName": "메이시스",
+    "englishName": "Macy's Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "BBY",
+    "excd": "NYS",
+    "koreanName": "베스트바이",
+    "englishName": "Best Buy Co Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "LEVI",
+    "excd": "NYS",
+    "koreanName": "리바이스트라우스",
+    "englishName": "Levi Strauss & Co",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "CMG",
+    "excd": "NYS",
+    "koreanName": "칩포틀멕시칸그릴",
+    "englishName": "Chipotle Mexican Grill Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "XOM",
+    "excd": "NYS",
+    "koreanName": "엑손모빌",
+    "englishName": "Exxon Mobil Corp",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "CVX",
+    "excd": "NYS",
+    "koreanName": "쉐브론",
+    "englishName": "Chevron Corp",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "COP",
+    "excd": "NYS",
+    "koreanName": "코노코필립스",
+    "englishName": "ConocoPhillips",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "SLB",
+    "excd": "NYS",
+    "koreanName": "슐룸베르거",
+    "englishName": "Schlumberger NV",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "EOG",
+    "excd": "NYS",
+    "koreanName": "EOG리소스",
+    "englishName": "EOG Resources Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "OXY",
+    "excd": "NYS",
+    "koreanName": "옥시덴탈석유",
+    "englishName": "Occidental Petroleum Corp",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "MPC",
+    "excd": "NYS",
+    "koreanName": "마라톤석유",
+    "englishName": "Marathon Petroleum Corp",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "VLO",
+    "excd": "NYS",
+    "koreanName": "발레로에너지",
+    "englishName": "Valero Energy Corp",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "PSX",
+    "excd": "NYS",
+    "koreanName": "필립스66",
+    "englishName": "Phillips 66",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "HAL",
+    "excd": "NYS",
+    "koreanName": "할리버턴",
+    "englishName": "Halliburton Co",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "OKE",
+    "excd": "NYS",
+    "koreanName": "원OK",
+    "englishName": "ONEOK Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "WMB",
+    "excd": "NYS",
+    "koreanName": "윌리엄스컴퍼니스",
+    "englishName": "The Williams Companies Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "SU",
+    "excd": "NYS",
+    "koreanName": "쉘컨서번",
+    "englishName": "Suncor Energy Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "ADR",
+    "currency": "USD"
+  },
+  {
+    "symbol": "HES",
+    "excd": "NYS",
+    "koreanName": "헤스",
+    "englishName": "Hess Corp",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "MRO",
+    "excd": "NYS",
+    "koreanName": "머레이오일",
+    "englishName": "Murphy Oil Corp",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "DVN",
+    "excd": "NYS",
+    "koreanName": "데본에너지",
+    "englishName": "Devon Energy Corp",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "CAT",
+    "excd": "NYS",
+    "koreanName": "캐터필러",
+    "englishName": "Caterpillar Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "GE",
+    "excd": "NYS",
+    "koreanName": "GE에어로스페이스",
+    "englishName": "GE Aerospace",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "HON",
+    "excd": "NYS",
+    "koreanName": "허니웰",
+    "englishName": "Honeywell International Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "UPS",
+    "excd": "NYS",
+    "koreanName": "UPS",
+    "englishName": "United Parcel Service Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "BA",
+    "excd": "NYS",
+    "koreanName": "보잉",
+    "englishName": "Boeing Co",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "LMT",
+    "excd": "NYS",
+    "koreanName": "록히드마틴",
+    "englishName": "Lockheed Martin Corp",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "RTX",
+    "excd": "NYS",
+    "koreanName": "RTX",
+    "englishName": "RTX Corp",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "NOC",
+    "excd": "NYS",
+    "koreanName": "노스롭그루먼",
+    "englishName": "Northrop Grumman Corp",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "GD",
+    "excd": "NYS",
+    "koreanName": "제너럴다이내믹스",
+    "englishName": "General Dynamics Corp",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "TDG",
+    "excd": "NYS",
+    "koreanName": "트랜스덤",
+    "englishName": "TransDigm Group Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "DE",
+    "excd": "NYS",
+    "koreanName": "디어",
+    "englishName": "Deere & Co",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "MMM",
+    "excd": "NYS",
+    "koreanName": "3M",
+    "englishName": "3M Co",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "EMR",
+    "excd": "NYS",
+    "koreanName": "에머슨일렉트릭",
+    "englishName": "Emerson Electric Co",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "CMI",
+    "excd": "NYS",
+    "koreanName": "커민스",
+    "englishName": "Cummins Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "ETN",
+    "excd": "NYS",
+    "koreanName": "이튼",
+    "englishName": "Eaton Corp PLC",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "ITW",
+    "excd": "NYS",
+    "koreanName": "일리노이툴웍스",
+    "englishName": "Illinois Tool Works Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "PH",
+    "excd": "NYS",
+    "koreanName": "파커해니핀",
+    "englishName": "Parker-Hannifin Corp",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "JCI",
+    "excd": "NYS",
+    "koreanName": "존슨콘트롤스",
+    "englishName": "Johnson Controls International PLC",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "SWK",
+    "excd": "NYS",
+    "koreanName": "스탠리블랙앤데커",
+    "englishName": "Stanley Black & Decker Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "LII",
+    "excd": "NYS",
+    "koreanName": "레녹스인터내셔널",
+    "englishName": "Lennox International Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "XYL",
+    "excd": "NYS",
+    "koreanName": "일린",
+    "englishName": "Xylem Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "WAB",
+    "excd": "NYS",
+    "koreanName": "웨스팅하우스에어브레이크",
+    "englishName": "Wabtec Corp",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "HWM",
+    "excd": "NYS",
+    "koreanName": "하우메탈스",
+    "englishName": "Howmet Aerospace Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "IR",
+    "excd": "NYS",
+    "koreanName": "인거솔랜드",
+    "englishName": "Ingersoll Rand Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "TT",
+    "excd": "NYS",
+    "koreanName": "토러시스템스",
+    "englishName": "Trane Technologies PLC",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "GEV",
+    "excd": "NYS",
+    "koreanName": "GE버노바",
+    "englishName": "GE Vernova Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "PWR",
+    "excd": "NYS",
+    "koreanName": "쿼antz서비시스",
+    "englishName": "Quanta Services Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "T",
+    "excd": "NYS",
+    "koreanName": "AT&T",
+    "englishName": "AT&T Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "VZ",
+    "excd": "NYS",
+    "koreanName": "버라이즌",
+    "englishName": "Verizon Communications Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "IBM",
+    "excd": "NYS",
+    "koreanName": "IBM",
+    "englishName": "International Business Machines Corp",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "ORCL",
+    "excd": "NYS",
+    "koreanName": "오라클",
+    "englishName": "Oracle Corp",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "CRM",
+    "excd": "NYS",
+    "koreanName": "세일즈포스",
+    "englishName": "Salesforce Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "NOW",
+    "excd": "NYS",
+    "koreanName": "서비스나우",
+    "englishName": "ServiceNow Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "SNOW",
+    "excd": "NYS",
+    "koreanName": "스노우플레이크",
+    "englishName": "Snowflake Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "SQ",
+    "excd": "NYS",
+    "koreanName": "블록",
+    "englishName": "Block Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "PATH",
+    "excd": "NYS",
+    "koreanName": "UI패스",
+    "englishName": "UiPath Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "TWLO",
+    "excd": "NYS",
+    "koreanName": "휠리오",
+    "englishName": "Twilio Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "BILL",
+    "excd": "NYS",
+    "koreanName": "빌홀딩스",
+    "englishName": "Bill Holdings Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "LC",
+    "excd": "NYS",
+    "koreanName": "렌딩클럽",
+    "englishName": "LendingClub Corp",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "SN",
+    "excd": "NYS",
+    "koreanName": "샤크나쟈",
+    "englishName": "SharkNinja Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "ANET",
+    "excd": "NYS",
+    "koreanName": "아리스타네트웍스",
+    "englishName": "Arista Networks Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "NVO",
+    "excd": "NYS",
+    "koreanName": "노보노르디스크",
+    "englishName": "Novo Nordisk A/S ADR",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "ADR",
+    "currency": "USD"
+  },
+  {
+    "symbol": "TSM",
+    "excd": "NYS",
+    "koreanName": "TSMC",
+    "englishName": "Taiwan Semiconductor Manufacturing ADR",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "ADR",
+    "currency": "USD"
+  },
+  {
+    "symbol": "BABA",
+    "excd": "NYS",
+    "koreanName": "알리바바",
+    "englishName": "Alibaba Group Holding ADR",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "ADR",
+    "currency": "USD"
+  },
+  {
+    "symbol": "SHOP",
+    "excd": "NYS",
+    "koreanName": "쇼피파이",
+    "englishName": "Shopify Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "UBER",
+    "excd": "NYS",
+    "koreanName": "우버",
+    "englishName": "Uber Technologies Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "RIO",
+    "excd": "NYS",
+    "koreanName": "리오틴토",
+    "englishName": "Rio Tinto PLC ADR",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "ADR",
+    "currency": "USD"
+  },
+  {
+    "symbol": "BHP",
+    "excd": "NYS",
+    "koreanName": "BHP",
+    "englishName": "BHP Group Ltd ADR",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "ADR",
+    "currency": "USD"
+  },
+  {
+    "symbol": "BP",
+    "excd": "NYS",
+    "koreanName": "BP",
+    "englishName": "BP PLC ADR",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "ADR",
+    "currency": "USD"
+  },
+  {
+    "symbol": "SHEL",
+    "excd": "NYS",
+    "koreanName": "셸",
+    "englishName": "Shell PLC ADR",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "ADR",
+    "currency": "USD"
+  },
+  {
+    "symbol": "AZN",
+    "excd": "NYS",
+    "koreanName": "아스트라제네카",
+    "englishName": "AstraZeneca PLC ADR",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "ADR",
+    "currency": "USD"
+  },
+  {
+    "symbol": "SNY",
+    "excd": "NYS",
+    "koreanName": "사노피",
+    "englishName": "Sanofi ADR",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "ADR",
+    "currency": "USD"
+  },
+  {
+    "symbol": "NOK",
+    "excd": "NYS",
+    "koreanName": "노키아",
+    "englishName": "Nokia Oyj ADR",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "ADR",
+    "currency": "USD"
+  },
+  {
+    "symbol": "VALE",
+    "excd": "NYS",
+    "koreanName": "바레",
+    "englishName": "Vale SA ADR",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "ADR",
+    "currency": "USD"
+  },
+  {
+    "symbol": "TEF",
+    "excd": "NYS",
+    "koreanName": "텔레포니카",
+    "englishName": "Telefonica SA ADR",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "ADR",
+    "currency": "USD"
+  },
+  {
+    "symbol": "HDB",
+    "excd": "NYS",
+    "koreanName": "HDFC은행",
+    "englishName": "HDFC Bank Ltd ADR",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "ADR",
+    "currency": "USD"
+  },
+  {
+    "symbol": "IBN",
+    "excd": "NYS",
+    "koreanName": "ICICI은행",
+    "englishName": "ICICI Bank Ltd ADR",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "ADR",
+    "currency": "USD"
+  },
+  {
+    "symbol": "INFY",
+    "excd": "NYS",
+    "koreanName": "인포시스",
+    "englishName": "Infosys Ltd ADR",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "ADR",
+    "currency": "USD"
+  },
+  {
+    "symbol": "WIT",
+    "excd": "NYS",
+    "koreanName": "위프로",
+    "englishName": "Wipro Ltd ADR",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "ADR",
+    "currency": "USD"
+  },
+  {
+    "symbol": "SQM",
+    "excd": "NYS",
+    "koreanName": "SQM",
+    "englishName": "SQM SA ADR",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "ADR",
+    "currency": "USD"
+  },
+  {
+    "symbol": "GGB",
+    "excd": "NYS",
+    "koreanName": "게르다우",
+    "englishName": "Gerdau SA ADR",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "ADR",
+    "currency": "USD"
+  },
+  {
+    "symbol": "ABEV",
+    "excd": "NYS",
+    "koreanName": "암베브",
+    "englishName": "Ambev SA ADR",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "ADR",
+    "currency": "USD"
+  },
+  {
+    "symbol": "PUK",
+    "excd": "NYS",
+    "koreanName": "프루덴셜PLC",
+    "englishName": "Prudential PLC ADR",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "ADR",
+    "currency": "USD"
+  },
+  {
+    "symbol": "ASX",
+    "excd": "NYS",
+    "koreanName": "ASE테크놀로지",
+    "englishName": "ASE Technology Holding Co ADR",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "ADR",
+    "currency": "USD"
+  },
+  {
+    "symbol": "YMM",
+    "excd": "NYS",
+    "koreanName": "만다",
+    "englishName": "Full Truck Alliance Co ADR",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "ADR",
+    "currency": "USD"
+  },
+  {
+    "symbol": "AMT",
+    "excd": "NYS",
+    "koreanName": "아메리칸타워",
+    "englishName": "American Tower Corp",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "PLD",
+    "excd": "NYS",
+    "koreanName": "프로로지스",
+    "englishName": "Prologis Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "O",
+    "excd": "NYS",
+    "koreanName": "리얼티인컴",
+    "englishName": "Realty Income Corp",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "EQIX",
+    "excd": "NYS",
+    "koreanName": "퀴녹스",
+    "englishName": "Equinix Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "SPG",
+    "excd": "NYS",
+    "koreanName": "시몬프로퍼티그룹",
+    "englishName": "Simon Property Group Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "PSA",
+    "excd": "NYS",
+    "koreanName": "퍼블릭스토리지",
+    "englishName": "Public Storage",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "WELL",
+    "excd": "NYS",
+    "koreanName": "웰타워",
+    "englishName": "Welltower Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "DLR",
+    "excd": "NYS",
+    "koreanName": "디지털리얼티",
+    "englishName": "Digital Realty Trust Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "AVB",
+    "excd": "NYS",
+    "koreanName": "아발론베이커뮤니티스",
+    "englishName": "AvalonBay Communities Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "EQR",
+    "excd": "NYS",
+    "koreanName": "에퀴티레지덴셜",
+    "englishName": "Equity Residential",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "CCI",
+    "excd": "NYS",
+    "koreanName": "크라운캐슬",
+    "englishName": "Crown Castle Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "OHI",
+    "excd": "NYS",
+    "koreanName": "오메가헬스케어인베스터스",
+    "englishName": "Omega Healthcare Investors Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "REG",
+    "excd": "NYS",
+    "koreanName": "리젠시센터스",
+    "englishName": "Regency Centers Corp",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "VTR",
+    "excd": "NYS",
+    "koreanName": "벤타스",
+    "englishName": "Ventas Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "CBRE",
+    "excd": "NYS",
+    "koreanName": "CBRE그룹",
+    "englishName": "CBRE Group Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "BXP",
+    "excd": "NYS",
+    "koreanName": "보스턴프로퍼티스",
+    "englishName": "Boston Properties Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "ARE",
+    "excd": "NYS",
+    "koreanName": "알렉산드리아리얼이퀴티",
+    "englishName": "Alexandria Real Estate Equities Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "ESS",
+    "excd": "NYS",
+    "koreanName": "에센셜프로퍼티스",
+    "englishName": "Essential Properties Realty Trust Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "FRT",
+    "excd": "NYS",
+    "koreanName": "페더럴리얼티인베스트먼트",
+    "englishName": "Federal Realty Investment Trust",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "HST",
+    "excd": "NYS",
+    "koreanName": "호스트호텔스리조트",
+    "englishName": "Host Hotels & Resorts Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "DRE",
+    "excd": "NYS",
+    "koreanName": "듀크리얼티",
+    "englishName": "Duke Realty Corp",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "BRK.B",
+    "excd": "NYS",
+    "koreanName": "버크셔해서웨이B",
+    "englishName": "Berkshire Hathaway Inc Class B",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "BRK.A",
+    "excd": "NYS",
+    "koreanName": "버크셔해서웨이A",
+    "englishName": "Berkshire Hathaway Inc Class A",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "MO",
+    "excd": "NYS",
+    "koreanName": "알트리아그룹",
+    "englishName": "Altria Group Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "PM",
+    "excd": "NYS",
+    "koreanName": "필립모리스인터내셔널",
+    "englishName": "Philip Morris International Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "DELL",
+    "excd": "NYS",
+    "koreanName": "델테크놀로지스",
+    "englishName": "Dell Technologies Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "VMW",
+    "excd": "NYS",
+    "koreanName": "VM웨어",
+    "englishName": "VMware Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "APH",
+    "excd": "NYS",
+    "koreanName": "암페놀",
+    "englishName": "Amphenol Corp",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "GLW",
+    "excd": "NYS",
+    "koreanName": "코닝",
+    "englishName": "Corning Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "FDX",
+    "excd": "NYS",
+    "koreanName": "페덱스",
+    "englishName": "FedEx Corp",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "CLF",
+    "excd": "NYS",
+    "koreanName": "클리블랜드클리프스",
+    "englishName": "Cleveland-Cliffs Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "NUE",
+    "excd": "NYS",
+    "koreanName": "누코어",
+    "englishName": "Nucor Corp",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "WY",
+    "excd": "NYS",
+    "koreanName": "위어하우저",
+    "englishName": "Weyerhaeuser Co",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "IP",
+    "excd": "NYS",
+    "koreanName": "인터내셔널페이퍼",
+    "englishName": "International Paper Co",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "ECL",
+    "excd": "NYS",
+    "koreanName": "에콜랩",
+    "englishName": "Ecolab Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "IFF",
+    "excd": "NYS",
+    "koreanName": "국제향료",
+    "englishName": "International Flavors & Fragrances Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "SHW",
+    "excd": "NYS",
+    "koreanName": "셔윈윌리엄스",
+    "englishName": "Sherwin-Williams Co",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "LYB",
+    "excd": "NYS",
+    "koreanName": "라이온델바셀",
+    "englishName": "LyondellBasell Industries NV",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "CE",
+    "excd": "NYS",
+    "koreanName": "셀라네즈",
+    "englishName": "Celanese Corp",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "DD",
+    "excd": "NYS",
+    "koreanName": "듀폰",
+    "englishName": "DuPont de Nemours Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "DOW",
+    "excd": "NYS",
+    "koreanName": "다우케미칼",
+    "englishName": "Dow Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "EMN",
+    "excd": "NYS",
+    "koreanName": "이스트만케미컬",
+    "englishName": "Eastman Chemical Co",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "APD",
+    "excd": "NYS",
+    "koreanName": "에어프로덕츠",
+    "englishName": "Air Products and Chemicals Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "FCX",
+    "excd": "NYS",
+    "koreanName": "프리포트맥모란",
+    "englishName": "Freeport-McMoRan Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "NEM",
+    "excd": "NYS",
+    "koreanName": "뉴몬트",
+    "englishName": "Newmont Corp",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "GOLD",
+    "excd": "NYS",
+    "koreanName": "바릭골드",
+    "englishName": "Barrick Gold Corp",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "AEM",
+    "excd": "NYS",
+    "koreanName": "아그니코이글",
+    "englishName": "Agnico Eagle Mines Ltd",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "ADR",
+    "currency": "USD"
+  },
+  {
+    "symbol": "WPM",
+    "excd": "NYS",
+    "koreanName": "위튼몬타나",
+    "englishName": "Wheaton Precious Metals Corp",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "F",
+    "excd": "NYS",
+    "koreanName": "포드",
+    "englishName": "Ford Motor Co",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "GM",
+    "excd": "NYS",
+    "koreanName": "제너럴모터스",
+    "englishName": "General Motors Co",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "STLA",
+    "excd": "NYS",
+    "koreanName": "스텔란티스",
+    "englishName": "Stellantis NV",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "ADR",
+    "currency": "USD"
+  },
+  {
+    "symbol": "TM",
+    "excd": "NYS",
+    "koreanName": "토요타자동차",
+    "englishName": "Toyota Motor Corp ADR",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "ADR",
+    "currency": "USD"
+  },
+  {
+    "symbol": "HMC",
+    "excd": "NYS",
+    "koreanName": "혼다자동차",
+    "englishName": "Honda Motor Co ADR",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "ADR",
+    "currency": "USD"
+  },
+  {
+    "symbol": "RACE",
+    "excd": "NYS",
+    "koreanName": "페라리",
+    "englishName": "Ferrari NV",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "CAR",
+    "excd": "NYS",
+    "koreanName": "에이비스버짓",
+    "englishName": "Avis Budget Group Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "IONQ",
+    "excd": "NYS",
+    "koreanName": "아이온큐",
+    "englishName": "IonQ Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "SMR",
+    "excd": "NYS",
+    "koreanName": "뉴스케일파워",
+    "englishName": "NuScale Power Corp",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "NU",
+    "excd": "NYS",
+    "koreanName": "누홀딩스",
+    "englishName": "Nu Holdings Ltd",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "ADR",
+    "currency": "USD"
+  },
+  {
+    "symbol": "LKQ",
+    "excd": "NYS",
+    "koreanName": "LKQ코퍼레이션",
+    "englishName": "LKQ Corp",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "IVZ",
+    "excd": "NYS",
+    "koreanName": "인베스코",
+    "englishName": "Invesco Ltd",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "TAP",
+    "excd": "NYS",
+    "koreanName": "몬스터비버리지",
+    "englishName": "Molson Coors Beverage Co",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "STZ",
+    "excd": "NYS",
+    "koreanName": "콘스텔레이션브랜즈",
+    "englishName": "Constellation Brands Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "BF.B",
+    "excd": "NYS",
+    "koreanName": "브라운포먼B",
+    "englishName": "Brown-Forman Corp Class B",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "CCL",
+    "excd": "NYS",
+    "koreanName": "카니발",
+    "englishName": "Carnival Corp",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "RCL",
+    "excd": "NYS",
+    "koreanName": "로얄캐리비안",
+    "englishName": "Royal Caribbean Group",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "NCLH",
+    "excd": "NYS",
+    "koreanName": "노르웨이안크루즈라인",
+    "englishName": "Norwegian Cruise Line Holdings Ltd",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "UAL",
+    "excd": "NYS",
+    "koreanName": "유나이티드항공",
+    "englishName": "United Airlines Holdings Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "DAL",
+    "excd": "NYS",
+    "koreanName": "델타항공",
+    "englishName": "Delta Air Lines Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "AAL",
+    "excd": "NYS",
+    "koreanName": "아메리칸항공",
+    "englishName": "American Airlines Group Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "ALK",
+    "excd": "NYS",
+    "koreanName": "알래스카에어",
+    "englishName": "Alaska Air Group Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "JBLU",
+    "excd": "NYS",
+    "koreanName": "제트블루항공",
+    "englishName": "JetBlue Airways Corp",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "LUV",
+    "excd": "NYS",
+    "koreanName": "사우스웨스트항공",
+    "englishName": "Southwest Airlines Co",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "SAVE",
+    "excd": "NYS",
+    "koreanName": "스피릿항공",
+    "englishName": "Spirit Airlines Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "HLT",
+    "excd": "NYS",
+    "koreanName": "힐튼월드와이드",
+    "englishName": "Hilton Worldwide Holdings Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "WH",
+    "excd": "NYS",
+    "koreanName": "와이엇호텔스",
+    "englishName": "Wyndham Hotels & Resorts Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "PK",
+    "excd": "NYS",
+    "koreanName": "파크호텔스리조트",
+    "englishName": "Park Hotels & Resorts Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "MGM",
+    "excd": "NYS",
+    "koreanName": "MGM리조트",
+    "englishName": "MGM Resorts International",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "WYNN",
+    "excd": "NYS",
+    "koreanName": "윈리조트",
+    "englishName": "Wynn Resorts Ltd",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "LVS",
+    "excd": "NYS",
+    "koreanName": "라스베이거스샌즈",
+    "englishName": "Las Vegas Sands Corp",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "SPY",
+    "excd": "AMS",
+    "koreanName": "SPDR S&P500 ETF",
+    "englishName": "SPDR S&P 500 ETF Trust",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "IVV",
+    "excd": "AMS",
+    "koreanName": "이셰어코어S&P500 ETF",
+    "englishName": "iShares Core S&P 500 ETF",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "VOO",
+    "excd": "AMS",
+    "koreanName": "뱅가드S&P500 ETF",
+    "englishName": "Vanguard S&P 500 ETF",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "DIA",
+    "excd": "AMS",
+    "koreanName": "SPDR 다우존스 ETF",
+    "englishName": "SPDR Dow Jones Industrial Average ETF Trust",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "IWM",
+    "excd": "AMS",
+    "koreanName": "이셰어러셀2000 ETF",
+    "englishName": "iShares Russell 2000 ETF",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "SCHD",
+    "excd": "AMS",
+    "koreanName": "슈왑미국배당 ETF",
+    "englishName": "Schwab US Dividend Equity ETF",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "VTI",
+    "excd": "AMS",
+    "koreanName": "뱅가드미국전체주식 ETF",
+    "englishName": "Vanguard Total Stock Market ETF",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "GLD",
+    "excd": "AMS",
+    "koreanName": "SPDR 골드쉐어",
+    "englishName": "SPDR Gold Shares",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "SLV",
+    "excd": "AMS",
+    "koreanName": "이셰어실버트러스트",
+    "englishName": "iShares Silver Trust",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "SOXL",
+    "excd": "AMS",
+    "koreanName": "다이렉션반도체3배불ETF",
+    "englishName": "Direxion Daily Semiconductor Bull 3X Shares",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "SOXS",
+    "excd": "AMS",
+    "koreanName": "다이렉션반도체3배베어ETF",
+    "englishName": "Direxion Daily Semiconductor Bear 3X Shares",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "ARKK",
+    "excd": "AMS",
+    "koreanName": "ARK혁신 ETF",
+    "englishName": "ARK Innovation ETF",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "XLF",
+    "excd": "AMS",
+    "koreanName": "금융섹터SPDR",
+    "englishName": "Financial Select Sector SPDR Fund",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "XLE",
+    "excd": "AMS",
+    "koreanName": "에너지섹터SPDR",
+    "englishName": "Energy Select Sector SPDR Fund",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "XLK",
+    "excd": "AMS",
+    "koreanName": "기술섹터SPDR",
+    "englishName": "Technology Select Sector SPDR Fund",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "XLP",
+    "excd": "AMS",
+    "koreanName": "필수소비재섹터SPDR",
+    "englishName": "Consumer Staples Select Sector SPDR Fund",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "XLU",
+    "excd": "AMS",
+    "koreanName": "유틸리티섹터SPDR",
+    "englishName": "Utilities Select Sector SPDR Fund",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "XLV",
+    "excd": "AMS",
+    "koreanName": "헬스케어섹터SPDR",
+    "englishName": "Health Care Select Sector SPDR Fund",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "XLI",
+    "excd": "AMS",
+    "koreanName": "산업재섹터SPDR",
+    "englishName": "Industrial Select Sector SPDR Fund",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "XLB",
+    "excd": "AMS",
+    "koreanName": "소재섹터SPDR",
+    "englishName": "Materials Select Sector SPDR Fund",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "XLRE",
+    "excd": "AMS",
+    "koreanName": "부동산섹터SPDR",
+    "englishName": "Real Estate Select Sector SPDR Fund",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "XLY",
+    "excd": "AMS",
+    "koreanName": "임의소비재섹터SPDR",
+    "englishName": "Consumer Discretionary Select Sector SPDR Fund",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "TNA",
+    "excd": "AMS",
+    "koreanName": "다이렉션러셀2000소형주3배불ETF",
+    "englishName": "Direxion Daily Small Cap Bull 3X Shares",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "TZA",
+    "excd": "AMS",
+    "koreanName": "다이렉션러셀2000소형주3배베어ETF",
+    "englishName": "Direxion Daily Small Cap Bear 3X Shares",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "NUGT",
+    "excd": "AMS",
+    "koreanName": "다이렉션금광3배불ETF",
+    "englishName": "Direxion Daily Gold Miners Bull 3X Shares",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "DUST",
+    "excd": "AMS",
+    "koreanName": "다이렉션금광3배베어ETF",
+    "englishName": "Direxion Daily Gold Miners Bear 3X Shares",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "JNUG",
+    "excd": "AMS",
+    "koreanName": "다이렉션주니어금광3배불ETF",
+    "englishName": "Direxion Daily Junior Gold Miners Bull 3X Shares",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "JDST",
+    "excd": "AMS",
+    "koreanName": "다이렉션주니어금광3배베어ETF",
+    "englishName": "Direxion Daily Junior Gold Miners Bear 3X Shares",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "UGAZ",
+    "excd": "AMS",
+    "koreanName": "Velocity천연가스3배불ETN",
+    "englishName": "VelocityShares 3X Long Natural Gas ETN",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETN",
+    "currency": "USD"
+  },
+  {
+    "symbol": "DGAZ",
+    "excd": "AMS",
+    "koreanName": "Velocity천연가스3배베어ETN",
+    "englishName": "VelocityShares 3X Inverse Natural Gas ETN",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETN",
+    "currency": "USD"
+  },
+  {
+    "symbol": "SPXL",
+    "excd": "AMS",
+    "koreanName": "프로쉐어S&P500 3배불ETF",
+    "englishName": "ProShares UltraPro S&P 500",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "SPXU",
+    "excd": "AMS",
+    "koreanName": "프로쉐어S&P500 3배베어ETF",
+    "englishName": "ProShares UltraPro Short S&P 500",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "UPRO",
+    "excd": "AMS",
+    "koreanName": "프로쉐어S&P500 3배ETF",
+    "englishName": "ProShares UltraPro S&P500",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "UDOW",
+    "excd": "AMS",
+    "koreanName": "프로쉐어다우존스3배ETF",
+    "englishName": "ProShares UltraPro Dow30",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "SDOW",
+    "excd": "AMS",
+    "koreanName": "프로쉐어다우존스3배인버스ETF",
+    "englishName": "ProShares UltraPro Short Dow30",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "UMDD",
+    "excd": "AMS",
+    "koreanName": "프로쉐어미드캡3배ETF",
+    "englishName": "ProShares UltraPro MidCap400",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "SRTY",
+    "excd": "AMS",
+    "koreanName": "프로쉐어러셀2000 3배인버스ETF",
+    "englishName": "ProShares UltraPro Short Russell2000",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "LABU",
+    "excd": "AMS",
+    "koreanName": "다이렉션바이오테크3배불ETF",
+    "englishName": "Direxion Daily S&P Biotech Bull 3X Shares",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "LABD",
+    "excd": "AMS",
+    "koreanName": "다이렉션바이오테크3배베어ETF",
+    "englishName": "Direxion Daily S&P Biotech Bear 3X Shares",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "DRN",
+    "excd": "AMS",
+    "koreanName": "다이렉션부동산3배불ETF",
+    "englishName": "Direxion Daily Real Estate Bull 3X Shares",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "DRV",
+    "excd": "AMS",
+    "koreanName": "다이렉션부동산3배베어ETF",
+    "englishName": "Direxion Daily Real Estate Bear 3X Shares",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "OILK",
+    "excd": "AMS",
+    "koreanName": "프로쉐어K-1프리원유ETF",
+    "englishName": "ProShares K-1 Free Crude Oil Strategy ETF",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "GUSH",
+    "excd": "AMS",
+    "koreanName": "다이렉션원유3배불ETF",
+    "englishName": "Direxion Daily S&P Oil & Gas Exp. & Prod. Bull 3X Shares",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "DRIP",
+    "excd": "AMS",
+    "koreanName": "다이렉션원유3배베어ETF",
+    "englishName": "Direxion Daily S&P Oil & Gas Exp. & Prod. Bear 3X Shares",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "WEBL",
+    "excd": "AMS",
+    "koreanName": "다이렉션인터넷3배불ETF",
+    "englishName": "Direxion Daily NYSE Internet Bull 3X Shares",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "WEBS",
+    "excd": "AMS",
+    "koreanName": "다이렉션인터넷3배베어ETF",
+    "englishName": "Direxion Daily NYSE Internet Bear 3X Shares",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "TSLR",
+    "excd": "AMS",
+    "koreanName": "다이렉션테슬라3배불ETF",
+    "englishName": "Direxion Daily TSLA Bull 2X Shares",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "TSLS",
+    "excd": "AMS",
+    "koreanName": "다이렉션테슬라3배베어ETF",
+    "englishName": "Direxion Daily TSLA Bear 2X Shares",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "XOP",
+    "excd": "AMS",
+    "koreanName": "SPDR 석유가스탐사ETF",
+    "englishName": "SPDR S&P Oil & Gas Exploration & Production ETF",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "XBI",
+    "excd": "AMS",
+    "koreanName": "SPDR 바이오테크ETF",
+    "englishName": "SPDR S&P Biotech ETF",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "XME",
+    "excd": "AMS",
+    "koreanName": "SPDR 광업ETF",
+    "englishName": "SPDR S&P Metals & Mining ETF",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "XRT",
+    "excd": "AMS",
+    "koreanName": "SPDR 소매ETF",
+    "englishName": "SPDR S&P Retail ETF",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "XHB",
+    "excd": "AMS",
+    "koreanName": "SPDR 주택건설ETF",
+    "englishName": "SPDR S&P Homebuilders ETF",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "XHE",
+    "excd": "AMS",
+    "koreanName": "SPDR 헬스케어장비ETF",
+    "englishName": "SPDR S&P Health Care Equipment ETF",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "KBE",
+    "excd": "AMS",
+    "koreanName": "SPDR 은행ETF",
+    "englishName": "SPDR S&P Bank ETF",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "KRE",
+    "excd": "AMS",
+    "koreanName": "SPDR 지역은행ETF",
+    "englishName": "SPDR S&P Regional Banking ETF",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "OIH",
+    "excd": "AMS",
+    "koreanName": "반올릉석유서비스ETF",
+    "englishName": "VanEck Oil Services ETF",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "SMH",
+    "excd": "AMS",
+    "koreanName": "반올릉반도체ETF",
+    "englishName": "VanEck Semiconductor ETF",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "IGV",
+    "excd": "AMS",
+    "koreanName": "이셰어소프트웨어ETF",
+    "englishName": "iShares Expanded Tech-Software Sector ETF",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "ITA",
+    "excd": "AMS",
+    "koreanName": "이셰어항공우주국방ETF",
+    "englishName": "iShares U.S. Aerospace & Defense ETF",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "IYT",
+    "excd": "AMS",
+    "koreanName": "이셰어운송ETF",
+    "englishName": "iShares U.S. Transportation ETF",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "KWEB",
+    "excd": "AMS",
+    "koreanName": "크래너인터넷중국ETF",
+    "englishName": "KraneShares CSI China Internet ETF",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "FXI",
+    "excd": "AMS",
+    "koreanName": "이셰어중국대형주ETF",
+    "englishName": "iShares China Large-Cap ETF",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "EEM",
+    "excd": "AMS",
+    "koreanName": "이셰어신흥시장ETF",
+    "englishName": "iShares MSCI Emerging Markets ETF",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "VWO",
+    "excd": "AMS",
+    "koreanName": "뱅가드신흥시장ETF",
+    "englishName": "Vanguard FTSE Emerging Markets ETF",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "VGK",
+    "excd": "AMS",
+    "koreanName": "뱅가드유럽ETF",
+    "englishName": "Vanguard FTSE Europe ETF",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "EWJ",
+    "excd": "AMS",
+    "koreanName": "이셰어일본ETF",
+    "englishName": "iShares MSCI Japan ETF",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "EFA",
+    "excd": "AMS",
+    "koreanName": "이셰어MSCI선진시장ETF",
+    "englishName": "iShares MSCI EAFE ETF",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "EWG",
+    "excd": "AMS",
+    "koreanName": "이셰어독일ETF",
+    "englishName": "iShares MSCI Germany ETF",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "EWH",
+    "excd": "AMS",
+    "koreanName": "이셰어홍콩ETF",
+    "englishName": "iShares MSCI Hong Kong ETF",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "EWI",
+    "excd": "AMS",
+    "koreanName": "이셰어이탈리아ETF",
+    "englishName": "iShares MSCI Italy ETF",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "EWY",
+    "excd": "AMS",
+    "koreanName": "이셰어한국ETF",
+    "englishName": "iShares MSCI South Korea ETF",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "EWT",
+    "excd": "AMS",
+    "koreanName": "이셰어대만ETF",
+    "englishName": "iShares MSCI Taiwan ETF",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "EWU",
+    "excd": "AMS",
+    "koreanName": "이셰어영국ETF",
+    "englishName": "iShares MSCI United Kingdom ETF",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "EWZ",
+    "excd": "AMS",
+    "koreanName": "이셰어브라질ETF",
+    "englishName": "iShares MSCI Brazil ETF",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "EWA",
+    "excd": "AMS",
+    "koreanName": "이셰어호주ETF",
+    "englishName": "iShares MSCI Australia ETF",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "EWC",
+    "excd": "AMS",
+    "koreanName": "이셰어캐나다ETF",
+    "englishName": "iShares MSCI Canada ETF",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "EPI",
+    "excd": "AMS",
+    "koreanName": "위즈덤트리인도ETF",
+    "englishName": "WisdomTree India Earnings Fund",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "INDA",
+    "excd": "AMS",
+    "koreanName": "이셰어인도ETF",
+    "englishName": "iShares MSCI India ETF",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "MCHI",
+    "excd": "AMS",
+    "koreanName": "이셰어MSCI차이나ETF",
+    "englishName": "iShares MSCI China ETF",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "KWR",
+    "excd": "AMS",
+    "koreanName": "프랭클린한국ETF",
+    "englishName": "Franklin FTSE South Korea ETF",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "ARKW",
+    "excd": "AMS",
+    "koreanName": "ARK 차세대인터넷 ETF",
+    "englishName": "ARK Next Generation Internet ETF",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "ARKQ",
+    "excd": "AMS",
+    "koreanName": "ARK 자율주행로봇 ETF",
+    "englishName": "ARK Autonomous Technology & Robotics ETF",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "ARKF",
+    "excd": "AMS",
+    "koreanName": "ARK 핀테크혁신 ETF",
+    "englishName": "ARK Fintech Innovation ETF",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "ARKG",
+    "excd": "AMS",
+    "koreanName": "ARK 유전자혁신 ETF",
+    "englishName": "ARK Genomic Revolution ETF",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "PRNT",
+    "excd": "AMS",
+    "koreanName": "ARK 3D프린팅 ETF",
+    "englishName": "ARK 3D Printing ETF",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "IZRL",
+    "excd": "AMS",
+    "koreanName": "ARK 이스라엘혁신기술 ETF",
+    "englishName": "ARK Israel Innovative Technology ETF",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "HYG",
+    "excd": "AMS",
+    "koreanName": "이셰어하이일드채권ETF",
+    "englishName": "iShares iBoxx $ High Yield Corporate Bond ETF",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "LQD",
+    "excd": "AMS",
+    "koreanName": "이셰어회사채ETF",
+    "englishName": "iShares iBoxx $ Investment Grade Corporate Bond ETF",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "BND",
+    "excd": "AMS",
+    "koreanName": "뱅가드미국채권ETF",
+    "englishName": "Vanguard Total Bond Market ETF",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "AGG",
+    "excd": "AMS",
+    "koreanName": "이셰어미국채권ETF",
+    "englishName": "iShares Core U.S. Aggregate Bond ETF",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "SHV",
+    "excd": "AMS",
+    "koreanName": "이셰어단기국채ETF",
+    "englishName": "iShares Short Treasury Bond ETF",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "SHY",
+    "excd": "AMS",
+    "koreanName": "이셰어1-3년국채ETF",
+    "englishName": "iShares 1-3 Year Treasury Bond ETF",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "IEF",
+    "excd": "AMS",
+    "koreanName": "이셰어7-10년국채ETF",
+    "englishName": "iShares 7-10 Year Treasury Bond ETF",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "TIP",
+    "excd": "AMS",
+    "koreanName": "이셰어물가연동국채ETF",
+    "englishName": "iShares TIPS Bond ETF",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "BNDX",
+    "excd": "AMS",
+    "koreanName": "뱅가드해외채권ETF",
+    "englishName": "Vanguard Total International Bond ETF",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "IJR",
+    "excd": "AMS",
+    "koreanName": "이셰어코어S&P소형주ETF",
+    "englishName": "iShares Core S&P Small-Cap ETF",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "IWB",
+    "excd": "AMS",
+    "koreanName": "이셰어S&P500/400혼합ETF",
+    "englishName": "iShares Russell 1000 ETF",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "IWD",
+    "excd": "AMS",
+    "koreanName": "이셰어가치주ETF",
+    "englishName": "iShares Russell 1000 Value ETF",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "IWF",
+    "excd": "AMS",
+    "koreanName": "이셰어성장주ETF",
+    "englishName": "iShares Russell 1000 Growth ETF",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "IWN",
+    "excd": "AMS",
+    "koreanName": "이셰어소형가치주ETF",
+    "englishName": "iShares Russell 2000 Value ETF",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "IWO",
+    "excd": "AMS",
+    "koreanName": "이셰어소형성장주ETF",
+    "englishName": "iShares Russell 2000 Growth ETF",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "IWP",
+    "excd": "AMS",
+    "koreanName": "이셰어미드캡성장주ETF",
+    "englishName": "iShares Russell Mid-Cap Growth ETF",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "IWR",
+    "excd": "AMS",
+    "koreanName": "이셰어미드캡ETF",
+    "englishName": "iShares Russell Mid-Cap ETF",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "SCHX",
+    "excd": "AMS",
+    "koreanName": "슈왑미국대형주ETF",
+    "englishName": "Schwab U.S. Large-Cap ETF",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "SCHA",
+    "excd": "AMS",
+    "koreanName": "슈왑미국소형주ETF",
+    "englishName": "Schwab U.S. Small-Cap ETF",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "SCHF",
+    "excd": "AMS",
+    "koreanName": "슈왑국제주식ETF",
+    "englishName": "Schwab International Equity ETF",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "SCHE",
+    "excd": "AMS",
+    "koreanName": "슈왑신흥시장ETF",
+    "englishName": "Schwab Emerging Markets Equity ETF",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "SCHH",
+    "excd": "AMS",
+    "koreanName": "슈왑미국부동산ETF",
+    "englishName": "Schwab U.S. REIT ETF",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "SDY",
+    "excd": "AMS",
+    "koreanName": "SPDR S&P배당귀족ETF",
+    "englishName": "SPDR S&P Dividend ETF",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "VTV",
+    "excd": "AMS",
+    "koreanName": "뱅가드가치주ETF",
+    "englishName": "Vanguard Value ETF",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "VUG",
+    "excd": "AMS",
+    "koreanName": "뱅가드성장주ETF",
+    "englishName": "Vanguard Growth ETF",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "VNQ",
+    "excd": "AMS",
+    "koreanName": "뱅가드부동산ETF",
+    "englishName": "Vanguard Real Estate ETF",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "VOE",
+    "excd": "AMS",
+    "koreanName": "뱅가드미드캡가치ETF",
+    "englishName": "Vanguard Mid-Cap Value ETF",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "VOT",
+    "excd": "AMS",
+    "koreanName": "뱅가드미드캡성장ETF",
+    "englishName": "Vanguard Mid-Cap Growth ETF",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "VBK",
+    "excd": "AMS",
+    "koreanName": "뱅가드소형성장ETF",
+    "englishName": "Vanguard Small-Cap Growth ETF",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "VBR",
+    "excd": "AMS",
+    "koreanName": "뱅가드소형가치ETF",
+    "englishName": "Vanguard Small-Cap Value ETF",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "USO",
+    "excd": "AMS",
+    "koreanName": "유나이티드스테이츠원유ETF",
+    "englishName": "United States Oil Fund LP",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "DBC",
+    "excd": "AMS",
+    "koreanName": "인베스코DB커모디티인덱스ETF",
+    "englishName": "Invesco DB Commodity Index Tracking Fund",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "GSG",
+    "excd": "AMS",
+    "koreanName": "이셰어커모디티ETF",
+    "englishName": "iShares S&P GSCI Commodity-Indexed Trust",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "USLV",
+    "excd": "AMS",
+    "koreanName": "속도3배롱실버ETN",
+    "englishName": "VelocityShares 3X Long Silver ETN",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETN",
+    "currency": "USD"
+  },
+  {
+    "symbol": "DSLV",
+    "excd": "AMS",
+    "koreanName": "속도3배숏실버ETN",
+    "englishName": "VelocityShares 3X Inverse Silver ETN",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETN",
+    "currency": "USD"
+  },
+  {
+    "symbol": "VIXY",
+    "excd": "AMS",
+    "koreanName": "프로쉐어VIX단기선물ETF",
+    "englishName": "ProShares VIX Short-Term Futures ETF",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "SVXY",
+    "excd": "AMS",
+    "koreanName": "프로쉐어인버스VIX단기선물ETF",
+    "englishName": "ProShares Short VIX Short-Term Futures ETF",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "MOO",
+    "excd": "AMS",
+    "koreanName": "밴에크아그로케미컬ETF",
+    "englishName": "VanEck Agribusiness ETF",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "PBW",
+    "excd": "AMS",
+    "koreanName": "인비스코클린에너지ETF",
+    "englishName": "Invesco WilderHill Clean Energy ETF",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "ICLN",
+    "excd": "AMS",
+    "koreanName": "이셰어글로벌클린에너지ETF",
+    "englishName": "iShares Global Clean Energy ETF",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "TAN",
+    "excd": "AMS",
+    "koreanName": "인비스코솔라ETF",
+    "englishName": "Invesco Solar ETF",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "QCLN",
+    "excd": "AMS",
+    "koreanName": "퍼스트트러스트나스닥클린엣지ETF",
+    "englishName": "First Trust Nasdaq Clean Edge Smart Grid Infrastructure ETF",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "LIT",
+    "excd": "AMS",
+    "koreanName": "글로벌X리튬배터리기술ETF",
+    "englishName": "Global X Lithium & Battery Tech ETF",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "URA",
+    "excd": "AMS",
+    "koreanName": "글로벌X우라늄ETF",
+    "englishName": "Global X Uranium ETF",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "BOTZ",
+    "excd": "AMS",
+    "koreanName": "글로벌X로봇AI ETF",
+    "englishName": "Global X Robotics & Artificial Intelligence ETF",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "CLOU",
+    "excd": "AMS",
+    "koreanName": "글로벌X클라우드컴퓨팅ETF",
+    "englishName": "Global X Cloud Computing ETF",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "CNRG",
+    "excd": "AMS",
+    "koreanName": "SPDR솔라에너지ETF",
+    "englishName": "SPDR S&P Kensho Clean Power ETF",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "HACK",
+    "excd": "AMS",
+    "koreanName": "ETF시큐리티사이버시큐리티ETF",
+    "englishName": "ETFMG Prime Cyber Security ETF",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "SKYY",
+    "excd": "AMS",
+    "koreanName": "퍼스트트러스트클라우드컴퓨팅ETF",
+    "englishName": "First Trust Cloud Computing ETF",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "FINX",
+    "excd": "AMS",
+    "koreanName": "글로벌X핀테크ETF",
+    "englishName": "Global X FinTech ETF",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "BJK",
+    "excd": "AMS",
+    "koreanName": "밴에크게임ETF",
+    "englishName": "VanEck Gaming ETF",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "ESPO",
+    "excd": "AMS",
+    "koreanName": "밴에크비디오게임ETF",
+    "englishName": "VanEck Video Gaming and eSports ETF",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "PAVE",
+    "excd": "AMS",
+    "koreanName": "글로벌X인프라개발ETF",
+    "englishName": "Global X U.S. Infrastructure Development ETF",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "CATH",
+    "excd": "AMS",
+    "koreanName": "SPDRS&P가톨릭값ETF",
+    "englishName": "SPDR S&P 500 Catholic Values ETF",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "NULG",
+    "excd": "AMS",
+    "koreanName": "퓨리티그로스ETF",
+    "englishName": "Northern Trust ESG US Equity ETF",
+    "marketName": "아멕스",
+    "exchangeName": "아멕스",
+    "securityType": "ETF",
+    "currency": "USD"
+  },
+  {
+    "symbol": "BX",
+    "excd": "NYS",
+    "koreanName": "블랙스톤",
+    "englishName": "Blackstone Inc",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  },
+  {
+    "symbol": "SLGreen",
+    "excd": "NYS",
+    "koreanName": "SL그린리얼티",
+    "englishName": "SL Green Realty Corp",
+    "marketName": "뉴욕",
+    "exchangeName": "뉴욕증권거래소",
+    "securityType": "STOCK",
+    "currency": "USD"
+  }
+]
