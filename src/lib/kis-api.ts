@@ -971,7 +971,12 @@ export class KisApiClient {
     });
 
     if (!response.ok) {
-      throw new Error(`해외주식 시세 조회 실패: ${response.status}`);
+      let errorBody: any = null;
+      try { errorBody = await response.json(); } catch {}
+      const detail = errorBody
+        ? ` (rt_cd=${errorBody.rt_cd ?? ''}, msg_cd=${errorBody.msg_cd ?? ''}, msg1=${errorBody.msg1 ?? ''})`
+        : '';
+      throw new Error(`해외주식 시세 조회 실패: HTTP ${response.status}${detail}`);
     }
 
     const result = await response.json();
@@ -1121,6 +1126,7 @@ export class KisApiClient {
     timestamp: string;
     source: string;
   }> {
+    return retryOnRateLimit(async () => {
     const token = await this.ensureToken();
     const { exchangeCode: normExchange, symbol: pureSymbol, displayCode } = normalizeOverseasSymbol(stockCode, exchangeCode);
     const url = `${this.baseUrl}/uapi/overseas-price/v1/quotations/price`;
@@ -1155,7 +1161,22 @@ export class KisApiClient {
     });
 
     if (!response.ok) {
-      throw new Error(`해외주식 현재가 조회 실패: ${response.status}`);
+      // HTTP 에러 시 response body에서 rt_cd/msg_cd/msg1 추출 시도
+      let errorBody: any = null;
+      try { errorBody = await response.json(); } catch {}
+      const detail = errorBody
+        ? ` (rt_cd=${errorBody.rt_cd ?? ''}, msg_cd=${errorBody.msg_cd ?? ''}, msg1=${errorBody.msg1 ?? ''})`
+        : '';
+      console.error('[KIS API] Overseas current price HTTP error', {
+        httpStatus: response.status,
+        tr_id: trId,
+        symbol: pureSymbol,
+        exchange: normExchange,
+        rt_cd: errorBody?.rt_cd,
+        msg_cd: errorBody?.msg_cd,
+        msg1: errorBody?.msg1,
+      });
+      throw new Error(`해외주식 현재가 조회 실패: HTTP ${response.status}${detail}`);
     }
 
     const result = await response.json();
@@ -1246,6 +1267,7 @@ export class KisApiClient {
       timestamp: new Date().toISOString(),
       source: 'KIS_REST',
     };
+    }, 'getOverseasCurrentPrice');
   }
 
   /**
@@ -1326,7 +1348,51 @@ export class KisApiClient {
         });
 
         if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
+          // HTTP 에러 시 response body에서 EGW00201 확인
+          let errorBody: any = null;
+          try { errorBody = await response.json(); } catch {}
+          const isRateLimit = errorBody?.msg_cd === 'EGW00201' || String(errorBody?.msg1 ?? '').includes('초당 거래건수');
+          if (isRateLimit) {
+            // 속도제한이면 잠시 대기 후 재시도 (최대 2회)
+            for (let retry = 0; retry < 2; retry++) {
+              const delay = 500 * Math.pow(2, retry);
+              console.warn(`[KIS API] Overseas daily candles rate limit (retry ${retry + 1}/2), waiting ${delay}ms...`);
+              await sleep(delay);
+              try {
+                const retryResponse = await fetch(`${url}?${params.toString()}`, {
+                  method: 'GET',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`,
+                    appKey: this.config.appKey,
+                    appSecret: this.config.appSecret,
+                    tr_id: trId,
+                  },
+                });
+                if (retryResponse.ok) {
+                  const retryResult = await retryResponse.json();
+                  if (retryResult.rt_cd === '0') {
+                    const retryOutput2 = Array.isArray(retryResult.output2) ? retryResult.output2 : [];
+                    if (retryOutput2.length > 0) {
+                      return retryOutput2.map((item: Record<string, string>) => ({
+                        date: item.xymd || '',
+                        open: parseFloat(item.open) || 0,
+                        high: parseFloat(item.high) || 0,
+                        low: parseFloat(item.low) || 0,
+                        close: parseFloat(item.clos) || 0,
+                        volume: parseInt(item.tvol) || 0,
+                        exchangeRate: parseFloat(item.rate) || 0,
+                      })).reverse();
+                    }
+                  }
+                }
+              } catch { /* retry failed, continue */ }
+            }
+          }
+          const detail = errorBody
+            ? ` (rt_cd=${errorBody.rt_cd ?? ''}, msg_cd=${errorBody.msg_cd ?? ''}, msg1=${errorBody.msg1 ?? ''})`
+            : '';
+          throw new Error(`HTTP ${response.status}${detail}`);
         }
 
         const result = await response.json();
