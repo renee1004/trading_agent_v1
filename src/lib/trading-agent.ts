@@ -3,7 +3,7 @@
 // 국내주식 + 해외주식 지원
 
 import { db } from './db';
-import { KisApiClient } from './kis-api';
+import { KisApiClient, normalizeOverseasSymbol } from './kis-api';
 import { TradingEngine } from './trading-engine';
 import { RiskManager } from './risk-manager';
 import { scanTargetStocks } from './market-scanner';
@@ -973,6 +973,9 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
 
     for (const stock of overseasStocks) {
       try {
+        // 해외 종목코드 정규화 (SYMB에 "NAS:RKLB" 전체가 들어가지 않도록)
+        const { exchangeCode: normExchange, symbol: normalizedSymbol, displayCode } = normalizeOverseasSymbol(stock.code, stock.exchange);
+
         const { candles, error: candleError } = await fetchCandles(kisClient, stock.code, stock.name, 'OVERSEAS', stock.exchange);
 
         if (candleError) {
@@ -985,6 +988,8 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
           overseasFailed++;
           addLog('INFO', 'OVERSEAS', `${stock.name} 데이터 부족 (캔들 ${candles.length}개)`, {
             stockCode: stock.code,
+            normalizedSymbol,
+            exchangeCode: normExchange,
             candlesLength: candles.length,
             lastClose: candles.length > 0 ? candles[candles.length - 1].close : null,
           });
@@ -1009,6 +1014,7 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
           currency: string;
           timestamp: string;
           source: string;
+          normalizedSymbol: string;
         } | null = null;
         let currentPrice = 0;
         let priceGapPercent = 0;
@@ -1027,11 +1033,29 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
               priceGapPercent = Math.abs(currentPrice - analysisPrice) / analysisPrice;
             }
 
+            // 괴리율 5% 이상 경고 로그
+            if (priceGapPercent >= 0.05) {
+              addLog('RISK', 'OVERSEAS',
+                `해외 현재가 괴리율 경고: ${stock.name} gap=${(priceGapPercent * 100).toFixed(2)}%, symbol=${normalizedSymbol}, exchange=${normExchange}`,
+                {
+                  stockCode: stock.code,
+                  normalizedSymbol,
+                  exchangeCode: normExchange,
+                  currentPrice,
+                  analysisPrice,
+                  priceGapPercent: parseFloat((priceGapPercent * 100).toFixed(4)),
+                  currentPriceTimestamp,
+                  source: 'KIS_REST',
+                }
+              );
+            }
+
             addLog('INFO', 'OVERSEAS',
-              `${stock.name} 해외 현재가 조회 성공: currentPrice=${currentPrice}, timestamp=${currentPriceTimestamp}`,
+              `${stock.name} 해외 현재가 조회 성공: currentPrice=${currentPrice}, normalizedSymbol=${normalizedSymbol}, timestamp=${currentPriceTimestamp}`,
               {
                 stockCode: stock.code,
-                exchangeCode: stock.exchange,
+                normalizedSymbol,
+                exchangeCode: normExchange,
                 currentPrice,
                 analysisPrice,
                 priceGapPercent: parseFloat((priceGapPercent * 100).toFixed(4)),
@@ -1042,7 +1066,7 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
           } catch (cpError) {
             addLog('ERROR', 'OVERSEAS',
               `${stock.name} 해외 현재가 조회 실패: ${cpError instanceof Error ? cpError.message : 'Unknown'}`,
-              { stockCode: stock.code, exchangeCode: stock.exchange }
+              { stockCode: stock.code, normalizedSymbol, exchangeCode: normExchange }
             );
             // 현재가 조회 실패해도 일봉 분석은 계속 진행
           }
@@ -1062,10 +1086,11 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
           ? `, currentPrice=${currentPrice}, gap=${(priceGapPercent * 100).toFixed(2)}%`
           : '';
         addLog('INFO', 'OVERSEAS',
-          `${stock.name} 분석 결과: ${signal.signalType} (신뢰도: ${signal.confidence}%), candles=${candles.length}, lastDailyClose=${analysisPrice}${gapDisplay}, source=${priceDataSource}`,
+          `${stock.name} 분석 결과: ${signal.signalType} (신뢰도: ${signal.confidence}%), normalizedSymbol=${normalizedSymbol}, candles=${candles.length}, lastDailyClose=${analysisPrice}${gapDisplay}, source=${priceDataSource}`,
           {
             stockCode: stock.code,
-            exchangeCode: stock.exchange,
+            normalizedSymbol,
+            exchangeCode: normExchange,
             candlesLength: candles.length,
             lastDailyClose: analysisPrice,
             currentPrice,

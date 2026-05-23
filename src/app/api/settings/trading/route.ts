@@ -33,6 +33,7 @@ const DEFAULT_SETTINGS: EffectiveTradingSettings = {
   takeProfitPercent: 0.15,
   trailingStopPercent: 0.03,
   selectedStrategy: 'COMPOSITE',
+  maxOverseasPriceGapPercent: 0.005,
 };
 
 type SettingsKey = keyof typeof DEFAULT_SETTINGS;
