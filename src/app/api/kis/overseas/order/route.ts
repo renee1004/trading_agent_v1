@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 거래 내역 기록
+    // 거래 내역 기록 (USD 가격 그대로 저장, KRW 변환 금액은 totalAmount에 저장하지 않음)
     const stockNames: Record<string, string> = {
       'AAPL': '애플',
       'MSFT': '마이크로소프트',
@@ -28,10 +28,8 @@ export async function POST(request: NextRequest) {
       'NFLX': '넷플릭스',
       'AMD': 'AMD',
       'INTC': '인텔',
+      'RKLB': '로켓랩',
     };
-
-    const exchangeRate = 1330; // 기본 환율
-    const priceInKrw = (price || 0) * exchangeRate;
 
     const tradeRecord = await db.tradeHistory.create({
       data: {
@@ -40,10 +38,17 @@ export async function POST(request: NextRequest) {
         tradeType: orderType,
         quantity,
         price: price || 0,
-        totalAmount: priceInKrw * quantity,
+        totalAmount: (price || 0) * quantity,
         strategy: strategy || 'MANUAL',
         signalReason: signalReason || '해외주식 수동 주문',
         status: 'PENDING',
+        market: 'OVERSEAS',
+        exchangeCode,
+        currency: 'USD',
+        source: 'MANUAL',
+        orderExecutionMode: 'PAPER',
+        currentPrice: price || 0,
+        orderPrice: price || 0,
       },
     });
 
@@ -71,12 +76,17 @@ export async function POST(request: NextRequest) {
           exchangeCode,
         });
 
-        // 주문 결과 업데이트
+        // 주문 결과 업데이트 (KIS API 응답 포함)
         await db.tradeHistory.update({
           where: { id: tradeRecord.id },
           data: {
             status: orderResult.status === 'PENDING' ? 'FILLED' : orderResult.status,
             orderNo: orderResult.orderNo,
+            filledPrice: orderResult.status === 'FILLED' ? price : null,
+            avgFillPrice: orderResult.status === 'FILLED' ? price : null,
+            rtCd: orderResult.rt_cd,
+            msgCd: orderResult.msg_cd,
+            msg1: orderResult.message,
           },
         });
       } catch (apiError: any) {

@@ -332,6 +332,10 @@ async function initPrisma(): Promise<boolean> {
             "strategy" TEXT, "profitLoss" DOUBLE PRECISION, "profitRate" DOUBLE PRECISION,
             "status" TEXT NOT NULL DEFAULT 'PENDING', "orderNo" TEXT, "signalReason" TEXT,
             "market" TEXT NOT NULL DEFAULT 'DOMESTIC', "exchangeCode" TEXT, "currency" TEXT NOT NULL DEFAULT 'KRW',
+            "source" TEXT NOT NULL DEFAULT 'AGENT', "orderExecutionMode" TEXT NOT NULL DEFAULT 'DRY_RUN',
+            "currentPrice" DOUBLE PRECISION, "orderPrice" DOUBLE PRECISION,
+            "filledPrice" DOUBLE PRECISION, "avgFillPrice" DOUBLE PRECISION, "slippagePercent" DOUBLE PRECISION,
+            "rtCd" TEXT, "msgCd" TEXT, "msg1" TEXT,
             "tradedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
           )`,
           `CREATE TABLE IF NOT EXISTS "Position" (

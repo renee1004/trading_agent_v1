@@ -44,24 +44,37 @@ model WatchlistItem {
 }
 
 model TradeHistory {
-  id           String   @id @default(cuid())
-  stockCode    String
-  stockName    String
-  tradeType    String   // BUY, SELL
-  quantity     Int
-  price        Float
-  totalAmount  Float
-  strategy     String?
-  profitLoss   Float?
-  profitRate   Float?
-  status       String   @default("PENDING") // PENDING, FILLED, CANCELLED, FAILED
-  orderNo      String?
-  signalReason String?
-  market       String   @default("DOMESTIC") // DOMESTIC, OVERSEAS
-  exchangeCode String?  // NAS, NYS, AMS
-  currency     String   @default("KRW")
-  tradedAt     DateTime @default(now())
-  createdAt    DateTime @default(now())
+  id                  String   @id @default(cuid())
+  stockCode           String
+  stockName           String
+  tradeType           String   // BUY, SELL
+  quantity            Int
+  price               Float    // 신호 발생 시 가격 (분석 기준가)
+  totalAmount         Float    // price * quantity
+  strategy            String?
+  profitLoss          Float?
+  profitRate          Float?
+  status              String   @default("PENDING") // PENDING, FILLED, CANCELLED, FAILED
+  orderNo             String?
+  signalReason        String?
+  market              String   @default("DOMESTIC") // DOMESTIC, OVERSEAS
+  exchangeCode        String?  // NAS, NYS, AMS
+  currency            String   @default("KRW")
+  // 주문 출처 및 실행 모드
+  source              String   @default("AGENT")   // AGENT, MANUAL, TEST
+  orderExecutionMode  String   @default("DRY_RUN") // DRY_RUN, PAPER, LIVE
+  // 가격 상세
+  currentPrice        Float?   // 주문 직전 실시간 현재가
+  orderPrice          Float?   // 주문 입력 가격
+  filledPrice         Float?   // 체결 가격
+  avgFillPrice        Float?   // 평균 체결 가격
+  slippagePercent     Float?   // 슬리피지 (%): (filledPrice - orderPrice) / orderPrice * 100
+  // KIS API 응답
+  rtCd                String?  // KIS rt_cd
+  msgCd               String?  // KIS msg_cd
+  msg1                String?  // KIS msg1
+  tradedAt            DateTime @default(now())
+  createdAt           DateTime @default(now())
 }
 
 model Position {

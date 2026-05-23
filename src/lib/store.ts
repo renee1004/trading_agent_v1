@@ -86,6 +86,16 @@ export interface TradeHistoryItem {
   status: string;
   signalReason?: string;
   tradedAt: string;
+  market?: string;
+  exchangeCode?: string;
+  currency?: string;
+  source?: string;
+  orderExecutionMode?: string;
+  currentPrice?: number;
+  orderPrice?: number;
+  filledPrice?: number;
+  avgFillPrice?: number;
+  slippagePercent?: number;
 }
 
 export const useTradingStore = create<TradingState>((set) => ({

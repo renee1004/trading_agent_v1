@@ -63,6 +63,16 @@ interface TradeData {
   status: string;
   signalReason?: string;
   tradedAt: string;
+  market?: string;
+  exchangeCode?: string;
+  currency?: string;
+  source?: string;
+  orderExecutionMode?: string;
+  currentPrice?: number;
+  orderPrice?: number;
+  filledPrice?: number;
+  avgFillPrice?: number;
+  slippagePercent?: number;
 }
 
 interface StrategyData {
@@ -1362,24 +1372,60 @@ export default function TradingDashboard() {
                           <TableHead>구분</TableHead>
                           <TableHead>수량</TableHead>
                           <TableHead>가격</TableHead>
+                          <TableHead>출처</TableHead>
                           <TableHead>전략</TableHead>
                           <TableHead>상태</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {trades.map((trade) => (
+                        {trades.map((trade) => {
+                          const isOverseas = trade.currency === 'USD' || trade.market === 'OVERSEAS';
+                          const displayPrice = trade.filledPrice ?? trade.orderPrice ?? trade.price;
+                          const currencySymbol = isOverseas ? '$' : '원';
+                          const formatPrice = isOverseas
+                            ? `$${displayPrice.toFixed(2)}`
+                            : `${formatFullMoney(displayPrice)}원`;
+                          return (
                           <TableRow key={trade.id}>
                             <TableCell className="text-xs">
                               {new Date(trade.tradedAt).toLocaleString('ko-KR')}
                             </TableCell>
                             <TableCell>
                               <div className="font-medium">{trade.stockName}</div>
+                              {isOverseas && trade.exchangeCode && (
+                                <div className="text-xs text-muted-foreground">{trade.exchangeCode}</div>
+                              )}
                             </TableCell>
                             <TableCell>
                               <SignalBadge type={trade.tradeType} />
                             </TableCell>
                             <TableCell>{trade.quantity}주</TableCell>
-                            <TableCell>{formatFullMoney(trade.price)}원</TableCell>
+                            <TableCell>
+                              <div>{formatPrice}</div>
+                              {trade.slippagePercent != null && Math.abs(trade.slippagePercent) > 0.01 && (
+                                <div className={`text-xs ${trade.slippagePercent > 0 ? 'text-red-500' : 'text-emerald-500'}`}>
+                                  슬리피지 {trade.slippagePercent > 0 ? '+' : ''}{trade.slippagePercent.toFixed(2)}%
+                                </div>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ${
+                                trade.orderExecutionMode === 'DRY_RUN' ? 'bg-gray-100 text-gray-600'
+                                : trade.orderExecutionMode === 'PAPER' ? 'bg-blue-50 text-blue-600'
+                                : trade.orderExecutionMode === 'LIVE' ? 'bg-red-50 text-red-600'
+                                : 'bg-gray-100 text-gray-600'
+                              }`}>
+                                {trade.source === 'MANUAL' ? '수동' : trade.source === 'TEST' ? '테스트' : '에이전트'}
+                              </span>
+                              <span className={`ml-1 inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ${
+                                trade.orderExecutionMode === 'DRY_RUN' ? 'bg-gray-100 text-gray-500'
+                                : trade.orderExecutionMode === 'PAPER' ? 'bg-blue-50 text-blue-500'
+                                : trade.orderExecutionMode === 'LIVE' ? 'bg-red-50 text-red-500'
+                                : 'bg-gray-100 text-gray-500'
+                              }`}>
+                                {trade.orderExecutionMode || 'DRY_RUN'}
+                              </span>
+                            </TableCell>
                             <TableCell>
                               <StrategyTypeBadge type={trade.strategy} />
                             </TableCell>
@@ -1393,7 +1439,8 @@ export default function TradingDashboard() {
                               )}
                             </TableCell>
                           </TableRow>
-                        ))}
+                          );
+                        })}
                       </TableBody>
                     </Table>
                   ) : (

@@ -543,6 +543,16 @@ async function executeOrder(
         market,
         exchangeCode: exchangeCode || null,
         currency: market === 'OVERSEAS' ? 'USD' : 'KRW',
+        // 주문 출처 및 실행 모드
+        source: 'AGENT',
+        orderExecutionMode: settings.orderExecutionMode,
+        // 가격 상세
+        currentPrice: signal.price, // 주문 직전 실시간 현재가 (signal.price에 이미 반영됨)
+        orderPrice: signal.price,
+        filledPrice: status === 'FILLED' ? signal.price : null,
+        avgFillPrice: status === 'FILLED' ? signal.price : null,
+        slippagePercent: null,
+        // KIS API 응답 (추후 체결 조회에서 업데이트)
       },
     });
   } catch (dbError) {
