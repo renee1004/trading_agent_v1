@@ -317,89 +317,68 @@ export class KisApiClient {
     const { startDate, endDate } = getDateRangeByPeriod(period);
     const errors: string[] = [];
 
-    // KIS 국내 일봉 조회 수정주가 파라미터
-    // 공식 명세: FID_ORG_ADJ_PRC (수정주가 원본가격)
-    // 과거: FID_ORIG_ADJ_PRC가 동작했으나, KIS API 검증 강화로
-    //       FID_ORG_ADJ_PRC가 필요할 수 있음
-    // → 각 baseUrl마다 FID_ORIG_ADJ_PRC 먼저 시도, 실패 시 FID_ORG_ADJ_PRC 폴백
-    const fidFieldNames = ['FID_ORIG_ADJ_PRC', 'FID_ORG_ADJ_PRC'];
-
     for (const baseUrl of this.quoteBaseUrls) {
       const url = `${baseUrl}/uapi/domestic-stock/v1/quotations/inquire-daily-itemchartprice`;
 
-      for (const fidField of fidFieldNames) {
-        const params = new URLSearchParams({
-          FID_COND_MRKT_DIV_CODE: 'J',
-          FID_INPUT_ISCD: stockCode,
-          FID_INPUT_DATE_1: startDate,
-          FID_INPUT_DATE_2: endDate,
-          FID_PERIOD_DIV_CODE: 'D',
-          [fidField]: '1',
+      const params = new URLSearchParams({
+        FID_COND_MRKT_DIV_CODE: 'J',
+        FID_INPUT_ISCD: stockCode,
+        FID_INPUT_DATE_1: startDate,
+        FID_INPUT_DATE_2: endDate,
+        FID_PERIOD_DIV_CODE: 'D',
+        FID_ORIG_ADJ_PRC: '1',
+      });
+
+      console.log(`[KIS API] Daily candles request: stockCode=${stockCode}, base=${baseUrl}, date=${startDate}~${endDate}`);
+
+      try {
+        const response = await fetch(`${url}?${params.toString()}`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+            appKey: this.config.appKey,
+            appSecret: this.config.appSecret,
+            tr_id: 'FHKST03010100',
+          },
         });
 
-        console.log(`[KIS API] Daily candles request: stockCode=${stockCode}, base=${baseUrl}, fidField=${fidField}, date=${startDate}~${endDate}`);
-
-        try {
-          const response = await fetch(`${url}?${params.toString()}`, {
-            method: 'GET',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${token}`,
-              appKey: this.config.appKey,
-              appSecret: this.config.appSecret,
-              tr_id: 'FHKST03010100',
-            },
-          });
-
-          if (!response.ok) {
-            throw new Error(`HTTP ${response.status}`);
-          }
-
-          const result = await response.json();
-          const output2 = Array.isArray(result.output2) ? result.output2 : [];
-          console.log('[KIS API] Daily candles response', {
-            stockCode,
-            baseUrl,
-            fidField,
-            rt_cd: result.rt_cd,
-            msg_cd: result.msg_cd,
-            msg1: result.msg1,
-            output2Length: output2.length,
-          });
-
-          if (result.rt_cd !== '0') {
-            // FID 필드명 관련 에러면 다음 필드명으로 폴백
-            const errMsg = result.msg1 || '';
-            if (errMsg.includes('INPUT FIELD NOT FOUND') && fidField !== fidFieldNames[fidFieldNames.length - 1]) {
-              console.log(`[KIS API] fidField=${fidField} 실패, 다음 필드명으로 폴백`);
-              continue; // 다음 fidField 시도
-            }
-            throw new Error(`${errMsg || '일봉 조회 에러'} (rt_cd=${result.rt_cd}, msg_cd=${result.msg_cd || ''})`);
-          }
-
-          if (output2.length === 0) {
-            throw new Error(`일봉 조회 성공했으나 output2가 비어 있음 (rt_cd=${result.rt_cd}, msg_cd=${result.msg_cd || ''})`);
-          }
-
-          console.log(`[KIS API] Daily candles 성공: stockCode=${stockCode}, fidField=${fidField}, candles=${output2.length}, base=${baseUrl}`);
-          return output2.map((item: Record<string, string>) => ({
-            date: item.stck_bsop_date || '',
-            open: parseInt(item.stck_oprc) || 0,
-            high: parseInt(item.stck_hgpr) || 0,
-            low: parseInt(item.stck_lwpr) || 0,
-            close: parseInt(item.stck_clpr) || 0,
-            volume: parseInt(item.acml_vol) || 0,
-          })).reverse();
-        } catch (error) {
-          const errorMsg = error instanceof Error ? error.message : String(error);
-          errors.push(`[${baseUrl}][${fidField}] ${errorMsg}`);
-          console.warn(`[KIS API] Daily candles failed: stockCode=${stockCode}, baseUrl=${baseUrl}, fidField=${fidField}, error=${errorMsg}`);
-          // FID 필드명 에러가 아니면 다음 baseUrl으로
-          if (!errorMsg.includes('INPUT FIELD NOT FOUND')) {
-            break; // 다음 baseUrl 시도
-          }
-          // FID 필드명 에러면 다음 fidField로 continue (위의 for 루프가 처리)
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
         }
+
+        const result = await response.json();
+        const output2 = Array.isArray(result.output2) ? result.output2 : [];
+        console.log('[KIS API] Daily candles response', {
+          stockCode,
+          baseUrl,
+          rt_cd: result.rt_cd,
+          msg_cd: result.msg_cd,
+          msg1: result.msg1,
+          output2Length: output2.length,
+        });
+
+        if (result.rt_cd !== '0') {
+          throw new Error(`${result.msg1 || '일봉 조회 에러'} (rt_cd=${result.rt_cd}, msg_cd=${result.msg_cd || ''})`);
+        }
+
+        if (output2.length === 0) {
+          throw new Error(`일봉 조회 성공했으나 output2가 비어 있음 (rt_cd=${result.rt_cd}, msg_cd=${result.msg_cd || ''})`);
+        }
+
+        console.log(`[KIS API] Daily candles 성공: stockCode=${stockCode}, candles=${output2.length}, base=${baseUrl}`);
+        return output2.map((item: Record<string, string>) => ({
+          date: item.stck_bsop_date || '',
+          open: parseInt(item.stck_oprc) || 0,
+          high: parseInt(item.stck_hgpr) || 0,
+          low: parseInt(item.stck_lwpr) || 0,
+          close: parseInt(item.stck_clpr) || 0,
+          volume: parseInt(item.acml_vol) || 0,
+        })).reverse();
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        errors.push(`[${baseUrl}] ${errorMsg}`);
+        console.warn(`[KIS API] Daily candles failed: stockCode=${stockCode}, baseUrl=${baseUrl}, error=${errorMsg}`);
       }
     }
 
