@@ -127,7 +127,10 @@ async function loadKisConfig(): Promise<KisConfig | null> {
   if (config) {
     // 에이전트 로그에 기록 (민감정보 마스킹)
     const maskedKey = config.appKey.substring(0, 4) + '****';
-    addLog('INFO', 'DOMESTIC', `KIS 설정 로드 완료 (appKey=${maskedKey}, accountNo=${config.accountNo}, isDemo=${config.isDemo})`);
+    const maskedAccount = config.accountNo.replace(/-/g, '').length > 4
+      ? config.accountNo.replace(/-/g, '').substring(0, 2) + '****' + config.accountNo.replace(/-/g, '').slice(-2)
+      : '****';
+    addLog('INFO', 'DOMESTIC', `KIS 설정 로드 완료 (appKey=${maskedKey}, accountNo=${maskedAccount}, isDemo=${config.isDemo})`);
   } else {
     addLog('INFO', 'DOMESTIC', 'KIS 설정 없음 - 실제 매매 불가 (신호 분석만 수행). 필요 환경변수: KIS_APP_KEY/KIS_APP_SECRET/KIS_ACCOUNT_NO 또는 KIS_ACCOUNT');
   }
@@ -250,9 +253,21 @@ async function fetchPositions(
       };
     }
   } catch (error) {
-    addLog('ERROR', market, '포지션 조회 실패', {
-      error: error instanceof Error ? error.message : String(error),
-    });
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    // KIS API 에러 상세 정보 추출 (rt_cd, msg_cd, msg1 포함 여부 확인)
+    const errorDetails: Record<string, unknown> = {
+      error: errorMsg,
+      market,
+    };
+    // 에러 메시지에서 KIS 상태코드 파싱 시도
+    const rtCdMatch = errorMsg.match(/rt_cd=([^,\)]+)/);
+    const msgCdMatch = errorMsg.match(/msg_cd=([^,\)]+)/);
+    const msg1Match = errorMsg.match(/msg1=([^,\)]+)/);
+    if (rtCdMatch) errorDetails.rt_cd = rtCdMatch[1];
+    if (msgCdMatch) errorDetails.msg_cd = msgCdMatch[1];
+    if (msg1Match) errorDetails.msg1 = msg1Match[1];
+
+    addLog('ERROR', market, `${market === 'DOMESTIC' ? '국내' : '해외'} 포지션 조회 실패`, errorDetails);
     return { positions: [], overseasPositions: [], accountBalance: 0 };
   }
 }

@@ -55,6 +55,17 @@ export function normalizeOverseasSymbol(
  * - null, undefined, 빈 문자열 → 0
  * - NaN → 0
  */
+/**
+ * 계좌번호 마스킹 (로그용)
+ * 전체 계좌번호를 노출하지 않고 앞 2자리 + **** + 뒤 2자리로 표시
+ * 예: "5012345601" → "50****01"
+ */
+function maskAccountNo(accountNo: string): string {
+  const normalized = accountNo.replace(/-/g, '');
+  if (normalized.length <= 4) return '****';
+  return normalized.substring(0, 2) + '****' + normalized.substring(normalized.length - 2);
+}
+
 function safeNumber(value: unknown): number {
   if (value === null || value === undefined || value === '') return 0;
   const parsed = Number(String(value).replace(/,/g, ''));
@@ -519,6 +530,21 @@ export class KisApiClient {
 
     const trId = this.config.isDemo ? 'VTTC8434R' : 'TTTC8434R';
 
+    // 요청 상세 로그 (계좌번호 마스킹)
+    console.log('[KIS API] Domestic balance request', {
+      endpoint: '/uapi/domestic-stock/v1/trading/inquire-balance',
+      tr_id: trId,
+      accountMasked: maskAccountNo(this.config.accountNo),
+      isDemo: this.config.isDemo,
+      baseUrl: this.baseUrl,
+      params: {
+        CANO: account.cano.substring(0, 2) + '****' + account.cano.substring(6),
+        ACNT_PRDT_CD: account.productCode,
+        INQR_DVSN: '02',
+        UNPR_DVSN: '01',
+      },
+    });
+
     const response = await fetch(`${url}?${params.toString()}`, {
       method: 'GET',
       headers: {
@@ -531,13 +557,48 @@ export class KisApiClient {
     });
 
     if (!response.ok) {
-      throw new Error(`잔고 조회 실패: ${response.status}`);
+      // HTTP 에러 시 response body에서 rt_cd/msg_cd/msg1 추출 시도
+      let errorDetails: Record<string, unknown> = {
+        httpStatus: response.status,
+        statusText: response.statusText,
+        endpoint: '/uapi/domestic-stock/v1/trading/inquire-balance',
+        tr_id: trId,
+        accountMasked: maskAccountNo(this.config.accountNo),
+        isDemo: this.config.isDemo,
+      };
+      try {
+        const errorBody = await response.json();
+        errorDetails = {
+          ...errorDetails,
+          rt_cd: errorBody.rt_cd,
+          msg_cd: errorBody.msg_cd,
+          msg1: errorBody.msg1,
+        };
+        console.error('[KIS API] Domestic balance HTTP error with body', errorDetails);
+        throw new Error(
+          `잔고 조회 실패: HTTP ${response.status} (rt_cd=${errorBody.rt_cd ?? ''}, msg_cd=${errorBody.msg_cd ?? ''}, msg1=${errorBody.msg1 ?? ''})`
+        );
+      } catch (parseError) {
+        // JSON 파싱 실패 시 원래 에러 throw
+        if (parseError instanceof Error && parseError.message.includes('잔고 조회 실패')) {
+          throw parseError;
+        }
+        console.error('[KIS API] Domestic balance HTTP error (body parse failed)', errorDetails);
+        throw new Error(`잔고 조회 실패: HTTP ${response.status}`);
+      }
     }
 
     const result = await response.json();
 
     if (result.rt_cd !== '0') {
-      throw new Error(`잔고 조회 에러: ${result.msg1}`);
+      console.error('[KIS API] Domestic balance API error', {
+        rt_cd: result.rt_cd,
+        msg_cd: result.msg_cd,
+        msg1: result.msg1,
+        tr_id: trId,
+        accountMasked: maskAccountNo(this.config.accountNo),
+      });
+      throw new Error(`잔고 조회 에러: ${result.msg1} (rt_cd=${result.rt_cd}, msg_cd=${result.msg_cd || ''})`);
     }
 
     const holdings = Array.isArray(result.output1) ? result.output1 : [];
@@ -1340,6 +1401,21 @@ export class KisApiClient {
 
     const trId = this.config.isDemo ? 'VTTS3012R' : 'TTTS3012R';
 
+    // 요청 상세 로그 (계좌번호 마스킹)
+    console.log('[KIS API] Overseas balance request', {
+      endpoint: '/uapi/overseas-stock/v1/trading/inquire-balance',
+      tr_id: trId,
+      accountMasked: maskAccountNo(this.config.accountNo),
+      isDemo: this.config.isDemo,
+      baseUrl: this.baseUrl,
+      params: {
+        CANO: account.cano.substring(0, 2) + '****' + account.cano.substring(6),
+        ACNT_PRDT_CD: account.productCode,
+        OVRS_EXCG_CD: 'NAS',
+        TR_CRCY_CD: 'USD',
+      },
+    });
+
     const response = await fetch(`${url}?${params.toString()}`, {
       method: 'GET',
       headers: {
@@ -1352,31 +1428,50 @@ export class KisApiClient {
     });
 
     if (!response.ok) {
-      // 해외 잔고 조회 실패 상세 로그 (민감정보 제외)
-      console.error('[KIS API] Overseas account balance HTTP error', {
-        endpoint: '/uapi/overseas-stock/v1/trading/inquire-balance',
-        tr_id: trId,
-        exchangeCode: 'NAS',
+      // HTTP 에러 시 response body에서 rt_cd/msg_cd/msg1 추출 시도
+      let errorDetails: Record<string, unknown> = {
         httpStatus: response.status,
         statusText: response.statusText,
-      });
-      throw new Error(`해외주식 잔고 조회 실패: ${response.status}`);
+        endpoint: '/uapi/overseas-stock/v1/trading/inquire-balance',
+        tr_id: trId,
+        accountMasked: maskAccountNo(this.config.accountNo),
+        isDemo: this.config.isDemo,
+      };
+      try {
+        const errorBody = await response.json();
+        errorDetails = {
+          ...errorDetails,
+          rt_cd: errorBody.rt_cd,
+          msg_cd: errorBody.msg_cd,
+          msg1: errorBody.msg1,
+        };
+        console.error('[KIS API] Overseas balance HTTP error with body', errorDetails);
+        throw new Error(
+          `해외주식 잔고 조회 실패: HTTP ${response.status} (rt_cd=${errorBody.rt_cd ?? ''}, msg_cd=${errorBody.msg_cd ?? ''}, msg1=${errorBody.msg1 ?? ''})`
+        );
+      } catch (parseError) {
+        // JSON 파싱 실패 시 원래 에러 throw
+        if (parseError instanceof Error && parseError.message.includes('해외주식 잔고 조회 실패')) {
+          throw parseError;
+        }
+        console.error('[KIS API] Overseas balance HTTP error (body parse failed)', errorDetails);
+        throw new Error(`해외주식 잔고 조회 실패: HTTP ${response.status}`);
+      }
     }
 
     const result = await response.json();
 
     if (result.rt_cd !== '0') {
       // 해외 잔고 조회 API 에러 상세 로그 (민감정보 제외)
-      console.error('[KIS API] Overseas account balance API error', {
+      console.error('[KIS API] Overseas balance API error', {
         endpoint: '/uapi/overseas-stock/v1/trading/inquire-balance',
         tr_id: trId,
-        exchangeCode: 'NAS',
+        accountMasked: maskAccountNo(this.config.accountNo),
         rt_cd: result.rt_cd,
         msg_cd: result.msg_cd,
         msg1: result.msg1,
-        httpStatus: 200,
       });
-      throw new Error(`해외주식 잔고 조회 에러: ${result.msg1}`);
+      throw new Error(`해외주식 잔고 조회 에러: ${result.msg1} (rt_cd=${result.rt_cd}, msg_cd=${result.msg_cd || ''})`);
     }
 
     const holdings = Array.isArray(result.output1) ? result.output1 : [];
