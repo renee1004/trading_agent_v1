@@ -59,3 +59,28 @@ Stage Summary:
 - Railway 배포 확인: a02cb5d 배포 완료
 - 포지션 조회 실패 로그 완전히 사라짐 (국내/해외 모두 정상)
 - 분석 결과: 국내 10종목 성공/0실패, 해외 5종목 성공/0실패
+---
+Task ID: priority-1-8
+Agent: main
+Task: 1~8순위 수정/검증 항목 순차 진행
+
+Work Log:
+- 1순위 (cbbb589): TradeHistory 스키마 확장 (source, orderExecutionMode, currentPrice, orderPrice, filledPrice, avgFillPrice, slippagePercent, rtCd, msgCd, msg1)
+  - 해외 주문 라우트: market=OVERSEAS, currency=USD 설정 (기존 누락 수정)
+  - UI: 해외 $표시, 국내 원화 표시, 출처/실행모드 뱃지, 슬리피지 표시
+  - 거래내역 API: KRW/USD 통계 분리
+- 2순위 (4d7d005): getOverseasCurrentPrice() retryOnRateLimit 적용
+  - getOverseasDailyCandles() 루프 내 EGW00201 감지 + 2회 재시도
+  - HTTP 500 시 rt_cd/msg_cd/msg1 추출 로깅
+- 3순위 (4bc936a): KisApiThrottler 추가 (350ms 간격, HIGH/NORMAL/LOW 우선순위)
+  - 11개 메서드에 kisThrottler.acquire() 적용
+- 4순위: DRY_RUN 테스트 PASSED (canPlaceOrder=false, blockedReason="주문 드라이런: 실제 주문 차단", ordersPlaced=0)
+- 6순위: 1순위에서 스키마 확장으로 함께 완료
+- 7순위 (a4da1a1): validateOrderExecution에 availableAmount 부족/조회불가 시 주문 차단 추가
+- 8순위 (a4da1a1): LIVE 안전장치 재확인 (기본 DRY_RUN, LIVE+allowReal=false→DRY_RUN 강등, killSwitch)
+
+Stage Summary:
+- Commits: cbbb589, 4d7d005, 4bc936a, a4da1a1
+- Railway version: a4da1a1
+- 국내 10/0, 해외 5/0, 포지션 조회 실패 없음
+- 5순위 PAPER 테스트는 미국장 OPEN 시간(KST 23:30~06:00)에 진행 필요
