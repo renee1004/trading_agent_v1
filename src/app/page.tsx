@@ -435,16 +435,26 @@ export default function TradingDashboard() {
     }
     setIsSearching(true);
     try {
+      console.log('[Search] 국내 검색:', query);
       const res = await fetch(`/api/stocks/search?q=${encodeURIComponent(query)}&limit=30`);
+      console.log('[Search] 국내 응답:', res.status, res.ok);
       if (res.ok) {
         const data = await res.json();
         if (data.success) {
-          // 국내 결과만 필터링
-          setSearchResults((data.data || []).filter((r: SearchResult) => r.market === 'DOMESTIC'));
+          const domestic = (data.data || []).filter((r: SearchResult) => r.market === 'DOMESTIC');
+          console.log('[Search] 국내 결과:', domestic.length, '건');
+          setSearchResults(domestic);
+        } else {
+          console.warn('[Search] 국내 검색 API 오류:', data.error);
+          setSearchResults([]);
         }
+      } else {
+        console.warn('[Search] 국내 검색 HTTP 오류:', res.status);
+        setSearchResults([]);
       }
     } catch (error) {
-      console.error('종목 검색 실패:', error);
+      console.error('[Search] 국내 검색 실패:', error);
+      setSearchResults([]);
     }
     setIsSearching(false);
   }, []);
@@ -457,16 +467,26 @@ export default function TradingDashboard() {
     }
     setIsOverseasSearching(true);
     try {
+      console.log('[Search] 해외 검색:', query);
       const res = await fetch(`/api/stocks/search?q=${encodeURIComponent(query)}&limit=30`);
+      console.log('[Search] 해외 응답:', res.status, res.ok);
       if (res.ok) {
         const data = await res.json();
         if (data.success) {
-          // 해외 결과만 필터링
-          setOverseasSearchResults((data.data || []).filter((r: SearchResult) => r.market === 'OVERSEAS'));
+          const overseas = (data.data || []).filter((r: SearchResult) => r.market === 'OVERSEAS');
+          console.log('[Search] 해외 결과:', overseas.length, '건');
+          setOverseasSearchResults(overseas);
+        } else {
+          console.warn('[Search] 해외 검색 API 오류:', data.error);
+          setOverseasSearchResults([]);
         }
+      } else {
+        console.warn('[Search] 해외 검색 HTTP 오류:', res.status);
+        setOverseasSearchResults([]);
       }
     } catch (error) {
-      console.error('해외주식 검색 실패:', error);
+      console.error('[Search] 해외 검색 실패:', error);
+      setOverseasSearchResults([]);
     }
     setIsOverseasSearching(false);
   }, []);
@@ -1599,7 +1619,10 @@ export default function TradingDashboard() {
                 </p>
               </div>
               <div className="flex items-center gap-2">
-                <Dialog open={showSearchDialog} onOpenChange={setShowSearchDialog}>
+                <Dialog open={showSearchDialog} onOpenChange={(open) => {
+                  setShowSearchDialog(open);
+                  if (!open) { setSearchQuery(''); setSearchResults([]); }
+                }}>
                   <DialogTrigger asChild>
                     <Button className="bg-emerald-600 hover:bg-emerald-700">
                       <Search className="h-4 w-4 mr-2" />
@@ -1858,7 +1881,10 @@ export default function TradingDashboard() {
                 </p>
               </div>
               <div className="flex items-center gap-2">
-                <Dialog open={showOverseasSearchDialog} onOpenChange={setShowOverseasSearchDialog}>
+                <Dialog open={showOverseasSearchDialog} onOpenChange={(open) => {
+                  setShowOverseasSearchDialog(open);
+                  if (!open) { setOverseasSearchQuery(''); setOverseasSearchResults([]); }
+                }}>
                   <DialogTrigger asChild>
                     <Button className="bg-blue-600 hover:bg-blue-700">
                       <Search className="h-4 w-4 mr-2" />
