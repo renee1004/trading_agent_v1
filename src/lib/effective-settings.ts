@@ -505,6 +505,16 @@ export function validateOrderExecution(
     return result;
   }
 
+  // 10. 가용금액 부족 (PAPER/LIVE 모드에서만 — DRY_RUN은 이미 위에서 차단됨)
+  if (availableAmount > 0 && estimatedOrderAmount > availableAmount) {
+    result.blockedReason = `가용금액 부족: 주문금액 ${estimatedOrderAmount.toLocaleString()} > 가용금액 ${availableAmount.toLocaleString()}`;
+    return result;
+  }
+  if (availableAmount <= 0 && settings.orderExecutionMode !== 'DRY_RUN') {
+    result.blockedReason = `가용금액 조회 불가 (availableAmount=0): 주문 차단`;
+    return result;
+  }
+
   // 모든 검증 통과
   result.canPlaceOrder = true;
   return result;
