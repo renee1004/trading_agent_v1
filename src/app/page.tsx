@@ -95,10 +95,15 @@ interface WatchlistItem {
 }
 
 interface SearchResult {
-  code: string;
-  name: string;
-  sector: string;
-  market: string;
+  market: 'DOMESTIC' | 'OVERSEAS' | 'UNKNOWN';
+  exchangeCode: string;
+  symbol: string;
+  displayCode: string;
+  stockName: string;
+  koreanName?: string;
+  englishName?: string;
+  currency: 'KRW' | 'USD';
+  source: string;
 }
 
 interface OverseasPositionData {
@@ -117,14 +122,7 @@ interface OverseasPositionData {
   currency: string;
 }
 
-interface OverseasSearchResult {
-  code: string;
-  name: string;
-  nameEng: string;
-  exchangeCode: string;
-  sector: string;
-  market: string;
-}
+// OverseasSearchResult는 이제 SearchResult와 통합됨 (market='OVERSEAS'로 구분)
 
 // 금액 포맷
 function formatMoney(amount: number): string {
@@ -279,7 +277,7 @@ export default function TradingDashboard() {
   const [overseasBalance, setOverseasBalance] = useState(0);
   const [overseasProfitRate, setOverseasProfitRate] = useState(0);
   const [overseasAvailable, setOverseasAvailable] = useState(0);
-  const [overseasSearchResults, setOverseasSearchResults] = useState<OverseasSearchResult[]>([]);
+  const [overseasSearchResults, setOverseasSearchResults] = useState<SearchResult[]>([]);
   const [isOverseasSearching, setIsOverseasSearching] = useState(false);
   const [overseasSearchQuery, setOverseasSearchQuery] = useState('');
   const [showOverseasSearchDialog, setShowOverseasSearchDialog] = useState(false);
@@ -429,7 +427,7 @@ export default function TradingDashboard() {
     }
   }, []);
 
-  // 종목 검색
+  // 통합 종목 검색 (국내+해외, 로컬 마스터만 사용, KIS API 호출 없음)
   const searchStocks = useCallback(async (query: string) => {
     if (!query || query.length < 1) {
       setSearchResults([]);
@@ -437,11 +435,12 @@ export default function TradingDashboard() {
     }
     setIsSearching(true);
     try {
-      const res = await fetch(`/api/kis/search?q=${encodeURIComponent(query)}&limit=30`);
+      const res = await fetch(`/api/stocks/search?q=${encodeURIComponent(query)}&limit=30`);
       if (res.ok) {
         const data = await res.json();
         if (data.success) {
-          setSearchResults(data.data || []);
+          // 국내 결과만 필터링
+          setSearchResults((data.data || []).filter((r: SearchResult) => r.market === 'DOMESTIC'));
         }
       }
     } catch (error) {
@@ -450,7 +449,7 @@ export default function TradingDashboard() {
     setIsSearching(false);
   }, []);
 
-  // 해외주식 검색
+  // 해외주식 검색 (동일 API 사용, 해외 결과만 필터링)
   const searchOverseasStocks = useCallback(async (query: string) => {
     if (!query || query.length < 1) {
       setOverseasSearchResults([]);
@@ -458,11 +457,12 @@ export default function TradingDashboard() {
     }
     setIsOverseasSearching(true);
     try {
-      const res = await fetch(`/api/kis/overseas/search?q=${encodeURIComponent(query)}&limit=30`);
+      const res = await fetch(`/api/stocks/search?q=${encodeURIComponent(query)}&limit=30`);
       if (res.ok) {
         const data = await res.json();
         if (data.success) {
-          setOverseasSearchResults(data.data || []);
+          // 해외 결과만 필터링
+          setOverseasSearchResults((data.data || []).filter((r: SearchResult) => r.market === 'OVERSEAS'));
         }
       }
     } catch (error) {
@@ -471,20 +471,22 @@ export default function TradingDashboard() {
     setIsOverseasSearching(false);
   }, []);
 
-  // 관심종목 추가
+  // 관심종목 추가 (통합 SearchResult 사용)
   const addToWatchlist = async (stock: SearchResult) => {
     try {
-      // 이미 있는지 먼저 확인
-      if (isInWatchlist(stock.code)) {
+      // displayCode를 stockCode로 사용 (KRX:005930, NAS:NVDA 등)
+      if (isInWatchlist(stock.displayCode)) {
         return; // 이미 추가됨
       }
+      const isOverseas = stock.market === 'OVERSEAS';
       const res = await fetch('/api/watchlist', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          stockCode: stock.code,
-          stockName: stock.name,
-          sector: stock.sector,
+          stockCode: stock.displayCode,
+          stockName: isOverseas ? `[미] ${stock.koreanName || stock.stockName}` : stock.stockName,
+          market: stock.market,
+          exchangeCode: stock.exchangeCode,
         }),
       });
       const data = await res.json();
@@ -492,9 +494,9 @@ export default function TradingDashboard() {
         // 즉시 로컬 상태에 추가 (서버 재조회 전에 UI 반영)
         setWatchlist(prev => [...prev, {
           id: data.data?.id || `local-${Date.now()}`,
-          stockCode: stock.code,
-          stockName: stock.name,
-          sector: stock.sector || null,
+          stockCode: stock.displayCode,
+          stockName: isOverseas ? `[미] ${stock.koreanName || stock.stockName}` : stock.stockName,
+          sector: null,
           isActive: true,
         }]);
         await loadDashboardData();
@@ -1632,22 +1634,21 @@ export default function TradingDashboard() {
                         {searchResults.length > 0 ? (
                           <div className="space-y-1">
                             {searchResults.map((stock) => {
-                              const alreadyAdded = isInWatchlist(stock.code);
+                              const alreadyAdded = isInWatchlist(stock.displayCode);
                               return (
                                 <div 
-                                  key={stock.code}
+                                  key={stock.displayCode}
                                   className="flex items-center justify-between rounded-lg border p-3 hover:bg-muted/50 transition-colors"
                                 >
                                   <div className="flex items-center gap-3">
                                     <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
-                                      <span className="text-xs font-bold text-muted-foreground">{stock.code.slice(-4)}</span>
+                                      <span className="text-xs font-bold text-muted-foreground">{stock.symbol.slice(-4)}</span>
                                     </div>
                                     <div>
-                                      <div className="font-medium">{stock.name}</div>
+                                      <div className="font-medium">{stock.stockName}</div>
                                       <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                        <span>{stock.code}</span>
-                                        <Badge variant="outline" className="text-xs py-0">{stock.sector}</Badge>
-                                        <Badge variant="outline" className="text-xs py-0">{stock.market}</Badge>
+                                        <span className="font-mono">{stock.displayCode}</span>
+                                        <Badge variant="outline" className="text-xs py-0">{stock.currency}</Badge>
                                       </div>
                                     </div>
                                   </div>
@@ -1683,7 +1684,7 @@ export default function TradingDashboard() {
                         ) : (
                           <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
                             <Search className="h-12 w-12 mb-3 opacity-20" />
-                            <p className="text-sm">종목명, 종목코드, 섹터명으로 검색</p>
+                            <p className="text-sm">종목명, 종목코드로 검색</p>
                             <div className="flex flex-wrap gap-2 mt-4 max-w-[400px] justify-center">
                               {['삼성', '반도체', '2차전지', '카카오', '005930', 'ETF', '방산', '바이오'].map(keyword => (
                                 <Button 
@@ -1892,19 +1893,19 @@ export default function TradingDashboard() {
                           <div className="space-y-1">
                             {overseasSearchResults.map((stock) => (
                               <div
-                                key={`${stock.code}-${stock.exchangeCode}`}
+                                key={stock.displayCode}
                                 className="flex items-center justify-between rounded-lg border p-3 hover:bg-muted/50 transition-colors"
                               >
                                 <div className="flex items-center gap-3">
                                   <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-950">
-                                    <span className="text-xs font-bold text-blue-600">{stock.code.slice(0, 2)}</span>
+                                    <span className="text-xs font-bold text-blue-600">{stock.symbol.slice(0, 2)}</span>
                                   </div>
                                   <div>
-                                    <div className="font-medium">{stock.name}</div>
+                                    <div className="font-medium">{stock.koreanName || stock.stockName}</div>
                                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                      <span className="font-mono">{stock.code}</span>
-                                      <Badge variant="outline" className="text-xs py-0">{stock.sector}</Badge>
-                                      <Badge variant="outline" className="text-xs py-0 text-blue-600">{stock.market}</Badge>
+                                      <span className="font-mono">{stock.displayCode}</span>
+                                      {stock.englishName && <Badge variant="outline" className="text-xs py-0">{stock.englishName}</Badge>}
+                                      <Badge variant="outline" className="text-xs py-0 text-blue-600">{stock.currency}</Badge>
                                     </div>
                                   </div>
                                 </div>
@@ -1912,34 +1913,7 @@ export default function TradingDashboard() {
                                   size="sm"
                                   variant="default"
                                   className="bg-blue-600 hover:bg-blue-700"
-                                  onClick={async () => {
-                                    try {
-                                      const res = await fetch('/api/watchlist', {
-                                        method: 'POST',
-                                        headers: { 'Content-Type': 'application/json' },
-                                        body: JSON.stringify({
-                                          stockCode: `${stock.exchangeCode}:${stock.code}`,
-                                          stockName: `[미] ${stock.name}`,
-                                          sector: stock.sector,
-                                          market: 'OVERSEAS',
-                                          exchangeCode: stock.exchangeCode,
-                                        }),
-                                      });
-                                      const data = await res.json();
-                                      if (res.ok && data.success) {
-                                        setWatchlist(prev => [...prev, {
-                                          id: data.data?.id || `local-${Date.now()}`,
-                                          stockCode: `${stock.exchangeCode}:${stock.code}`,
-                                          stockName: `[미] ${stock.name}`,
-                                          sector: stock.sector || null,
-                                          isActive: true,
-                                        }]);
-                                        await loadDashboardData();
-                                      }
-                                    } catch (error) {
-                                      console.error('관심종목 추가 실패:', error);
-                                    }
-                                  }}
+                                  onClick={() => addToWatchlist(stock)}
                                 >
                                   <Plus className="h-3 w-3 mr-1" />
                                   추가
