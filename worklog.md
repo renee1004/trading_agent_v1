@@ -84,3 +84,38 @@ Stage Summary:
 - Railway version: a4da1a1
 - 국내 10/0, 해외 5/0, 포지션 조회 실패 없음
 - 5순위 PAPER 테스트는 미국장 OPEN 시간(KST 23:30~06:00)에 진행 필요
+
+---
+Task ID: stock-master-integration
+Agent: main
+Task: 종목 마스터/정규화 유틸을 실제 대시보드/현재가 조회 흐름에 연결
+
+Work Log:
+- kis-api.ts: normalizeOverseasSymbol()을 overseas master 기반으로 개선
+  - normalizeOverseasDisplayCode() 사용: NVDA→NAS, SPY→AMS, IBM→NYS 자동 매핑
+  - 반환값에 masterName 추가 (마스터에 이름이 있으면 fallback으로 사용)
+- kis-api.ts: getOverseasStockPrice()에 retryOnRateLimit 래핑
+  - 기존에는 retryOnRateLimit 없이 직접 호출 → EGW00201 시 재시도 없이 실패
+  - 가격 fallback chain 추가: last → base → bid → ask (기존: last-only)
+  - stockName fallback: API 응답 > 마스터 이름 > 심볼
+  - 상세 에러 로그: originalStockCode, displayCode, symbol, exchangeCode, market, endpoint, tr_id, rt_cd, msg_cd, msg1, httpStatus
+- kis-api.ts: getOverseasCurrentPrice() 동일하게 마스터 이름 + displayCode 로깅 개선
+- kis-api.ts: getOverseasDailyCandles()에도 masterName 구조분해 추가
+- /api/kis/dashboard/route.ts 신규: 대시보드 종목 리스트 시세 조회
+  - normalizeDashboardStockCodes()로 국내/해외 자동 판별 + 정규화
+  - dedupeStockMasterItems()로 중복 제거
+  - Promise.allSettled 사용: 한 종목 실패가 전체 대시보드 깨지 않음
+  - 실패 종목도 카드 유지 (quoteStatus=FAILED, quoteError 포함)
+- /api/kis/overseas/price/route.ts: 종목 마스터 정규화 적용
+  - normalizeOverseasStockCode() 사용
+  - API 실패 시에도 정규화 정보(normalized) 반환
+- /api/kis/price/route.ts: 국내 종목 정규화 적용
+  - normalizeDomesticStockCode() 사용
+  - 005930/KRX:005930/005930.KS → KRX:005930 통일
+
+Stage Summary:
+- commit: 97b6dda
+- 정규화 테스트 통과: NVDA→NAS:NVDA, SPY→AMS:SPY, IBM→NYS:IBM, SOXL→AMS:SOXL
+- 국내: 005930→KRX:005930, KRX:005930→KRX:005930, 005930.KS→KRX:005930
+- 중복 제거: NVDA+NAS:NVDA+NVDA.US → NAS:NVDA 1개로 정리
+- 기존 안정화 로직 유지: retryOnRateLimit, kisThrottler, maskAccountNo, FID_ORG_ADJ_PRC, 잔고조회 안정화
