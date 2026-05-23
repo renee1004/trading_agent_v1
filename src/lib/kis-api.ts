@@ -73,6 +73,92 @@ function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+// =============================================
+// KIS API 호출 스로틀러
+// =============================================
+// KIS 모의투자 서버는 초당 거래건수 제한(EGW00201)이 있어,
+// 연속 API 호출 시 500 에러가 발생함.
+// 모든 KIS REST 요청 사이에 최소 간격을 보장하여 사전 방지.
+//
+// 우선순위:
+// - HIGH: 잔고조회, 주문가능금액, 주문직전 현재가 (주문 파이프라인)
+// - NORMAL: 일반 시세/일봉 조회
+// - LOW: 대량 조회 (스캐닝 등)
+//
+// HIGH 요청은 큐의 앞쪽에 배치되어 더 빨리 처리됨.
+
+type ThrottlePriority = 'HIGH' | 'NORMAL' | 'LOW';
+
+interface ThrottleRequest {
+  priority: ThrottlePriority;
+  resolve: () => void;
+  label: string;
+}
+
+class KisApiThrottler {
+  private lastCallTime = 0;
+  private readonly minIntervalMs: number;
+  private queue: ThrottleRequest[] = [];
+  private processing = false;
+
+  constructor(minIntervalMs: number = 350) {
+    this.minIntervalMs = minIntervalMs;
+  }
+
+  /**
+   * 스로틀 큐에 요청을 등록하고 실행 가능해질 때까지 대기
+   * HIGH 우선순위는 큐 앞에 삽입
+   */
+  async acquire(label: string, priority: ThrottlePriority = 'NORMAL'): Promise<void> {
+    return new Promise<void>((resolve) => {
+      const request: ThrottleRequest = { priority, resolve, label };
+
+      // HIGH 우선순위는 큐 앞에 삽입
+      if (priority === 'HIGH') {
+        const insertIndex = this.queue.findIndex(r => r.priority !== 'HIGH');
+        if (insertIndex === -1) {
+          this.queue.push(request);
+        } else {
+          this.queue.splice(insertIndex, 0, request);
+        }
+      } else {
+        this.queue.push(request);
+      }
+
+      this.processQueue();
+    });
+  }
+
+  private async processQueue(): Promise<void> {
+    if (this.processing) return;
+    this.processing = true;
+
+    while (this.queue.length > 0) {
+      const request = this.queue.shift()!;
+      const now = Date.now();
+      const elapsed = now - this.lastCallTime;
+      const waitTime = Math.max(0, this.minIntervalMs - elapsed);
+
+      if (waitTime > 0) {
+        await sleep(waitTime);
+      }
+
+      this.lastCallTime = Date.now();
+      request.resolve();
+    }
+
+    this.processing = false;
+  }
+
+  /** 현재 대기 중인 요청 수 */
+  get pendingCount(): number {
+    return this.queue.length;
+  }
+}
+
+// 전역 KIS API 스로틀러 인스턴스 (모든 KisApiClient가 공유)
+const kisThrottler = new KisApiThrottler(350);
+
 /**
  * KIS API 호출 속도제한(EGW00201) 재시도 래퍼
  * KIS 모의투자 서버는 초당 거래건수 제한이 있어,
@@ -343,6 +429,7 @@ export class KisApiClient {
 
   async getStockPrice(stockCode: string): Promise<StockPrice> {
     const token = await this.ensureToken();
+    await kisThrottler.acquire('getStockPrice', 'NORMAL');
     const errors: string[] = [];
 
     for (const baseUrl of this.quoteBaseUrls) {
@@ -404,6 +491,7 @@ export class KisApiClient {
     period: string = '1M'
   ): Promise<StockCandle[]> {
     const token = await this.ensureToken();
+    await kisThrottler.acquire('getStockDailyCandles', 'NORMAL');
     const { startDate, endDate } = getDateRangeByPeriod(period);
     const errors: string[] = [];
 
@@ -493,6 +581,7 @@ export class KisApiClient {
     }
 
     const token = await this.ensureToken();
+    await kisThrottler.acquire('placeOrder', 'HIGH');
     const url = `${this.baseUrl}/uapi/domestic-stock/v1/trading/order-cash`;
 
     const trId = order.orderType === 'BUY'
@@ -561,6 +650,7 @@ export class KisApiClient {
   async getAccountBalance(): Promise<AccountBalance> {
     return retryOnRateLimit(async () => {
     const token = await this.ensureToken();
+    await kisThrottler.acquire('getAccountBalance', 'HIGH');
     const url = `${this.baseUrl}/uapi/domestic-stock/v1/trading/inquire-balance`;
 
     const account = parseAccountNo(this.config.accountNo);
@@ -726,6 +816,7 @@ export class KisApiClient {
     rawStatus: string;
   }> {
     const token = await this.ensureToken();
+    await kisThrottler.acquire('getOrderStatus', 'NORMAL');
     const url = `${this.baseUrl}/uapi/domestic-stock/v1/trading/inquire-ccnl`;
 
     const account = parseAccountNo(this.config.accountNo);
@@ -844,6 +935,7 @@ export class KisApiClient {
     orderTime: string;
   }>> {
     const token = await this.ensureToken();
+    await kisThrottler.acquire('getPendingOrders', 'NORMAL');
     const url = `${this.baseUrl}/uapi/domestic-stock/v1/trading/inquire-psbl-order`;
 
     const account = parseAccountNo(this.config.accountNo);
@@ -939,6 +1031,7 @@ export class KisApiClient {
     exchangeCode: string = 'NAS'
   ): Promise<OverseasStockPrice> {
     const token = await this.ensureToken();
+    await kisThrottler.acquire('getOverseasStockPrice', 'NORMAL');
     const { exchangeCode: normExchange, symbol: pureSymbol, displayCode } = normalizeOverseasSymbol(stockCode, exchangeCode);
     const url = `${this.baseUrl}/uapi/overseas-price/v1/quotations/price`;
 
@@ -1128,6 +1221,7 @@ export class KisApiClient {
   }> {
     return retryOnRateLimit(async () => {
     const token = await this.ensureToken();
+    await kisThrottler.acquire('getOverseasCurrentPrice', 'HIGH');
     const { exchangeCode: normExchange, symbol: pureSymbol, displayCode } = normalizeOverseasSymbol(stockCode, exchangeCode);
     const url = `${this.baseUrl}/uapi/overseas-price/v1/quotations/price`;
 
@@ -1290,6 +1384,7 @@ export class KisApiClient {
     period: string = '1M'
   ): Promise<OverseasStockCandle[]> {
     const token = await this.ensureToken();
+    await kisThrottler.acquire('getOverseasDailyCandles', 'NORMAL');
     const errors: string[] = [];
 
     // KIS 해외 일봉 API GUBN 파라미터는 1글자 코드만 허용:
@@ -1441,6 +1536,7 @@ export class KisApiClient {
 
   async placeOverseasOrder(order: OrderRequest): Promise<OrderResponse> {
     const token = await this.ensureToken();
+    await kisThrottler.acquire('placeOverseasOrder', 'HIGH');
     const url = `${this.baseUrl}/uapi/overseas-stock/v1/trading/order`;
 
     const trId = order.orderType === 'BUY'
@@ -1505,6 +1601,7 @@ export class KisApiClient {
   }> {
     return retryOnRateLimit(async () => {
     const token = await this.ensureToken();
+    await kisThrottler.acquire('getOverseasAccountBalance', 'HIGH');
     const url = `${this.baseUrl}/uapi/overseas-stock/v1/trading/inquire-balance`;
 
     const account = parseAccountNo(this.config.accountNo);
