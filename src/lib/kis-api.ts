@@ -66,6 +66,55 @@ function maskAccountNo(accountNo: string): string {
   return normalized.substring(0, 2) + '****' + normalized.substring(normalized.length - 2);
 }
 
+/**
+ * 지정된 밀리초 대기
+ */
+function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+/**
+ * KIS API 호출 속도제한(EGW00201) 재시도 래퍼
+ * KIS 모의투자 서버는 초당 거래건수 제한이 있어,
+ * 연속 API 호출 시 500 + EGW00201 에러가 발생할 수 있음.
+ * 이 래퍼는 해당 에러 발생 시 지수 백오프로 자동 재시도.
+ *
+ * @param fn - 실행할 비동기 함수
+ * @param label - 로그용 라벨
+ * @param maxRetries - 최대 재시도 횟수 (기본 3)
+ * @param baseDelayMs - 첫 재시도 대기 시간 (기본 500ms, 이후 2배씩 증가)
+ */
+async function retryOnRateLimit<T>(
+  fn: () => Promise<T>,
+  label: string,
+  maxRetries: number = 3,
+  baseDelayMs: number = 500,
+): Promise<T> {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      const errMsg = error instanceof Error ? error.message : String(error);
+      const isRateLimit =
+        errMsg.includes('EGW00201') ||
+        errMsg.includes('초당 거래건수를 초과');
+
+      if (!isRateLimit || attempt >= maxRetries) {
+        throw error;
+      }
+
+      const delay = baseDelayMs * Math.pow(2, attempt);
+      console.warn(
+        `[KIS API] Rate limit hit for ${label} (attempt ${attempt + 1}/${maxRetries}), ` +
+        `retrying in ${delay}ms...`
+      );
+      await sleep(delay);
+    }
+  }
+  // Should not reach here, but TypeScript needs it
+  throw new Error(`${label}: 최대 재시도 횟수 초과`);
+}
+
 function safeNumber(value: unknown): number {
   if (value === null || value === undefined || value === '') return 0;
   const parsed = Number(String(value).replace(/,/g, ''));
@@ -510,6 +559,7 @@ export class KisApiClient {
   }
 
   async getAccountBalance(): Promise<AccountBalance> {
+    return retryOnRateLimit(async () => {
     const token = await this.ensureToken();
     const url = `${this.baseUrl}/uapi/domestic-stock/v1/trading/inquire-balance`;
 
@@ -649,6 +699,7 @@ export class KisApiClient {
       availableAmount,
       positions,
     };
+    }, 'getAccountBalance');
   }
 
   /**
@@ -1386,6 +1437,7 @@ export class KisApiClient {
     availableAmount: number;
     positions: OverseasBalanceItem[];
   }> {
+    return retryOnRateLimit(async () => {
     const token = await this.ensureToken();
     const url = `${this.baseUrl}/uapi/overseas-stock/v1/trading/inquire-balance`;
 
@@ -1528,6 +1580,7 @@ export class KisApiClient {
       availableAmount,
       positions,
     };
+    }, 'getOverseasAccountBalance');
   }
 
   async cancelOverseasOrder(
