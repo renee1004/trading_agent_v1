@@ -866,19 +866,46 @@ export class KisApiClient {
 
     const output = result.output || {};
 
-    // currentPrice는 반드시 output.last에서 파싱
-    const parsedLast = parseFloat(output.last);
-    const currentPriceFromLast = Number.isFinite(parsedLast) && parsedLast > 0 ? parsedLast : 0;
+    // rawPriceFields: KIS API 응답 필드명 다양성 대비 fallback chain
+    const rawPriceFields = {
+      last:
+        output.last ??
+        output.last_price ??
+        output.ovrs_nmix_prpr ??
+        output.stck_prpr ??
+        output.price ??
+        null,
+      base:
+        output.base ??
+        output.base_price ??
+        output.ovrs_nmix_prdy_clpr ??
+        output.prdy_clpr ??
+        output.previousClose ??
+        null,
+      high:
+        output.high ??
+        output.high_price ??
+        output.ovrs_nmix_hgpr ??
+        output.stck_hgpr ??
+        null,
+      low:
+        output.low ??
+        output.low_price ??
+        output.ovrs_nmix_lwpr ??
+        output.stck_lwpr ??
+        null,
+    };
 
-    if (currentPriceFromLast === 0) {
-      console.warn('[KIS API] Overseas stock price: output.last is missing or 0', {
+    // currentPrice는 반드시 rawPriceFields.last에서 파싱
+    const currentPrice = safeNumber(rawPriceFields.last);
+    const currentPriceField = 'last';
+
+    if (currentPrice <= 0) {
+      console.warn('[KIS API] Overseas stock price: last 필드가 비어 있거나 0', {
         originalStockCode: stockCode,
         normalizedSymbol: pureSymbol,
         exchangeCode: normExchange,
-        rawLast: output.last,
-        rawBase: output.base,
-        rawHigh: output.high,
-        rawLow: output.low,
+        rawPriceFields,
       });
     }
 
@@ -891,23 +918,12 @@ export class KisApiClient {
       msg_cd: result.msg_cd,
       msg1: result.msg1,
       outputKeys: Object.keys(output),
-      rawPriceFields: {
-        last: output.last,
-        base: output.base,
-        diff: output.diff,
-        rate: output.rate,
-        high: output.high,
-        low: output.low,
-        open: output.open,
-        tvol: output.tvol,
-        bid: output.bid,
-        ask: output.ask,
-      },
-      currentPriceField: 'last',
-      parsedCurrentPrice: currentPriceFromLast,
-      parsedPreviousClose: parseFloat(output.base) || 0,
-      parsedVolume: parseInt(output.tvol) || 0,
-      lastIsZero: currentPriceFromLast === 0,
+      rawPriceFields,
+      currentPriceField,
+      parsedCurrentPrice: currentPrice,
+      parsedPreviousClose: safeNumber(rawPriceFields.base),
+      parsedVolume: safeNumber(output.volume ?? output.tvol ?? output.acml_vol ?? output.trde_qty),
+      lastIsZero: currentPrice === 0,
       timestamp: new Date().toISOString(),
     });
 
@@ -923,20 +939,25 @@ export class KisApiClient {
 
     return {
       stockCode: displayCode,
+      originalStockCode: stockCode,
+      normalizedSymbol: pureSymbol,
+      currentPriceField,
+      rawPriceFields,
       stockName: output.kor_name || output.name || pureSymbol,
       exchangeCode: normExchange,
       exchangeName: exchangeNames[normExchange] || normExchange,
-      currentPrice: currentPriceFromLast,
-      previousClose: parseFloat(output.base) || 0,
-      changePrice: parseFloat(output.diff) || 0,
-      changeRate: parseFloat(output.rate) || 0,
-      highPrice: parseFloat(output.high) || 0,
-      lowPrice: parseFloat(output.low) || 0,
-      openPrice: parseFloat(output.open) || 0,
-      volume: parseInt(output.tvol) || 0,
+      currentPrice,
+      previousClose: safeNumber(rawPriceFields.base),
+      changePrice: safeNumber(output.diff),
+      changeRate: safeNumber(output.rate),
+      highPrice: safeNumber(rawPriceFields.high),
+      lowPrice: safeNumber(rawPriceFields.low),
+      openPrice: safeNumber(output.open),
+      volume: safeNumber(output.volume ?? output.tvol ?? output.acml_vol ?? output.trde_qty),
       currency: 'USD',
-      marketPrice: parseFloat(output.bid) || 0,
-      afterHoursPrice: parseFloat(output.ask) || 0,
+      marketPrice: safeNumber(output.bid),
+      afterHoursPrice: safeNumber(output.ask),
+      source: 'KIS_REST',
     };
   }
 
@@ -965,24 +986,24 @@ export class KisApiClient {
     exchangeCode: string = 'NAS'
   ): Promise<{
     stockCode: string;
+    originalStockCode: string;
     exchangeCode: string;
+    normalizedSymbol: string;
     currentPrice: number;
+    currentPriceField: string;
+    rawPriceFields: {
+      last: unknown;
+      base: unknown;
+      high: unknown;
+      low: unknown;
+    };
     previousClose: number;
-    changePrice: number;
-    changeRate: number;
+    highPrice: number;
+    lowPrice: number;
     volume: number;
     currency: string;
     timestamp: string;
     source: string;
-    normalizedSymbol: string;
-    originalStockCode: string;
-    currentPriceField: string;
-    rawPriceFields: {
-      last: string | number;
-      base: string | number;
-      high: string | number;
-      low: string | number;
-    };
   }> {
     const token = await this.ensureToken();
     const { exchangeCode: normExchange, symbol: pureSymbol, displayCode } = normalizeOverseasSymbol(stockCode, exchangeCode);
@@ -1029,30 +1050,51 @@ export class KisApiClient {
 
     const output = result.output || {};
 
-    // rawPriceFields: 원문 그대로 보존 (검증/디버깅용)
+    // rawPriceFields: KIS API 응답 필드명 다양성 대비 fallback chain
     const rawPriceFields = {
-      last: output.last ?? '',
-      base: output.base ?? '',
-      high: output.high ?? '',
-      low: output.low ?? '',
+      last:
+        output.last ??
+        output.last_price ??
+        output.ovrs_nmix_prpr ??
+        output.stck_prpr ??
+        output.price ??
+        null,
+      base:
+        output.base ??
+        output.base_price ??
+        output.ovrs_nmix_prdy_clpr ??
+        output.prdy_clpr ??
+        output.previousClose ??
+        null,
+      high:
+        output.high ??
+        output.high_price ??
+        output.ovrs_nmix_hgpr ??
+        output.stck_hgpr ??
+        null,
+      low:
+        output.low ??
+        output.low_price ??
+        output.ovrs_nmix_lwpr ??
+        output.stck_lwpr ??
+        null,
     };
 
-    // currentPrice는 반드시 output.last에서 파싱
-    // last가 없거나 0이면 currentPrice를 사용하지 않음
-    const parsedLast = parseFloat(output.last);
-    const currentPriceFromLast = Number.isFinite(parsedLast) && parsedLast > 0 ? parsedLast : 0;
-    const currentPriceField = 'last'; // 항상 last 필드에서 파싱
+    // currentPrice는 반드시 rawPriceFields.last에서 파싱
+    const currentPrice = safeNumber(rawPriceFields.last);
+    const currentPriceField = 'last';
 
-    if (currentPriceFromLast === 0) {
-      console.warn('[KIS API] Overseas current price: output.last is missing or 0', {
+    // last가 없거나 0이면 에러 throw (현재가 사용 불가)
+    if (currentPrice <= 0) {
+      console.error('[KIS API] Overseas current price: last 필드가 비어 있거나 0', {
         originalStockCode: stockCode,
         normalizedSymbol: pureSymbol,
         exchangeCode: normExchange,
-        rawLast: output.last,
-        rawBase: output.base,
-        rawHigh: output.high,
-        rawLow: output.low,
+        rawPriceFields,
       });
+      throw new Error(
+        `해외 현재가 조회 실패: last 필드가 비어 있거나 0입니다. symbol=${pureSymbol}, exchange=${normExchange}`
+      );
     }
 
     // 응답 원문 필드 검증 로그 (민감정보 제외)
@@ -1064,41 +1106,29 @@ export class KisApiClient {
       msg_cd: result.msg_cd,
       msg1: result.msg1,
       outputKeys: Object.keys(output),
-      rawPriceFields: {
-        last: output.last,
-        base: output.base,
-        diff: output.diff,
-        rate: output.rate,
-        high: output.high,
-        low: output.low,
-        open: output.open,
-        tvol: output.tvol,
-        bid: output.bid,
-        ask: output.ask,
-      },
+      rawPriceFields,
       currentPriceField,
-      parsedCurrentPrice: currentPriceFromLast,
-      parsedPreviousClose: parseFloat(output.base) || 0,
-      parsedVolume: parseInt(output.tvol) || 0,
-      lastIsZero: currentPriceFromLast === 0,
+      parsedCurrentPrice: currentPrice,
+      parsedPreviousClose: safeNumber(rawPriceFields.base),
+      parsedVolume: safeNumber(output.volume ?? output.tvol ?? output.acml_vol ?? output.trde_qty),
       timestamp: new Date().toISOString(),
     });
 
     return {
       stockCode: displayCode,
+      originalStockCode: stockCode,
       exchangeCode: normExchange,
-      currentPrice: currentPriceFromLast,
-      previousClose: parseFloat(output.base) || 0,
-      changePrice: parseFloat(output.diff) || 0,
-      changeRate: parseFloat(output.rate) || 0,
-      volume: parseInt(output.tvol) || 0,
+      normalizedSymbol: pureSymbol,
+      currentPrice,
+      currentPriceField,
+      rawPriceFields,
+      previousClose: safeNumber(rawPriceFields.base),
+      highPrice: safeNumber(rawPriceFields.high),
+      lowPrice: safeNumber(rawPriceFields.low),
+      volume: safeNumber(output.volume ?? output.tvol ?? output.acml_vol ?? output.trde_qty),
       currency: 'USD',
       timestamp: new Date().toISOString(),
       source: 'KIS_REST',
-      normalizedSymbol: pureSymbol,
-      originalStockCode: stockCode,
-      currentPriceField,
-      rawPriceFields,
     };
   }
 

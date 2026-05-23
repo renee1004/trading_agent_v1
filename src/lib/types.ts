@@ -53,6 +53,17 @@ export interface OverseasStockPrice {
   currency: string;       // 통화 (USD)
   marketPrice: number;    // 장전시가
   afterHoursPrice: number;// 시간외가격
+  // 검증 로그 필드 (optional)
+  originalStockCode?: string;
+  normalizedSymbol?: string;
+  currentPriceField?: string;
+  rawPriceFields?: {
+    last: unknown;
+    base: unknown;
+    high: unknown;
+    low: unknown;
+  };
+  source?: string;
 }
 
 // 해외주식 일봉

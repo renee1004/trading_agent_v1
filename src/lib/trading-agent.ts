@@ -1005,24 +1005,24 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
         // 해외 현재가 실시간 조회 (분석과 주문 사이 괴리 추적)
         let currentPriceInfo: {
           stockCode: string;
+          originalStockCode: string;
           exchangeCode: string;
+          normalizedSymbol: string;
           currentPrice: number;
+          currentPriceField: string;
+          rawPriceFields: {
+            last: unknown;
+            base: unknown;
+            high: unknown;
+            low: unknown;
+          };
           previousClose: number;
-          changePrice: number;
-          changeRate: number;
+          highPrice: number;
+          lowPrice: number;
           volume: number;
           currency: string;
           timestamp: string;
           source: string;
-          normalizedSymbol: string;
-          originalStockCode: string;
-          currentPriceField: string;
-          rawPriceFields: {
-            last: string | number;
-            base: string | number;
-            high: string | number;
-            low: string | number;
-          };
         } | null = null;
         let currentPrice = 0;
         let priceGapPercent = 0;
@@ -1036,24 +1036,6 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
             currentPriceTimestamp = currentPriceInfo.timestamp;
             priceDataSource = 'daily_candle+current_price';
 
-            // currentPrice가 0이면 last 필드 파싱 실패 → 경고 로그
-            if (currentPrice === 0) {
-              addLog('RISK', 'OVERSEAS',
-                `해외 현재가 파싱 실패: ${stock.name} output.last가 없거나 0, 현재가 사용 불가`,
-                {
-                  originalStockCode: stock.code,
-                  normalizedSymbol,
-                  exchangeCode: normExchange,
-                  currentPriceField: currentPriceInfo.currentPriceField,
-                  rawPriceFields: currentPriceInfo.rawPriceFields,
-                  currentPrice: 0,
-                  previousClose: currentPriceInfo.previousClose,
-                  volume: currentPriceInfo.volume,
-                  source: 'KIS_REST',
-                }
-              );
-            }
-
             // 괴리율 계산
             if (analysisPrice > 0 && currentPrice > 0) {
               priceGapPercent = Math.abs(currentPrice - analysisPrice) / analysisPrice;
@@ -1062,39 +1044,39 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
             // 괴리율 5% 이상 경고 로그 (RISK 타입)
             if (priceGapPercent >= 0.05) {
               addLog('RISK', 'OVERSEAS',
-                `해외 현재가 괴리율 경고: ${normalizedSymbol} gap=${(priceGapPercent * 100).toFixed(2)}%`,
+                `해외 현재가 괴리율 경고: ${currentPriceInfo.normalizedSymbol || normalizedSymbol} gap=${(priceGapPercent * 100).toFixed(2)}%`,
                 {
-                  originalStockCode: stock.code,
-                  normalizedSymbol,
-                  exchangeCode: normExchange,
-                  currentPrice,
+                  originalStockCode: currentPriceInfo.originalStockCode || stock.code,
+                  stockCode: currentPriceInfo.stockCode || stock.code,
+                  exchangeCode: currentPriceInfo.exchangeCode || normExchange,
+                  normalizedSymbol: currentPriceInfo.normalizedSymbol || normalizedSymbol,
                   analysisPrice,
+                  currentPrice: currentPriceInfo.currentPrice,
                   priceGapPercent: parseFloat((priceGapPercent * 100).toFixed(4)),
-                  currentPriceField: currentPriceInfo.currentPriceField,
                   rawPriceFields: currentPriceInfo.rawPriceFields,
-                  previousClose: currentPriceInfo.previousClose,
-                  volume: currentPriceInfo.volume,
-                  currentPriceTimestamp,
-                  source: 'KIS_REST',
+                  currentPriceField: currentPriceInfo.currentPriceField || 'last',
+                  currentPriceTimestamp: currentPriceInfo.timestamp,
+                  source: currentPriceInfo.source || 'KIS_REST',
                 }
               );
             }
 
             addLog('INFO', 'OVERSEAS',
-              `${stock.name} 해외 현재가 조회 성공: currentPrice=${currentPrice}, normalizedSymbol=${normalizedSymbol}, timestamp=${currentPriceTimestamp}`,
+              `[미] ${stock.name} 해외 현재가 조회 성공: ${currentPriceInfo.normalizedSymbol || normalizedSymbol}, currentPrice=${currentPriceInfo.currentPrice}, timestamp=${currentPriceInfo.timestamp}`,
               {
-                originalStockCode: stock.code,
-                normalizedSymbol,
-                exchangeCode: normExchange,
-                currentPriceField: currentPriceInfo.currentPriceField,
+                originalStockCode: currentPriceInfo.originalStockCode || stock.code,
+                stockCode: currentPriceInfo.stockCode || stock.code,
+                exchangeCode: currentPriceInfo.exchangeCode || normExchange,
+                normalizedSymbol: currentPriceInfo.normalizedSymbol || normalizedSymbol,
                 rawPriceFields: currentPriceInfo.rawPriceFields,
-                currentPrice,
+                currentPriceField: currentPriceInfo.currentPriceField || 'last',
+                currentPrice: currentPriceInfo.currentPrice,
                 previousClose: currentPriceInfo.previousClose,
                 volume: currentPriceInfo.volume,
                 analysisPrice,
                 priceGapPercent: parseFloat((priceGapPercent * 100).toFixed(4)),
-                currentPriceTimestamp,
-                source: 'KIS_REST',
+                currentPriceTimestamp: currentPriceInfo.timestamp,
+                source: currentPriceInfo.source || 'KIS_REST',
               }
             );
           } catch (cpError) {
@@ -1122,14 +1104,17 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
         addLog('INFO', 'OVERSEAS',
           `${stock.name} 분석 결과: ${signal.signalType} (신뢰도: ${signal.confidence}%), normalizedSymbol=${normalizedSymbol}, candles=${candles.length}, lastDailyClose=${analysisPrice}${gapDisplay}, source=${priceDataSource}`,
           {
-            stockCode: stock.code,
-            normalizedSymbol,
+            originalStockCode: currentPriceInfo?.originalStockCode || stock.code,
+            stockCode: currentPriceInfo?.stockCode || stock.code,
             exchangeCode: normExchange,
+            normalizedSymbol,
             candlesLength: candles.length,
             lastDailyClose: analysisPrice,
             currentPrice,
             priceGapPercent: parseFloat((priceGapPercent * 100).toFixed(4)),
             currentPriceTimestamp,
+            rawPriceFields: currentPriceInfo?.rawPriceFields,
+            currentPriceField: currentPriceInfo?.currentPriceField || 'last',
             dataSource: priceDataSource,
             realtimeEnabled: false,
             signalType: signal.signalType,
