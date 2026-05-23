@@ -43,6 +43,19 @@ export interface EffectiveTradingSettings {
   selectedStrategy: string;
   // 해외 가격 괴리율 안전장치
   maxOverseasPriceGapPercent: number;  // 분석가 vs 현재가 최대 허용 괴리율 (기본 0.5%)
+
+  // ── 주문 실행 모드 ──
+  tradingMode: 'DEMO' | 'REAL';                          // 기본 DEMO — KIS 계정 모드
+  orderExecutionMode: 'DRY_RUN' | 'PAPER' | 'LIVE';      // 기본 DRY_RUN
+  allowRealDomesticOrder: boolean;                        // 기본 false — 실전 국내 주문 허용
+  allowRealOverseasOrder: boolean;                        // 기본 false — 실전 해외 주문 허용
+  killSwitchEnabled: boolean;                             // 기본 false — true면 모든 주문 차단
+  maxDomesticOrderAmount: number;                         // 국내 1회 최대 주문금액 (KRW)
+  maxOverseasOrderAmount: number;                         // 해외 1회 최대 주문금액 (USD)
+  maxDailyDomesticOrders: number;                         // 국내 일일 최대 주문 건수
+  maxDailyOverseasOrders: number;                         // 해외 일일 최대 주문 건수
+  maxOpenDomesticPositions: number;                       // 국내 최대 보유 포지션 수
+  maxOpenOverseasPositions: number;                       // 해외 최대 보유 포지션 수
 }
 
 const DEFAULT_SETTINGS: EffectiveTradingSettings = {
@@ -67,6 +80,19 @@ const DEFAULT_SETTINGS: EffectiveTradingSettings = {
   trailingStopPercent: 0.03,
   selectedStrategy: 'COMPOSITE',
   maxOverseasPriceGapPercent: 0.005,  // 0.5% — 분석가와 현재가 괴리가 이 이상이면 해외 주문 차단
+
+  // 주문 실행 모드 기본값 (모두 보수적)
+  tradingMode: 'DEMO',
+  orderExecutionMode: 'DRY_RUN',
+  allowRealDomesticOrder: false,
+  allowRealOverseasOrder: false,
+  killSwitchEnabled: false,
+  maxDomesticOrderAmount: 100000,    // KRW 10만원
+  maxOverseasOrderAmount: 100,       // USD 100달러
+  maxDailyDomesticOrders: 1,
+  maxDailyOverseasOrders: 1,
+  maxOpenDomesticPositions: 1,
+  maxOpenOverseasPositions: 1,
 };
 
 export interface EffectiveSettingsResult {
@@ -235,6 +261,41 @@ export async function getEffectiveTradingSettings(): Promise<EffectiveSettingsRe
   }
 
   // =============================================
+  // 주문 실행 모드 안전장치 (이중 게이트)
+  // =============================================
+  // allowRealDomesticOrder: DB true OR 환경변수 true → 활성화
+  const dbAllowRealDomestic = dbSettings?.allowRealDomesticOrder === true;
+  const envAllowRealDomestic = process.env.ALLOW_REAL_DOMESTIC_ORDER === 'true';
+  settings.allowRealDomesticOrder = dbAllowRealDomestic || envAllowRealDomestic;
+
+  // allowRealOverseasOrder: DB true OR 환경변수 true → 활성화
+  const dbAllowRealOverseas = dbSettings?.allowRealOverseasOrder === true;
+  const envAllowRealOverseas = process.env.ALLOW_REAL_OVERSEAS_ORDER === 'true';
+  settings.allowRealOverseasOrder = dbAllowRealOverseas || envAllowRealOverseas;
+
+  // killSwitchEnabled: DB true OR 환경변수 true → 활성화 (비상 정지)
+  const dbKillSwitch = dbSettings?.killSwitchEnabled === true;
+  const envKillSwitch = process.env.KILL_SWITCH_ENABLED === 'true';
+  settings.killSwitchEnabled = dbKillSwitch || envKillSwitch;
+
+  // orderExecutionMode: 열거형 유효성 검증
+  const validModes = ['DRY_RUN', 'PAPER', 'LIVE'];
+  if (!validModes.includes(settings.orderExecutionMode)) {
+    settings.orderExecutionMode = 'DRY_RUN';
+  }
+
+  // tradingMode: 열거형 유효성 검증
+  const validTradingModes = ['DEMO', 'REAL'];
+  if (!validTradingModes.includes(settings.tradingMode)) {
+    settings.tradingMode = 'DEMO';
+  }
+
+  // LIVE 모드에서 allowRealOrder가 모두 false면 DRY_RUN으로 강등
+  if (settings.orderExecutionMode === 'LIVE' && !settings.allowRealDomesticOrder && !settings.allowRealOverseasOrder) {
+    settings.orderExecutionMode = 'DRY_RUN';
+  }
+
+  // =============================================
   // 소스 추적
   // =============================================
   const source: 'db' | 'env' | 'default' = hasDbSettings
@@ -290,5 +351,161 @@ export function formatSettingsSummary(settings: EffectiveTradingSettings): strin
     `analysisMarketHoursOnly=${settings.runAnalysisOnlyDuringMarketHours}`,
     `cycleMs=${settings.cycleIntervalMs}`,
     `strategy=${settings.selectedStrategy}`,
+    `mode=${settings.tradingMode}/${settings.orderExecutionMode}`,
+    `killSwitch=${settings.killSwitchEnabled}`,
+    `allowRealDomestic=${settings.allowRealDomesticOrder}`,
+    `allowRealOverseas=${settings.allowRealOverseasOrder}`,
   ].join(', ');
+}
+
+// =============================================
+// 주문 실행 모드 검증
+// =============================================
+export interface OrderPreValidation {
+  market: 'DOMESTIC' | 'OVERSEAS';
+  tradingMode: 'DEMO' | 'REAL';
+  orderExecutionMode: 'DRY_RUN' | 'PAPER' | 'LIVE';
+  isDemo: boolean;
+  enableOrder: boolean;           // autoDomesticOrderEnabled 또는 enableOverseasOrder
+  allowRealOrder: boolean;        // allowRealDomesticOrder 또는 allowRealOverseasOrder
+  killSwitchEnabled: boolean;
+  currentPrice: number;
+  currentPriceField: string;
+  priceGapPercent: number;
+  maxPriceGapPercent: number;
+  availableAmount: number;
+  calculatedQuantity: number;
+  estimatedOrderAmount: number;
+  maxOrderAmount: number;
+  dailyOrderCount: number;
+  maxDailyOrders: number;
+  openPositions: number;
+  maxOpenPositions: number;
+  canPlaceOrder: boolean;
+  blockedReason: string;
+}
+
+/**
+ * 주문 실행 전 사전검증
+ * killSwitch → orderExecutionMode → isDemo → allowRealOrder → 시장별 설정 → 금액/건수/포지션 한도
+ */
+export function validateOrderExecution(
+  settings: EffectiveTradingSettings,
+  market: 'DOMESTIC' | 'OVERSEAS',
+  isDemo: boolean,
+  signalPrice: number,
+  quantity: number,
+  availableAmount: number,
+  dailyOrderCount: number,
+  openPositions: number,
+  currentPriceField?: string,
+  priceGapPercent?: number,
+): OrderPreValidation {
+  const isDomestic = market === 'DOMESTIC';
+  const enableOrder = isDomestic ? settings.autoDomesticOrderEnabled : settings.enableOverseasOrder;
+  const allowRealOrder = isDomestic ? settings.allowRealDomesticOrder : settings.allowRealOverseasOrder;
+  const maxOrderAmount = isDomestic ? settings.maxDomesticOrderAmount : settings.maxOverseasOrderAmount;
+  const maxDailyOrders = isDomestic ? settings.maxDailyDomesticOrders : settings.maxDailyOverseasOrders;
+  const maxPositions = isDomestic ? settings.maxOpenDomesticPositions : settings.maxOpenOverseasPositions;
+  const estimatedOrderAmount = signalPrice * quantity;
+
+  const result: OrderPreValidation = {
+    market,
+    tradingMode: settings.tradingMode,
+    orderExecutionMode: settings.orderExecutionMode,
+    isDemo,
+    enableOrder,
+    allowRealOrder,
+    killSwitchEnabled: settings.killSwitchEnabled,
+    currentPrice: signalPrice,
+    currentPriceField: currentPriceField || 'last',
+    priceGapPercent: priceGapPercent ?? 0,
+    maxPriceGapPercent: settings.maxOverseasPriceGapPercent,
+    availableAmount,
+    calculatedQuantity: quantity,
+    estimatedOrderAmount,
+    maxOrderAmount,
+    dailyOrderCount,
+    maxDailyOrders,
+    openPositions,
+    maxOpenPositions: maxPositions,
+    canPlaceOrder: false,
+    blockedReason: '',
+  };
+
+  // 1. killSwitch — 모든 주문 차단
+  if (settings.killSwitchEnabled) {
+    result.blockedReason = 'killSwitchEnabled=true';
+    return result;
+  }
+
+  // 2. DRY_RUN — 실제 주문 API 호출 금지
+  if (settings.orderExecutionMode === 'DRY_RUN') {
+    result.blockedReason = '주문 드라이런: 실제 주문 차단';
+    return result;
+  }
+
+  // 3. PAPER — 모의투자 계정에서만 주문 허용
+  if (settings.orderExecutionMode === 'PAPER' && !isDemo) {
+    result.blockedReason = 'PAPER 모드는 모의투자 계정에서만 허용';
+    return result;
+  }
+
+  // 4. LIVE — 실전 계정에서만 + allowRealOrder 필요
+  if (settings.orderExecutionMode === 'LIVE') {
+    if (isDemo) {
+      result.blockedReason = 'LIVE 모드는 실전 계정에서만 허용';
+      return result;
+    }
+    if (!allowRealOrder) {
+      result.blockedReason = `실전 주문 차단: allowRealOrder=false`;
+      return result;
+    }
+  }
+
+  // 5. 시장별 주문 허용 체크
+  if (!enableOrder) {
+    result.blockedReason = isDomestic
+      ? 'autoDomesticOrderEnabled=false'
+      : 'enableOverseasOrder=false';
+    return result;
+  }
+
+  // 6. 해외 추가 검증: currentPriceField, priceGapPercent
+  if (!isDomestic) {
+    if (currentPriceField !== 'last') {
+      result.blockedReason = `해외 주문 차단: currentPriceField=${currentPriceField}`;
+      return result;
+    }
+    if (signalPrice <= 0) {
+      result.blockedReason = '해외 주문 차단: currentPrice <= 0';
+      return result;
+    }
+    if ((priceGapPercent ?? 0) > settings.maxOverseasPriceGapPercent) {
+      result.blockedReason = `해외 주문 차단: 괴리율 초과 (${((priceGapPercent ?? 0) * 100).toFixed(2)}% > ${(settings.maxOverseasPriceGapPercent * 100).toFixed(2)}%)`;
+      return result;
+    }
+  }
+
+  // 7. 주문금액 한도
+  if (estimatedOrderAmount > maxOrderAmount) {
+    result.blockedReason = `주문금액 초과: ${estimatedOrderAmount.toLocaleString()} > ${maxOrderAmount.toLocaleString()}`;
+    return result;
+  }
+
+  // 8. 일일 주문 건수 한도
+  if (dailyOrderCount >= maxDailyOrders) {
+    result.blockedReason = `일일 주문 건수 초과: ${dailyOrderCount} >= ${maxDailyOrders}`;
+    return result;
+  }
+
+  // 9. 보유 포지션 한도
+  if (openPositions >= maxPositions) {
+    result.blockedReason = `포지션 한도 초과: ${openPositions} >= ${maxPositions}`;
+    return result;
+  }
+
+  // 모든 검증 통과
+  result.canPlaceOrder = true;
+  return result;
 }

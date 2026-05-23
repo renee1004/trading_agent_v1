@@ -20,6 +20,7 @@ import {
   buildRiskConfigFromSettings,
   formatSettingsSummary,
   computeRuntimeDecision,
+  validateOrderExecution,
   EffectiveTradingSettings,
   RuntimeDecision,
 } from './effective-settings';
@@ -334,17 +335,104 @@ async function executeOrder(
   exchangeCode?: string,
   quantity: number = 1
 ): Promise<{ success: boolean; orderNo: string; message: string }> {
-  // 해외 주문: 안전장치 체크 (DB 저장 설정 기반)
-  if (market === 'OVERSEAS') {
-    if (!settings.enableOverseasOrder) {
-      addLog('RISK', market, `해외 주문 차단: enableOverseasOrder=false`, {
-        stockCode: signal.stockCode,
-        signalType: signal.signalType,
-        strategy: signal.strategy,
-      });
-      return { success: false, orderNo: '', message: '해외 주문 차단: enableOverseasOrder=false' };
+  // ── KIS isDemo 확인 ──
+  let isDemo = true;
+  try {
+    const kisConfig = await db.kisConfig.findFirst();
+    if (kisConfig) {
+      isDemo = kisConfig.isDemo;
     }
-    // 거래소 코드 유효성
+  } catch (_e) {
+    // DB 조회 실패 시 기본값 유지
+  }
+
+  // ── 일일 주문 건수 & 보유 포지션 수 조회 ──
+  let dailyOrderCount = 0;
+  let openPositions = 0;
+  try {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    dailyOrderCount = await db.tradeHistory.count({
+      where: {
+        market,
+        tradedAt: { gte: today },
+        status: { notIn: ['CANCELLED', 'FAILED'] },
+      },
+    });
+    openPositions = await db.position.count({
+      where: { market },
+    });
+  } catch (_e) {
+    // DB 조회 실패 시 0 유지
+  }
+
+  // ── 가용금액 ──
+  let availableAmount = 0;
+  try {
+    if (kisClient) {
+      if (market === 'DOMESTIC') {
+        const balance = await kisClient.getAccountBalance();
+        availableAmount = balance.availableAmount;
+      } else {
+        const balance = await kisClient.getOverseasAccountBalance();
+        availableAmount = balance.availableAmount;
+      }
+    }
+  } catch (_e) {
+    // 잔고 조회 실패 시 0 유지
+  }
+
+  // ── 주문 사전검증 ──
+  const validation = validateOrderExecution(
+    settings,
+    market,
+    isDemo,
+    signal.price,
+    quantity,
+    availableAmount,
+    dailyOrderCount,
+    openPositions,
+    'last', // currentPriceField — 해외 검증 로그에서 항상 'last' 사용
+    market === 'OVERSEAS' ? signal.priceGapPercent : undefined,
+  );
+
+  // 주문 사전검증 로그 (항상 남김)
+  addLog('INFO', market, `주문 사전검증: ${signal.stockName} ${signal.signalType}`, {
+    market: validation.market,
+    tradingMode: validation.tradingMode,
+    orderExecutionMode: validation.orderExecutionMode,
+    isDemo: validation.isDemo,
+    enableOrder: validation.enableOrder,
+    allowRealOrder: validation.allowRealOrder,
+    killSwitchEnabled: validation.killSwitchEnabled,
+    currentPrice: validation.currentPrice,
+    currentPriceField: validation.currentPriceField,
+    priceGapPercent: validation.priceGapPercent,
+    maxPriceGapPercent: validation.maxPriceGapPercent,
+    availableAmount: validation.availableAmount,
+    calculatedQuantity: validation.calculatedQuantity,
+    estimatedOrderAmount: validation.estimatedOrderAmount,
+    maxOrderAmount: validation.maxOrderAmount,
+    dailyOrderCount: validation.dailyOrderCount,
+    maxDailyOrders: validation.maxDailyOrders,
+    openPositions: validation.openPositions,
+    maxOpenPositions: validation.maxOpenPositions,
+    canPlaceOrder: validation.canPlaceOrder,
+    blockedReason: validation.blockedReason,
+  });
+
+  if (!validation.canPlaceOrder) {
+    addLog('RISK', market, `주문 차단: ${validation.blockedReason}`, {
+      stockCode: signal.stockCode,
+      signalType: signal.signalType,
+      strategy: signal.strategy,
+      blockedReason: validation.blockedReason,
+    });
+    return { success: false, orderNo: '', message: `주문 차단: ${validation.blockedReason}` };
+  }
+
+  // 해외 주문: 거래소 코드 유효성 (기존 로직 유지)
+  if (market === 'OVERSEAS') {
     const validExchanges = ['NAS', 'NYS', 'AMS', 'TKS', 'HKS', 'SHS', 'SZS'];
     if (!exchangeCode || !validExchanges.includes(exchangeCode)) {
       addLog('RISK', market, `해외 주문 차단: 유효하지 않은 거래소 코드 (${exchangeCode || '없음'})`, {
@@ -352,11 +440,6 @@ async function executeOrder(
         exchangeCode: exchangeCode || '',
       });
       return { success: false, orderNo: '', message: `해외 주문 차단: 유효하지 않은 거래소 코드 (${exchangeCode || '없음'})` };
-    }
-    // 계좌번호/가격/수량 체크
-    if (signal.price <= 0) {
-      addLog('RISK', market, `해외 주문 차단: 가격이 0 이하 (${signal.price})`, { stockCode: signal.stockCode });
-      return { success: false, orderNo: '', message: `해외 주문 차단: 가격이 0 이하 (${signal.price})` };
     }
     if (quantity <= 0) {
       addLog('RISK', market, `해외 주문 차단: 수량이 0 이하 (${quantity})`, { stockCode: signal.stockCode });

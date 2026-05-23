@@ -34,6 +34,18 @@ const DEFAULT_SETTINGS: EffectiveTradingSettings = {
   trailingStopPercent: 0.03,
   selectedStrategy: 'COMPOSITE',
   maxOverseasPriceGapPercent: 0.005,
+  // 주문 실행 모드 기본값
+  tradingMode: 'DEMO',
+  orderExecutionMode: 'DRY_RUN',
+  allowRealDomesticOrder: false,
+  allowRealOverseasOrder: false,
+  killSwitchEnabled: false,
+  maxDomesticOrderAmount: 100000,
+  maxOverseasOrderAmount: 100,
+  maxDailyDomesticOrders: 1,
+  maxDailyOverseasOrders: 1,
+  maxOpenDomesticPositions: 1,
+  maxOpenOverseasPositions: 1,
 };
 
 type SettingsKey = keyof typeof DEFAULT_SETTINGS;
@@ -93,8 +105,32 @@ export async function POST(request: NextRequest) {
     // 실전 계좌에서 autoDomesticOrderEnabled=true는 명시적 저장 필요
     // 모의투자에서는 true 기본 허용
     if (safetyChecked.autoDomesticOrderEnabled !== true && safetyChecked.autoDomesticOrderEnabled !== false) {
-      // 값이 없으면 기본값 유지 (DB에 저장되지 않음 → 기본값 true 적용)
       delete safetyChecked.autoDomesticOrderEnabled;
+    }
+
+    // 주문 실행 모드 안전장치: 실전 관련 옵션은 명시적 true가 아니면 false
+    if (safetyChecked.allowRealDomesticOrder !== true) {
+      safetyChecked.allowRealDomesticOrder = false;
+    }
+    if (safetyChecked.allowRealOverseasOrder !== true) {
+      safetyChecked.allowRealOverseasOrder = false;
+    }
+    if (safetyChecked.killSwitchEnabled !== true) {
+      safetyChecked.killSwitchEnabled = false;
+    }
+    const validModes = ['DRY_RUN', 'PAPER', 'LIVE'];
+    if (!validModes.includes(safetyChecked.orderExecutionMode)) {
+      safetyChecked.orderExecutionMode = 'DRY_RUN';
+    }
+    const validTradingModes = ['DEMO', 'REAL'];
+    if (!validTradingModes.includes(safetyChecked.tradingMode)) {
+      safetyChecked.tradingMode = 'DEMO';
+    }
+    if (safetyChecked.orderExecutionMode === 'LIVE' && !safetyChecked.allowRealDomesticOrder && !safetyChecked.allowRealOverseasOrder) {
+      safetyChecked.orderExecutionMode = 'DRY_RUN';
+    }
+    if (safetyChecked.tradingMode === 'REAL' && !safetyChecked.allowRealDomesticOrder && !safetyChecked.allowRealOverseasOrder) {
+      safetyChecked.tradingMode = 'DEMO';
     }
 
     // 유효성 검증
