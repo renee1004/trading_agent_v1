@@ -994,16 +994,89 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
         overseasSuccess++;
         stocksAnalyzed++;
 
+        // 분석 기준가격 = 마지막 일봉 종가
+        const analysisPrice = candles[candles.length - 1].close;
+
+        // 해외 현재가 실시간 조회 (분석과 주문 사이 괴리 추적)
+        let currentPriceInfo: {
+          stockCode: string;
+          exchangeCode: string;
+          currentPrice: number;
+          previousClose: number;
+          changePrice: number;
+          changeRate: number;
+          volume: number;
+          currency: string;
+          timestamp: string;
+          source: string;
+        } | null = null;
+        let currentPrice = 0;
+        let priceGapPercent = 0;
+        let currentPriceTimestamp = '';
+        let priceDataSource = 'daily_candle';
+
+        if (kisClient) {
+          try {
+            currentPriceInfo = await kisClient.getOverseasCurrentPrice(stock.code, stock.exchange);
+            currentPrice = currentPriceInfo.currentPrice;
+            currentPriceTimestamp = currentPriceInfo.timestamp;
+            priceDataSource = 'daily_candle+current_price';
+
+            // 괴리율 계산
+            if (analysisPrice > 0 && currentPrice > 0) {
+              priceGapPercent = Math.abs(currentPrice - analysisPrice) / analysisPrice;
+            }
+
+            addLog('INFO', 'OVERSEAS',
+              `${stock.name} 해외 현재가 조회 성공: currentPrice=${currentPrice}, timestamp=${currentPriceTimestamp}`,
+              {
+                stockCode: stock.code,
+                exchangeCode: stock.exchange,
+                currentPrice,
+                analysisPrice,
+                priceGapPercent: parseFloat((priceGapPercent * 100).toFixed(4)),
+                currentPriceTimestamp,
+                source: 'KIS_REST',
+              }
+            );
+          } catch (cpError) {
+            addLog('ERROR', 'OVERSEAS',
+              `${stock.name} 해외 현재가 조회 실패: ${cpError instanceof Error ? cpError.message : 'Unknown'}`,
+              { stockCode: stock.code, exchangeCode: stock.exchange }
+            );
+            // 현재가 조회 실패해도 일봉 분석은 계속 진행
+          }
+        }
+
         // 전략 분석
         const signal = TradingEngine.analyze(candles, stock.code, stock.name, 'ALL', 'OVERSEAS');
 
-        addLog('INFO', 'OVERSEAS', `${stock.name} 분석 결과: ${signal.signalType} (신뢰도: ${signal.confidence}%)`, {
-          stockCode: stock.code,
-          candlesLength: candles.length,
-          lastClose: candles[candles.length - 1].close,
-          signalType: signal.signalType,
-          strategy: signal.strategy,
-        });
+        // 분석가/현재가 정보를 시그널에 기록
+        signal.analysisPrice = analysisPrice;
+        signal.currentPrice = currentPrice;
+        signal.priceGapPercent = priceGapPercent;
+        signal.currentPriceTimestamp = currentPriceTimestamp;
+        signal.dataSource = priceDataSource;
+
+        const gapDisplay = currentPrice > 0
+          ? `, currentPrice=${currentPrice}, gap=${(priceGapPercent * 100).toFixed(2)}%`
+          : '';
+        addLog('INFO', 'OVERSEAS',
+          `${stock.name} 분석 결과: ${signal.signalType} (신뢰도: ${signal.confidence}%), candles=${candles.length}, lastDailyClose=${analysisPrice}${gapDisplay}, source=${priceDataSource}`,
+          {
+            stockCode: stock.code,
+            exchangeCode: stock.exchange,
+            candlesLength: candles.length,
+            lastDailyClose: analysisPrice,
+            currentPrice,
+            priceGapPercent: parseFloat((priceGapPercent * 100).toFixed(4)),
+            currentPriceTimestamp,
+            dataSource: priceDataSource,
+            realtimeEnabled: false,
+            signalType: signal.signalType,
+            strategy: signal.strategy,
+          }
+        );
 
         if (signal.signalType !== 'HOLD') {
           signalsGenerated++;
@@ -1034,37 +1107,133 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
             continue;
           }
 
-          // 리스크 체크
-          const riskCheck = overseasRisk.canTrade(
-            finalSignal, overseasPositions.positions, overseasPositions.accountBalance
-          );
+          // 해외 주문 OFF → 신호 생성만, 주문 차단
+          if (!effectiveSettings.enableOverseasOrder) {
+            addLog('RISK', 'OVERSEAS',
+              `해외 주문 차단: enableOverseasOrder=false`,
+              { stockCode: stock.code, signalType: finalSignal.signalType, price: finalSignal.price }
+            );
+            continue;
+          }
 
-          if (riskCheck.allowed) {
-            // 해외 주문 차단 확인 (DB 저장 설정 기반)
-            if (!effectiveSettings.enableOverseasOrder) {
+          // ── 해외 가격 괴리율 안전장치 ──
+          const maxGap = effectiveSettings.maxOverseasPriceGapPercent;
+
+          // (A) currentPrice <= 0 → 주문 차단
+          if (currentPrice <= 0) {
+            addLog('RISK', 'OVERSEAS',
+              `해외 주문 차단: 현재가 조회 불가 (currentPrice=${currentPrice})`,
+              { stockCode: stock.code, signalType: finalSignal.signalType }
+            );
+            continue;
+          }
+
+          // (B) analysisPrice <= 0 → 주문 차단
+          if (analysisPrice <= 0) {
+            addLog('RISK', 'OVERSEAS',
+              `해외 주문 차단: 분석 기준가 불가 (analysisPrice=${analysisPrice})`,
+              { stockCode: stock.code, signalType: finalSignal.signalType }
+            );
+            continue;
+          }
+
+          // (C) 괴리율 초과 → 주문 차단
+          if (priceGapPercent > maxGap) {
+            addLog('RISK', 'OVERSEAS',
+              `해외 주문 차단: 분석가와 현재가 괴리율 초과 (gap=${(priceGapPercent * 100).toFixed(2)}% > max=${(maxGap * 100).toFixed(2)}%)`,
+              {
+                stockCode: stock.code,
+                signalType: finalSignal.signalType,
+                analysisPrice,
+                currentPrice,
+                priceGapPercent: parseFloat((priceGapPercent * 100).toFixed(4)),
+                maxOverseasPriceGapPercent: maxGap,
+              }
+            );
+            continue;
+          }
+
+          // ── 주문 직전 현재가 재조회 ──
+          // enableOverseasOrder=true일 때 주문 직전에 최신 가격으로 재검증
+          let orderPrice = currentPrice; // 기본: 분석 시점 현재가
+          try {
+            const recheckPrice = await kisClient!.getOverseasCurrentPrice(stock.code, stock.exchange);
+            const recheckCurrentPrice = recheckPrice.currentPrice;
+            const recheckTimestamp = recheckPrice.timestamp;
+
+            if (recheckCurrentPrice <= 0) {
               addLog('RISK', 'OVERSEAS',
-                `해외 주문 차단: enableOverseasOrder=false - ${stock.name} ${finalSignal.signalType} 신호 생성만 수행`,
-                { stockCode: stock.code, signalType: finalSignal.signalType, price: finalSignal.price }
+                `해외 주문 차단: 주문 직전 현재가 재조회 실패 (currentPrice=${recheckCurrentPrice})`,
+                { stockCode: stock.code, signalType: finalSignal.signalType }
               );
               continue;
             }
 
+            // 재조회 가격으로 괴리율 재계산
+            const recheckGap = analysisPrice > 0
+              ? Math.abs(recheckCurrentPrice - analysisPrice) / analysisPrice
+              : 1;
+
+            if (recheckGap > maxGap) {
+              addLog('RISK', 'OVERSEAS',
+                `해외 주문 차단: 주문 직전 괴리율 초과 (gap=${(recheckGap * 100).toFixed(2)}% > max=${(maxGap * 100).toFixed(2)}%)`,
+                {
+                  stockCode: stock.code,
+                  signalType: finalSignal.signalType,
+                  analysisPrice,
+                  currentPrice: recheckCurrentPrice,
+                  priceGapPercent: parseFloat((recheckGap * 100).toFixed(4)),
+                  recheckTimestamp,
+                }
+              );
+              continue;
+            }
+
+            orderPrice = recheckCurrentPrice;
+            addLog('INFO', 'OVERSEAS',
+              `${stock.name} 주문 직전 현재가 재조회: $${recheckCurrentPrice} (gap=${(recheckGap * 100).toFixed(2)}%)`,
+              { stockCode: stock.code, currentPrice: recheckCurrentPrice, analysisPrice, recheckGap, recheckTimestamp }
+            );
+          } catch (recheckError) {
+            addLog('RISK', 'OVERSEAS',
+              `해외 주문 차단: 주문 직전 현재가 재조회 실패`,
+              { stockCode: stock.code, error: recheckError instanceof Error ? recheckError.message : 'Unknown' }
+            );
+            continue;
+          }
+
+          // 리스크 체크 (currentPrice 기준)
+          const riskSignal = { ...finalSignal, price: orderPrice };
+          const riskCheck = overseasRisk.canTrade(
+            riskSignal, overseasPositions.positions, overseasPositions.accountBalance
+          );
+
+          if (riskCheck.allowed) {
+            // 주문 수량은 현재가 기준으로 재계산 (일봉 종가/signal.price 사용 금지)
             const quantity = overseasRisk.calculatePositionSize(
-              overseasPositions.accountBalance, finalSignal.price, finalSignal.confidence
+              overseasPositions.accountBalance, orderPrice, finalSignal.confidence
             );
 
-            const result = await executeOrder(kisClient, { ...finalSignal, price: finalSignal.price }, 'OVERSEAS', effectiveSettings, stock.exchange, quantity);
+            if (quantity <= 0) {
+              addLog('RISK', 'OVERSEAS',
+                `해외 주문 차단: 수량 계산 결과 0 이하 (price=$${orderPrice}, balance=${overseasPositions.accountBalance})`,
+                { stockCode: stock.code, orderPrice, accountBalance: overseasPositions.accountBalance }
+              );
+              continue;
+            }
+
+            const result = await executeOrder(kisClient, { ...finalSignal, price: orderPrice }, 'OVERSEAS', effectiveSettings, stock.exchange, quantity);
 
             if (result.success) {
               ordersPlaced++;
               addLog('TRADE', 'OVERSEAS',
-                `${stock.name} ${finalSignal.signalType} 주문 접수: ${quantity}주 @ $${finalSignal.price} (${result.orderNo})`,
-                { orderNo: result.orderNo, quantity, price: finalSignal.price, exchange: stock.exchange }
+                `${stock.name} ${finalSignal.signalType} 주문 접수: ${quantity}주 @ $${orderPrice} (${result.orderNo})`,
+                { orderNo: result.orderNo, quantity, price: orderPrice, exchange: stock.exchange, analysisPrice, currentPrice: orderPrice }
               );
             } else {
               addLog('ERROR', 'OVERSEAS',
                 `${stock.name} ${finalSignal.signalType} 주문 실패: ${result.message}`,
-                { orderNo: result.orderNo, quantity, price: finalSignal.price, exchange: stock.exchange }
+                { orderNo: result.orderNo, quantity, price: orderPrice, exchange: stock.exchange }
               );
             }
           } else {

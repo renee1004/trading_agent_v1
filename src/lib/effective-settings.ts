@@ -41,6 +41,8 @@ export interface EffectiveTradingSettings {
   takeProfitPercent: number;
   trailingStopPercent: number;
   selectedStrategy: string;
+  // 해외 가격 괴리율 안전장치
+  maxOverseasPriceGapPercent: number;  // 분석가 vs 현재가 최대 허용 괴리율 (기본 0.5%)
 }
 
 const DEFAULT_SETTINGS: EffectiveTradingSettings = {
@@ -64,6 +66,7 @@ const DEFAULT_SETTINGS: EffectiveTradingSettings = {
   takeProfitPercent: 0.15,
   trailingStopPercent: 0.03,
   selectedStrategy: 'COMPOSITE',
+  maxOverseasPriceGapPercent: 0.005,  // 0.5% — 분석가와 현재가 괴리가 이 이상이면 해외 주문 차단
 };
 
 export interface EffectiveSettingsResult {

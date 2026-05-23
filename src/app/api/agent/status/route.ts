@@ -161,6 +161,7 @@ export async function GET() {
             stopLossPercent: effectiveSettings.stopLossPercent,
             takeProfitPercent: effectiveSettings.takeProfitPercent,
             trailingStopPercent: effectiveSettings.trailingStopPercent,
+            maxOverseasPriceGapPercent: effectiveSettings.maxOverseasPriceGapPercent,
           },
           selectedStrategy: effectiveSettings.selectedStrategy,
         },

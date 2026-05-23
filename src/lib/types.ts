@@ -150,6 +150,12 @@ export interface TradingSignal {
   reason: string;
   indicators: Record<string, number>;
   timestamp: Date;
+  // 해외주식 가격 검증 필드 (주문 전 분석가 vs 현재가 괴리율 체크)
+  analysisPrice?: number;       // 마지막 일봉 종가 (분석 기준가)
+  currentPrice?: number;        // 주문 직전 현재가 (KIS REST 실시간)
+  priceGapPercent?: number;     // |currentPrice - analysisPrice| / analysisPrice
+  currentPriceTimestamp?: string; // 현재가 조회 시각
+  dataSource?: string;          // "daily_candle+current_price" 등
 }
 
 export interface StrategyConfig {

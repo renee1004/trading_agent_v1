@@ -859,6 +859,79 @@ export class KisApiClient {
   }
 
   /**
+   * 해외주식 현재가 간이 조회 (주문 전 실시간 검증용)
+   * getOverseasStockPrice()와 동일한 API를 사용하되,
+   * 주문 전 가격 검증에 필요한 최소 정보만 반환
+   *
+   * 반환값에 timestamp와 source를 포함하여
+   * 분석 시점과 주문 시점의 가격 차이를 추적 가능
+   */
+  async getOverseasCurrentPrice(
+    stockCode: string,
+    exchangeCode: string = 'NAS'
+  ): Promise<{
+    stockCode: string;
+    exchangeCode: string;
+    currentPrice: number;
+    previousClose: number;
+    changePrice: number;
+    changeRate: number;
+    volume: number;
+    currency: string;
+    timestamp: string;
+    source: string;
+  }> {
+    const token = await this.ensureToken();
+    const url = `${this.baseUrl}/uapi/overseas-price/v1/quotations/price`;
+
+    const pureSymbol = stockCode.includes(':') ? stockCode.split(':').pop()! : stockCode;
+
+    const params = new URLSearchParams({
+      AUTH: '',
+      EXCD: exchangeCode,
+      SYMB: pureSymbol,
+    });
+
+    const trId = 'HHDFS00000300';
+
+    const response = await fetch(`${url}?${params.toString()}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+        appKey: this.config.appKey,
+        appSecret: this.config.appSecret,
+        tr_id: trId,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`해외주식 현재가 조회 실패: ${response.status}`);
+    }
+
+    const result = await response.json();
+
+    if (result.rt_cd !== '0') {
+      throw new Error(`해외주식 현재가 조회 에러: ${result.msg1}`);
+    }
+
+    const output = result.output || {};
+
+    return {
+      stockCode,
+      exchangeCode,
+      currentPrice: parseFloat(output.last) || 0,
+      previousClose: parseFloat(output.base) || 0,
+      changePrice: parseFloat(output.diff) || 0,
+      changeRate: parseFloat(output.rate) || 0,
+      volume: parseInt(output.tvol) || 0,
+      currency: 'USD',
+      timestamp: new Date().toISOString(),
+      source: 'KIS_REST',
+    };
+  }
+
+  /**
    * 해외주식 기간별시세(일/주/월) 조회
    * KIS API: HHDFS76240000
    * 
