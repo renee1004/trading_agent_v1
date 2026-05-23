@@ -36,3 +36,26 @@ Stage Summary:
 - settingsSources 추적 정상 ✅
 - maxOpenPositions DB 변경 → 다음 사이클 반영 확인 ✅
 - 위험 옵션 안전장치: enableOverseasOrder=false, allowAfterHoursTrading=false ✅
+---
+Task ID: balance-500-fix
+Agent: main
+Task: 국내/해외 포지션 조회 실패 500 에러 해결
+
+Work Log:
+- 분석: 국내/해외 잔고조회 코드에서 HTTP 500 응답 시 response body를 읽지 않고 상태코드만 throw → rt_cd/msg_cd/msg1 유실
+- 원인 파악: 해외 잔고조회 500 = EGW00201 (초당 거래건수 초과), 국내 잔고조회는 정상 성공
+- maskAccountNo() 추가: 계좌번호 앞2자리+****+뒤2자리 마스킹
+- getAccountBalance: HTTP 에러 시 response body에서 rt_cd/msg_cd/msg1 추출하여 throw message에 포함
+- getOverseasAccountBalance: 동일하게 HTTP 에러 시 상세 에러 정보 추출
+- 잔고조회 요청 상세 로그 추가 (endpoint, tr_id, accountMasked, isDemo, params)
+- fetchPositions: KIS 에러 상세(rt_cd/msg_cd/msg1)를 addLog details에 전파
+- loadKisConfig: 계좌번호 마스킹 적용
+- retryOnRateLimit() 래퍼 추가: EGW00201 감지 시 지수 백오프 재시도 (3회, 500ms→1s→2s)
+- getAccountBalance, getOverseasAccountBalance에 retryOnRateLimit 적용
+
+Stage Summary:
+- commit 59915fd: 잔고조회 500 에러 상세 로깅 + 계좌번호 마스킹
+- commit a02cb5d: EGW00201 속도제한 재시도 로직 추가
+- Railway 배포 확인: a02cb5d 배포 완료
+- 포지션 조회 실패 로그 완전히 사라짐 (국내/해외 모두 정상)
+- 분석 결과: 국내 10종목 성공/0실패, 해외 5종목 성공/0실패
