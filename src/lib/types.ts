@@ -100,6 +100,8 @@ export interface OrderResponse {
   orderNo: string;
   status: string;
   message: string;
+  rt_cd?: string;   // KIS API 응답 코드 ('0'=성공)
+  msg_cd?: string;  // KIS API 메시지 코드
 }
 
 export interface BalanceItem {

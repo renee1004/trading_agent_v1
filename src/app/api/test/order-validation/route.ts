@@ -248,16 +248,31 @@ export async function POST(request: NextRequest) {
 
           try {
             const result = await kisClient.placeOverseasOrder(orderRequest);
+            const isKisSuccess = result.status !== 'FAILED';
             orderResult = {
-              success: true,
+              success: isKisSuccess,
               orderNo: result.orderNo,
               message: result.message,
+              rt_cd: result.rt_cd,
+              msg_cd: result.msg_cd,
+              msg1: result.message,
             };
-            addLog('TRADE', market, `[TEST] PAPER 해외 주문 접수 성공: ${testStockName} 1주 @ ${testSignalPrice} (${result.orderNo})`, {
-              orderNo: result.orderNo,
-              rt_cd: result.status,
-              msg_cd: result.message,
-            });
+            if (isKisSuccess) {
+              addLog('TRADE', market, `[TEST] PAPER 해외 주문 접수 성공: ${testStockName} 1주 @ ${testSignalPrice} (${result.orderNo})`, {
+                orderNo: result.orderNo,
+                rt_cd: result.rt_cd,
+                msg_cd: result.msg_cd,
+              });
+            } else {
+              addLog('ERROR', market, `[TEST] PAPER 해외 주문 접수 실패: ${result.message}`, {
+                rt_cd: result.rt_cd,
+                msg_cd: result.msg_cd,
+                msg1: result.message,
+                stockCode: testStockCode,
+                quantity: 1,
+                price: testSignalPrice,
+              });
+            }
           } catch (orderError) {
             const errorMsg = orderError instanceof Error ? orderError.message : String(orderError);
             // KIS API 에러에서 rt_cd/msg_cd 추출
@@ -301,14 +316,31 @@ export async function POST(request: NextRequest) {
 
           try {
             const result = await kisClient.placeOrder(orderRequest);
+            const isKisSuccess = result.status !== 'FAILED';
             orderResult = {
-              success: true,
+              success: isKisSuccess,
               orderNo: result.orderNo,
               message: result.message,
+              rt_cd: result.rt_cd,
+              msg_cd: result.msg_cd,
+              msg1: result.message,
             };
-            addLog('TRADE', market, `[TEST] PAPER 국내 주문 접수 성공: ${testStockName} 1주 @ ${testSignalPrice} (${result.orderNo})`, {
-              orderNo: result.orderNo,
-            });
+            if (isKisSuccess) {
+              addLog('TRADE', market, `[TEST] PAPER 국내 주문 접수 성공: ${testStockName} 1주 @ ${testSignalPrice} (${result.orderNo})`, {
+                orderNo: result.orderNo,
+                rt_cd: result.rt_cd,
+                msg_cd: result.msg_cd,
+              });
+            } else {
+              addLog('ERROR', market, `[TEST] PAPER 국내 주문 접수 실패: ${result.message}`, {
+                rt_cd: result.rt_cd,
+                msg_cd: result.msg_cd,
+                msg1: result.message,
+                stockCode: testStockCode,
+                quantity: 1,
+                price: testSignalPrice,
+              });
+            }
           } catch (orderError) {
             const errorMsg = orderError instanceof Error ? orderError.message : String(orderError);
             let rt_cd = 'UNKNOWN';

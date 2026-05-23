@@ -484,6 +484,8 @@ export class KisApiClient {
         orderNo: '',
         status: 'FAILED',
         message: result.msg1 || '주문 실패',
+        rt_cd: result.rt_cd,
+        msg_cd: result.msg_cd,
       };
     }
 
@@ -491,6 +493,8 @@ export class KisApiClient {
       orderNo: result.output?.ODNO || result.output?.KRX_FWDG_ORD_ORGNO || '',
       status: 'PENDING',
       message: result.msg1 || '주문 접수 완료',
+      rt_cd: result.rt_cd,
+      msg_cd: result.msg_cd,
     };
   }
 
@@ -1299,6 +1303,8 @@ export class KisApiClient {
         orderNo: '',
         status: 'FAILED',
         message: result.msg1 || '해외주식 주문 실패',
+        rt_cd: result.rt_cd,
+        msg_cd: result.msg_cd,
       };
     }
 
@@ -1306,6 +1312,8 @@ export class KisApiClient {
       orderNo: result.output?.ODNO || result.output?.KRX_FWDG_ORD_ORGNO || '',
       status: 'PENDING',
       message: result.msg1 || '해외주식 주문 접수 완료',
+      rt_cd: result.rt_cd,
+      msg_cd: result.msg_cd,
     };
   }
 
