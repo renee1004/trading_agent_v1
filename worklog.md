@@ -119,3 +119,43 @@ Stage Summary:
 - 국내: 005930→KRX:005930, KRX:005930→KRX:005930, 005930.KS→KRX:005930
 - 중복 제거: NVDA+NAS:NVDA+NVDA.US → NAS:NVDA 1개로 정리
 - 기존 안정화 로직 유지: retryOnRateLimit, kisThrottler, maskAccountNo, FID_ORG_ADJ_PRC, 잔고조회 안정화
+
+---
+Task ID: full-stock-master-search
+Agent: main
+Task: 전체 KIS 국내/해외 종목 마스터 기반 검색으로 교체
+
+Work Log:
+- data/overseas-symbols.json 확인: 기존에 576종목 존재 (NAS:183, NYS:251, AMS:142)
+- data/domestic-symbols.json 생성: 128개 국내 종목 (KOSPI/KOSDAQ 대표주 + ETF)
+  - 필드: symbol, displayCode(KRX:XXXXXX), stockName, market, exchangeCode, currency
+- kis-overseas-master.ts 리팩토링:
+  - overseas-symbols.json을 import하여 JSON_MASTER_ITEMS 구축
+  - buildMasterIndex(): 하드코딩 fallback 먼저 로드 → JSON으로 덮어쓰기 (JSON 우선)
+  - searchOverseasMaster(): symbol, koreanName, englishName 부분 일치 검색 추가
+  - getJsonMasterSize(), getFallbackMasterSize() 추가
+  - OverseasMasterItem에 koreanName, englishName 필드 추가
+- stock-master.ts 리팩토링:
+  - domestic-symbols.json import → DOMESTIC_MASTER_BY_SYMBOL/BY_NAME Map 구축
+  - normalizeDomesticStockCode(): JSON 마스터에서 종목명 조회 (source: DOMESTIC_MASTER)
+  - normalizeOverseasStockCode(): koreanName/englishName 포함
+  - searchAllStocks(): 국내+해외 통합 검색 (symbol, stockName, koreanName, englishName, displayCode)
+  - StockSearchResult 타입, findDomesticSymbolByName/BySymbol 유틸 추가
+- /api/stocks/search/route.ts 신규: 통합 검색 엔드포인트 (KIS API 호출 없음)
+- page.tsx 프론트엔드 수정:
+  - SearchResult 인터페이스 통합 (market, exchangeCode, symbol, displayCode, stockName, koreanName, englishName, currency, source)
+  - searchStocks/searchOverseasStocks: /api/stocks/search 사용 (국내/해외 필터링)
+  - addToWatchlist: displayCode를 stockCode로 사용 (KRX:005930, NAS:NVDA)
+  - 국내/해외 검색 결과 렌더링: displayCode, stockName, currency 뱃지 표시
+- .gitignore: !data/*.json 예외 추가 (종목 마스터 데이터 커밋 가능)
+
+Stage Summary:
+- commit 9f7f77f: stock-master.ts/dashboard 연결
+- commit 02947c0: search 리팩토링 + 프론트엔드 통합
+- commit 81bb871: data/ JSON 파일 + .gitignore 예외
+- 해외 종목 파일: data/overseas-symbols.json (576종목)
+- 국내 종목 파일: data/domestic-symbols.json (128종목)
+- 검색 API: GET /api/stocks/search?q=검색어
+- 프론트 검색창: /api/stocks/search 연결 완료
+- 현재가/검색 분리: 검색은 로컬 마스터만, 현재가는 대시보드에서만 KIS API 호출
+- 테스트 통과: NVDA, TSLA, PLTR, RIVN, IONQ, HOOD, SOFI, SMR, RKLB, 삼성전자, SK하이닉스, NAVER, 카카오, 엔비디아, NVIDIA, 테슬라, 팔란티어
