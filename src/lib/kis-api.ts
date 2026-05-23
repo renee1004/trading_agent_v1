@@ -866,6 +866,22 @@ export class KisApiClient {
 
     const output = result.output || {};
 
+    // currentPrice는 반드시 output.last에서 파싱
+    const parsedLast = parseFloat(output.last);
+    const currentPriceFromLast = Number.isFinite(parsedLast) && parsedLast > 0 ? parsedLast : 0;
+
+    if (currentPriceFromLast === 0) {
+      console.warn('[KIS API] Overseas stock price: output.last is missing or 0', {
+        originalStockCode: stockCode,
+        normalizedSymbol: pureSymbol,
+        exchangeCode: normExchange,
+        rawLast: output.last,
+        rawBase: output.base,
+        rawHigh: output.high,
+        rawLow: output.low,
+      });
+    }
+
     // 응답 필드 매핑 검증 로그
     console.log('[KIS API] Overseas stock price response', {
       originalStockCode: stockCode,
@@ -887,9 +903,11 @@ export class KisApiClient {
         bid: output.bid,
         ask: output.ask,
       },
-      parsedCurrentPrice: parseFloat(output.last) || 0,
+      currentPriceField: 'last',
+      parsedCurrentPrice: currentPriceFromLast,
       parsedPreviousClose: parseFloat(output.base) || 0,
       parsedVolume: parseInt(output.tvol) || 0,
+      lastIsZero: currentPriceFromLast === 0,
       timestamp: new Date().toISOString(),
     });
 
@@ -908,7 +926,7 @@ export class KisApiClient {
       stockName: output.kor_name || output.name || pureSymbol,
       exchangeCode: normExchange,
       exchangeName: exchangeNames[normExchange] || normExchange,
-      currentPrice: parseFloat(output.last) || 0,
+      currentPrice: currentPriceFromLast,
       previousClose: parseFloat(output.base) || 0,
       changePrice: parseFloat(output.diff) || 0,
       changeRate: parseFloat(output.rate) || 0,
@@ -957,6 +975,14 @@ export class KisApiClient {
     timestamp: string;
     source: string;
     normalizedSymbol: string;
+    originalStockCode: string;
+    currentPriceField: string;
+    rawPriceFields: {
+      last: string | number;
+      base: string | number;
+      high: string | number;
+      low: string | number;
+    };
   }> {
     const token = await this.ensureToken();
     const { exchangeCode: normExchange, symbol: pureSymbol, displayCode } = normalizeOverseasSymbol(stockCode, exchangeCode);
@@ -1003,6 +1029,32 @@ export class KisApiClient {
 
     const output = result.output || {};
 
+    // rawPriceFields: 원문 그대로 보존 (검증/디버깅용)
+    const rawPriceFields = {
+      last: output.last ?? '',
+      base: output.base ?? '',
+      high: output.high ?? '',
+      low: output.low ?? '',
+    };
+
+    // currentPrice는 반드시 output.last에서 파싱
+    // last가 없거나 0이면 currentPrice를 사용하지 않음
+    const parsedLast = parseFloat(output.last);
+    const currentPriceFromLast = Number.isFinite(parsedLast) && parsedLast > 0 ? parsedLast : 0;
+    const currentPriceField = 'last'; // 항상 last 필드에서 파싱
+
+    if (currentPriceFromLast === 0) {
+      console.warn('[KIS API] Overseas current price: output.last is missing or 0', {
+        originalStockCode: stockCode,
+        normalizedSymbol: pureSymbol,
+        exchangeCode: normExchange,
+        rawLast: output.last,
+        rawBase: output.base,
+        rawHigh: output.high,
+        rawLow: output.low,
+      });
+    }
+
     // 응답 원문 필드 검증 로그 (민감정보 제외)
     console.log('[KIS API] Overseas current price response', {
       originalStockCode: stockCode,
@@ -1024,16 +1076,18 @@ export class KisApiClient {
         bid: output.bid,
         ask: output.ask,
       },
-      parsedCurrentPrice: parseFloat(output.last) || 0,
+      currentPriceField,
+      parsedCurrentPrice: currentPriceFromLast,
       parsedPreviousClose: parseFloat(output.base) || 0,
       parsedVolume: parseInt(output.tvol) || 0,
+      lastIsZero: currentPriceFromLast === 0,
       timestamp: new Date().toISOString(),
     });
 
     return {
       stockCode: displayCode,
       exchangeCode: normExchange,
-      currentPrice: parseFloat(output.last) || 0,
+      currentPrice: currentPriceFromLast,
       previousClose: parseFloat(output.base) || 0,
       changePrice: parseFloat(output.diff) || 0,
       changeRate: parseFloat(output.rate) || 0,
@@ -1042,6 +1096,9 @@ export class KisApiClient {
       timestamp: new Date().toISOString(),
       source: 'KIS_REST',
       normalizedSymbol: pureSymbol,
+      originalStockCode: stockCode,
+      currentPriceField,
+      rawPriceFields,
     };
   }
 
