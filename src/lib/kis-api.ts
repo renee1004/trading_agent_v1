@@ -15,37 +15,46 @@ import {
   OverseasBalanceItem,
 } from './types';
 import { getDomesticSession } from './agent-scheduler';
+import {
+  normalizeOverseasDisplayCode,
+  type OverseasExchangeCode,
+} from './kis-overseas-master';
 
 const DEMO_BASE_URL = 'https://openapivts.koreainvestment.com:29443';
 const REAL_BASE_URL = 'https://openapi.koreainvestment.com:9443';
 
 /**
- * 해외 종목코드 정규화
+ * 해외 종목코드 정규화 (종목 마스터 기반)
  * 워치리스트/잔고에서 오는 stockCode에 'NAS:RKLB' 같은 거래소 프리픽스가 포함될 수 있음
  * KIS API SYMB 파라미터는 순수 심볼만 허용 (예: 'RKLB', 'NVDA')
  *
- * @param stockCode - 원본 종목코드 ("NAS:RKLB" 또는 "RKLB")
- * @param exchangeCode - 거래소 코드 ("NAS", "NYS" 등). stockCode에 프리픽스가 있으면 그것을 우선 사용
- * @returns { exchangeCode, symbol, displayCode }
+ * 이제 kis-overseas-master의 normalizeOverseasDisplayCode()를 사용하여
+ * 순수 심볼도 마스터 기반으로 올바른 거래소 코드를 자동 매핑:
+ * - "NVDA" → "NAS:NVDA"
+ * - "SPY" → "AMS:SPY"
+ * - "IBM" → "NYS:IBM"
+ * - "NAS:NVDA" → "NAS:NVDA"
+ * - "NVDA.US" → "NAS:NVDA"
+ *
+ * @param stockCode - 원본 종목코드 ("NAS:RKLB", "RKLB", "NVDA.US" 등)
+ * @param exchangeCode - 거래소 코드 ("NAS", "NYS" 등). 명시적 프리픽스 > 마스터 > 이 값 순 우선
+ * @returns { exchangeCode, symbol, displayCode, masterName }
  */
 export function normalizeOverseasSymbol(
   stockCode: string,
   exchangeCode: string = 'NAS'
-): { exchangeCode: string; symbol: string; displayCode: string } {
-  if (stockCode.includes(':')) {
-    const parts = stockCode.split(':');
-    const extractedExchange = parts[0];
-    const extractedSymbol = parts[parts.length - 1];
-    return {
-      exchangeCode: extractedExchange || exchangeCode,
-      symbol: extractedSymbol,
-      displayCode: stockCode,
-    };
-  }
+): { exchangeCode: string; symbol: string; displayCode: string; masterName?: string } {
+  // 종목 마스터 기반 정규화 (NVDA→NAS, SPY→AMS, IBM→NYS 자동 매핑)
+  const normalized = normalizeOverseasDisplayCode(
+    stockCode,
+    exchangeCode as OverseasExchangeCode,
+  );
+
   return {
-    exchangeCode,
-    symbol: stockCode,
-    displayCode: `${exchangeCode}:${stockCode}`,
+    exchangeCode: normalized.exchangeCode,
+    symbol: normalized.symbol,
+    displayCode: normalized.displayCode,
+    masterName: normalized.name,
   };
 }
 
@@ -1030,9 +1039,10 @@ export class KisApiClient {
     stockCode: string,
     exchangeCode: string = 'NAS'
   ): Promise<OverseasStockPrice> {
+    return retryOnRateLimit(async () => {
     const token = await this.ensureToken();
     await kisThrottler.acquire('getOverseasStockPrice', 'NORMAL');
-    const { exchangeCode: normExchange, symbol: pureSymbol, displayCode } = normalizeOverseasSymbol(stockCode, exchangeCode);
+    const { exchangeCode: normExchange, symbol: pureSymbol, displayCode, masterName } = normalizeOverseasSymbol(stockCode, exchangeCode);
     const url = `${this.baseUrl}/uapi/overseas-price/v1/quotations/price`;
 
     const params = new URLSearchParams({
@@ -1069,12 +1079,38 @@ export class KisApiClient {
       const detail = errorBody
         ? ` (rt_cd=${errorBody.rt_cd ?? ''}, msg_cd=${errorBody.msg_cd ?? ''}, msg1=${errorBody.msg1 ?? ''})`
         : '';
+      // 상세 로그: originalStockCode, displayCode, symbol, exchangeCode, market, endpoint, tr_id, rt_cd, msg_cd, msg1, httpStatus
+      console.error('[KIS API] Overseas stock price HTTP error', {
+        originalStockCode: stockCode,
+        displayCode,
+        symbol: pureSymbol,
+        exchangeCode: normExchange,
+        market: 'OVERSEAS',
+        endpoint: '/uapi/overseas-price/v1/quotations/price',
+        tr_id: trId,
+        rt_cd: errorBody?.rt_cd,
+        msg_cd: errorBody?.msg_cd,
+        msg1: errorBody?.msg1,
+        httpStatus: response.status,
+      });
       throw new Error(`해외주식 시세 조회 실패: HTTP ${response.status}${detail}`);
     }
 
     const result = await response.json();
 
     if (result.rt_cd !== '0') {
+      console.error('[KIS API] Overseas stock price API error', {
+        originalStockCode: stockCode,
+        displayCode,
+        symbol: pureSymbol,
+        exchangeCode: normExchange,
+        market: 'OVERSEAS',
+        endpoint: '/uapi/overseas-price/v1/quotations/price',
+        tr_id: trId,
+        rt_cd: result.rt_cd,
+        msg_cd: result.msg_cd,
+        msg1: result.msg1,
+      });
       throw new Error(`해외주식 시세 조회 에러: ${result.msg1}`);
     }
 
@@ -1110,22 +1146,43 @@ export class KisApiClient {
         null,
     };
 
-    // currentPrice는 반드시 rawPriceFields.last에서 파싱
-    const currentPrice = safeNumber(rawPriceFields.last);
-    const currentPriceField = 'last';
+    // currentPrice: last → base → bid → ask fallback chain
+    let currentPrice = safeNumber(rawPriceFields.last);
+    let currentPriceField = 'last';
 
     if (currentPrice <= 0) {
-      console.warn('[KIS API] Overseas stock price: last 필드가 비어 있거나 0', {
+      // fallback: base (기준가/전일종가)
+      currentPrice = safeNumber(rawPriceFields.base);
+      currentPriceField = 'base';
+    }
+    if (currentPrice <= 0) {
+      // fallback: bid (매수호가)
+      currentPrice = safeNumber(output.bid);
+      currentPriceField = 'bid';
+    }
+    if (currentPrice <= 0) {
+      // fallback: ask (매도호가)
+      currentPrice = safeNumber(output.ask);
+      currentPriceField = 'ask';
+    }
+
+    if (currentPrice <= 0) {
+      console.warn('[KIS API] Overseas stock price: 모든 가격 필드가 비어 있거나 0', {
         originalStockCode: stockCode,
+        displayCode,
         normalizedSymbol: pureSymbol,
         exchangeCode: normExchange,
+        market: 'OVERSEAS',
         rawPriceFields,
+        bid: output.bid,
+        ask: output.ask,
       });
     }
 
     // 응답 필드 매핑 검증 로그
     console.log('[KIS API] Overseas stock price response', {
       originalStockCode: stockCode,
+      displayCode,
       normalizedSymbol: pureSymbol,
       exchangeCode: normExchange,
       rt_cd: result.rt_cd,
@@ -1138,6 +1195,7 @@ export class KisApiClient {
       parsedPreviousClose: safeNumber(rawPriceFields.base),
       parsedVolume: safeNumber(output.volume ?? output.tvol ?? output.acml_vol ?? output.trde_qty),
       lastIsZero: currentPrice === 0,
+      masterName,
       timestamp: new Date().toISOString(),
     });
 
@@ -1157,7 +1215,8 @@ export class KisApiClient {
       normalizedSymbol: pureSymbol,
       currentPriceField,
       rawPriceFields,
-      stockName: output.kor_name || output.name || pureSymbol,
+      // 종목명: API 응답 > 마스터 이름 > 심볼 fallback
+      stockName: output.kor_name || output.name || masterName || pureSymbol,
       exchangeCode: normExchange,
       exchangeName: exchangeNames[normExchange] || normExchange,
       currentPrice,
@@ -1173,6 +1232,7 @@ export class KisApiClient {
       afterHoursPrice: safeNumber(output.ask),
       source: 'KIS_REST',
     };
+    }, 'getOverseasStockPrice');
   }
 
   /**
@@ -1222,7 +1282,7 @@ export class KisApiClient {
     return retryOnRateLimit(async () => {
     const token = await this.ensureToken();
     await kisThrottler.acquire('getOverseasCurrentPrice', 'HIGH');
-    const { exchangeCode: normExchange, symbol: pureSymbol, displayCode } = normalizeOverseasSymbol(stockCode, exchangeCode);
+    const { exchangeCode: normExchange, symbol: pureSymbol, displayCode, masterName } = normalizeOverseasSymbol(stockCode, exchangeCode);
     const url = `${this.baseUrl}/uapi/overseas-price/v1/quotations/price`;
 
     const params = new URLSearchParams({
@@ -1262,13 +1322,17 @@ export class KisApiClient {
         ? ` (rt_cd=${errorBody.rt_cd ?? ''}, msg_cd=${errorBody.msg_cd ?? ''}, msg1=${errorBody.msg1 ?? ''})`
         : '';
       console.error('[KIS API] Overseas current price HTTP error', {
-        httpStatus: response.status,
-        tr_id: trId,
+        originalStockCode: stockCode,
+        displayCode,
         symbol: pureSymbol,
-        exchange: normExchange,
+        exchangeCode: normExchange,
+        market: 'OVERSEAS',
+        endpoint: '/uapi/overseas-price/v1/quotations/price',
+        tr_id: trId,
         rt_cd: errorBody?.rt_cd,
         msg_cd: errorBody?.msg_cd,
         msg1: errorBody?.msg1,
+        httpStatus: response.status,
       });
       throw new Error(`해외주식 현재가 조회 실패: HTTP ${response.status}${detail}`);
     }
@@ -1276,6 +1340,18 @@ export class KisApiClient {
     const result = await response.json();
 
     if (result.rt_cd !== '0') {
+      console.error('[KIS API] Overseas current price API error', {
+        originalStockCode: stockCode,
+        displayCode,
+        symbol: pureSymbol,
+        exchangeCode: normExchange,
+        market: 'OVERSEAS',
+        endpoint: '/uapi/overseas-price/v1/quotations/price',
+        tr_id: trId,
+        rt_cd: result.rt_cd,
+        msg_cd: result.msg_cd,
+        msg1: result.msg1,
+      });
       throw new Error(`해외주식 현재가 조회 에러: ${result.msg1}`);
     }
 
@@ -1319,8 +1395,10 @@ export class KisApiClient {
     if (currentPrice <= 0) {
       console.error('[KIS API] Overseas current price: last 필드가 비어 있거나 0', {
         originalStockCode: stockCode,
+        displayCode,
         normalizedSymbol: pureSymbol,
         exchangeCode: normExchange,
+        market: 'OVERSEAS',
         rawPriceFields,
       });
       throw new Error(
@@ -1331,6 +1409,7 @@ export class KisApiClient {
     // 응답 원문 필드 검증 로그 (민감정보 제외)
     console.log('[KIS API] Overseas current price response', {
       originalStockCode: stockCode,
+      displayCode,
       normalizedSymbol: pureSymbol,
       exchangeCode: normExchange,
       rt_cd: result.rt_cd,
@@ -1342,6 +1421,7 @@ export class KisApiClient {
       parsedCurrentPrice: currentPrice,
       parsedPreviousClose: safeNumber(rawPriceFields.base),
       parsedVolume: safeNumber(output.volume ?? output.tvol ?? output.acml_vol ?? output.trde_qty),
+      masterName,
       timestamp: new Date().toISOString(),
     });
 
@@ -1412,7 +1492,7 @@ export class KisApiClient {
 
     // 해외 종목코드 정규화 (프리픽스 제거)
     // KIS API SYMB 파라미터는 순수 심볼만 허용 (예: 'TSLA', 'NVDA')
-    const { exchangeCode: normExchange, symbol: pureSymbol, displayCode } = normalizeOverseasSymbol(stockCode, exchangeCode);
+    const { exchangeCode: normExchange, symbol: pureSymbol, displayCode, masterName } = normalizeOverseasSymbol(stockCode, exchangeCode);
 
     const params = new URLSearchParams({
       AUTH: '',
