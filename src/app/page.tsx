@@ -45,6 +45,8 @@ interface SignalData {
   quoteStatus?: 'OK' | 'FAILED' | 'PENDING' | 'DELAYED'; // 시세 상태
   quoteTimestamp?: string; // 시세 조회 시간
   quoteError?: string; // 시세 조회 실패 사유
+  priceSource?: 'REALTIME' | 'DAILY_FALLBACK'; // 시세 출처 (원본 Trading_Agent에서 포팅)
+  priceSourceLabel?: string; // "실시간" | "최신 종가" (원본 Trading_Agent에서 포팅)
   reason: string;
   indicators: Record<string, number>;
   timestamp: string;
@@ -171,28 +173,53 @@ function formatChangeRate(rate: number): string {
 
 /**
  * 시세 상태 한글 라벨
+ * 원본 Trading_Agent의 PriceSourceBadge에서 포팅
  */
-function quoteStatusLabel(status?: string): string {
-  switch (status) {
-    case 'OK': return '시세 정상';
+function quoteStatusLabel(signal: SignalData): string {
+  if (signal.quoteStatus === 'OK') {
+    if (signal.priceSource === 'DAILY_FALLBACK') return '최신 종가';
+    return '시세 정상';
+  }
+  switch (signal.quoteStatus) {
     case 'FAILED': return '시세 실패';
     case 'PENDING': return '시세 대기';
     case 'DELAYED': return '시세 지연';
-    default: return '';
+    default: return signal.priceSourceLabel || '';
   }
 }
 
 /**
- * 시세 상태 색상
+ * 시세 출처 뱃지 (원본 Trading_Agent의 PriceSourceBadge 포팅)
+ * 실시간 = 초록, 최신 종가 = 노랑, 실패 = 빨강, 대기 = 회색
  */
-function quoteStatusColor(status?: string): string {
-  switch (status) {
-    case 'OK': return 'text-emerald-600';
-    case 'FAILED': return 'text-red-500';
-    case 'PENDING': return 'text-amber-500';
-    case 'DELAYED': return 'text-amber-500';
-    default: return 'text-muted-foreground';
+function PriceSourceBadgeLabel({ signal }: { signal: SignalData }) {
+  if (signal.quoteStatus === 'OK') {
+    const isFallback = signal.priceSource === 'DAILY_FALLBACK';
+    return (
+      <span className={`inline-flex rounded-full px-1.5 py-0.5 text-[10px] font-semibold ring-1 ${
+        isFallback
+          ? 'bg-amber-50 text-amber-700 ring-amber-200'
+          : 'bg-emerald-50 text-emerald-700 ring-emerald-200'
+      }`}>
+        {signal.priceSourceLabel || (isFallback ? '최신 종가' : '실시간')}
+      </span>
+    );
   }
+  if (signal.quoteStatus === 'FAILED') {
+    return (
+      <span className="inline-flex rounded-full bg-rose-50 px-1.5 py-0.5 text-[10px] font-semibold text-rose-700 ring-1 ring-rose-200">
+        가격 지연
+      </span>
+    );
+  }
+  if (signal.quoteStatus === 'PENDING') {
+    return (
+      <span className="inline-flex rounded-full bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-500 ring-1 ring-slate-200">
+        조회 중
+      </span>
+    );
+  }
+  return null;
 }
 
 // 신호 배지
@@ -1362,7 +1389,10 @@ export default function TradingDashboard() {
                             <SignalBadge type={signal.signalType} />
                             <div>
                               <div className="font-medium text-sm">{signal.stockName}</div>
-                              <div className="text-xs text-muted-foreground">{signal.stockCode}</div>
+                              <div className="flex items-center gap-1">
+                                <span className="text-xs text-muted-foreground">{signal.stockCode}</span>
+                                <PriceSourceBadgeLabel signal={signal} />
+                              </div>
                             </div>
                           </div>
                           <div className="text-right">
@@ -1376,9 +1406,9 @@ export default function TradingDashboard() {
                                     {formatChangeRate(signal.changeRate)}
                                   </div>
                                 )}
-                                <div className={`text-xs ${quoteStatusColor(signal.quoteStatus)}`}>
+                                <div className="text-xs text-muted-foreground">
                                   {signal.market === 'OVERSEAS' && signal.exchangeCode ? `${signal.exchangeCode} · ` : ''}
-                                  {quoteStatusLabel(signal.quoteStatus)}
+                                  {quoteStatusLabel(signal)}
                                 </div>
                               </>
                             ) : signal.quoteStatus === 'FAILED' ? (
@@ -1391,8 +1421,8 @@ export default function TradingDashboard() {
                             ) : (
                               <>
                                 <div className="text-sm font-medium">{formatQuotePrice(displayPrice, currency)}</div>
-                                <div className={`text-xs ${quoteStatusColor(signal.quoteStatus)}`}>
-                                  {quoteStatusLabel(signal.quoteStatus)}
+                                <div className="text-xs text-muted-foreground">
+                                  {quoteStatusLabel(signal)}
                                 </div>
                               </>
                             )}
@@ -1665,7 +1695,10 @@ export default function TradingDashboard() {
                             <SignalBadge type={signal.signalType} />
                             <div>
                               <h3 className="font-semibold">{signal.stockName}</h3>
-                              <p className="text-sm text-muted-foreground">{signal.stockCode}</p>
+                              <div className="flex items-center gap-1">
+                                <p className="text-sm text-muted-foreground">{signal.stockCode}</p>
+                                <PriceSourceBadgeLabel signal={signal} />
+                              </div>
                             </div>
                           </div>
                           <div className="text-right">
@@ -1682,13 +1715,18 @@ export default function TradingDashboard() {
                                     {signal.changePrice == null && formatChangeRate(signal.changeRate)}
                                   </p>
                                 )}
-                                <div className={`text-xs ${quoteStatusColor(signal.quoteStatus)}`}>
+                                <div className="text-xs text-muted-foreground">
                                   {signal.market === 'OVERSEAS' && signal.exchangeCode ? `${signal.exchangeCode} · ` : ''}
-                                  {currency} · {quoteStatusLabel(signal.quoteStatus)}
+                                  {currency} · {quoteStatusLabel(signal)}
                                   {signal.quoteTimestamp && (
                                     <> · {new Date(signal.quoteTimestamp).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</>
                                   )}
                                 </div>
+                                {signal.priceSource === 'DAILY_FALLBACK' && (
+                                  <p className="mt-1 rounded bg-amber-50 px-2 py-1 text-[10px] text-amber-700">
+                                    실시간 현재가 조회가 지연되어 최신 일봉 종가 기준으로 표시합니다.
+                                  </p>
+                                )}
                               </>
                             ) : signal.quoteStatus === 'FAILED' ? (
                               <>
@@ -1700,8 +1738,8 @@ export default function TradingDashboard() {
                             ) : (
                               <>
                                 <p className="font-semibold">{formatQuotePrice(displayPrice, currency)}</p>
-                                <div className={`text-xs ${quoteStatusColor(signal.quoteStatus)}`}>
-                                  {quoteStatusLabel(signal.quoteStatus)}
+                                <div className="text-xs text-muted-foreground">
+                                  {quoteStatusLabel(signal)}
                                 </div>
                               </>
                             )}

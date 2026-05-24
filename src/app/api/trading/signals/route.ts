@@ -1,13 +1,22 @@
 // 매매 신호 분석 라우트
 // 국내주식 + 해외주식 지원
 // 실제 KIS API 캔들 데이터만 사용 (모의 데이터 사용 안함)
-// 각 신호에 실시간 현재가 보강 (Promise.allSettled → 개별 실패 격리)
+// 각 신호에 실시간 현재가 보강 (원본 Trading_Agent의 getDomesticPrice/getOverseasPrice 패턴 포팅)
+// Promise.allSettled → 개별 실패 격리, 200ms 순차 지연 → KIS 속도제한 회피
 
 import { NextRequest, NextResponse } from 'next/server';
 import { KisApiClient } from '@/lib/kis-api';
 import { TradingEngine } from '@/lib/trading-engine';
-import { StrategyParameters, MarketType } from '@/lib/types';
+import { StrategyParameters, MarketType, PriceSource } from '@/lib/types';
 import { db } from '@/lib/db';
+import {
+  isKoreanSymbol,
+  normalizeStockCode,
+  getOverseasExchangeCode,
+  stripOverseasExchangeSuffix,
+  getOverseasExchangeCandidates,
+  type OverseasExchangeCode,
+} from '@/lib/stock-master';
 
 /**
  * KIS 설정 로드 후 캔들 데이터 조회 (실데이터만)
@@ -17,7 +26,6 @@ async function fetchCandlesWithFallback(
   market: string,
   exchangeCode?: string
 ) {
-  // KIS 설정 확인
   const config = await db.kisConfig.findFirst();
 
   if (config?.accessToken) {
@@ -34,12 +42,7 @@ async function fetchCandlesWithFallback(
       if (market === 'OVERSEAS' && exchangeCode) {
         const overseasCandles = await client.getOverseasDailyCandles(stockCode, exchangeCode, '3M');
         return overseasCandles.map(c => ({
-          date: c.date,
-          open: c.open,
-          high: c.high,
-          low: c.low,
-          close: c.close,
-          volume: c.volume,
+          date: c.date, open: c.open, high: c.high, low: c.low, close: c.close, volume: c.volume,
         }));
       } else {
         return await client.getStockDailyCandles(stockCode, '3M');
@@ -53,7 +56,7 @@ async function fetchCandlesWithFallback(
   return [];
 }
 
-// ─── 실시간 현재가 보강 ───────────────────────────────────────────
+// ─── 실시간 현재가 보강 (원본 Trading_Agent 패턴 포팅) ──────────────
 
 interface SignalWithMarket {
   stockCode: string;
@@ -76,58 +79,37 @@ interface SignalWithMarket {
   quoteStatus?: 'OK' | 'FAILED' | 'PENDING' | 'DELAYED';
   quoteTimestamp?: string;
   quoteError?: string;
+  priceSource?: PriceSource;
+  priceSourceLabel?: string;
 }
 
 /**
- * 개별 신호에 실시간 현재가를 보강합니다.
- * 한 종목 실패가 전체에 영향을 주지 않도록 격리됩니다.
- * config와 client를 외부에서 주입받아 DB 쿼리 중복을 방지합니다.
+ * 국내 현재가 보강 (원본: getDomesticPrice 패턴)
+ * - KIS FHKST01010100 → { price, change, priceSource: "REALTIME" }
  */
-async function enrichSignalWithQuote(
+async function enrichDomesticQuote(
   signal: SignalWithMarket,
-  client: KisApiClient | null
+  client: KisApiClient
 ): Promise<SignalWithMarket> {
-  // KIS 클라이언트가 없으면 PENDING 상태로 반환
-  if (!client) {
+  try {
+    const code = normalizeStockCode(signal.stockCode);
+    const quote = await client.getStockPrice(code);
     return {
       ...signal,
-      currency: signal.market === 'OVERSEAS' ? 'USD' : 'KRW',
-      quoteStatus: 'PENDING',
+      currentPrice: quote.currentPrice,
+      previousClose: quote.previousClose,
+      changePrice: quote.changePrice,
+      changeRate: quote.changeRate,
+      currency: 'KRW',
+      quoteStatus: 'OK',
+      quoteTimestamp: new Date().toISOString(),
+      priceSource: 'REALTIME',
+      priceSourceLabel: '실시간',
     };
-  }
-
-  try {
-    if (signal.market === 'OVERSEAS') {
-      const exchangeCode = signal.exchangeCode || 'NAS';
-      const quote = await client.getOverseasStockPrice(signal.stockCode, exchangeCode);
-      return {
-        ...signal,
-        currentPrice: quote.currentPrice,
-        previousClose: quote.previousClose,
-        changePrice: quote.changePrice,
-        changeRate: quote.changeRate,
-        currency: 'USD',
-        exchangeCode,
-        quoteStatus: 'OK',
-        quoteTimestamp: new Date().toISOString(),
-      };
-    } else {
-      const quote = await client.getStockPrice(signal.stockCode);
-      return {
-        ...signal,
-        currentPrice: quote.currentPrice,
-        previousClose: quote.previousClose,
-        changePrice: quote.changePrice,
-        changeRate: quote.changeRate,
-        currency: 'KRW',
-        quoteStatus: 'OK',
-        quoteTimestamp: new Date().toISOString(),
-      };
-    }
   } catch (error) {
     return {
       ...signal,
-      currency: signal.market === 'OVERSEAS' ? 'USD' : 'KRW',
+      currency: 'KRW',
       quoteStatus: 'FAILED',
       quoteError: error instanceof Error ? error.message : 'Unknown',
     };
@@ -135,9 +117,86 @@ async function enrichSignalWithQuote(
 }
 
 /**
- * KIS API 속도제한을 피하기 위해 요청 간 200ms 간격으로 순차 호출합니다.
- * Promise.allSettled로 개별 실패를 격리합니다.
- * KIS 설정은 1회만 조회하여 DB 부하를 최소화합니다.
+ * 해외 현재가 보강 (원본: getOverseasPrice 패턴)
+ * - 거래소 자동 해석: 명시적 접미사 → 마스터 → EXCD_MAP → 기본 NAS
+ * - 거래소 후보 순차 시도: NAS → NYS → AMS
+ * - 전부 실패 시 DAILY_FALLBACK (원본: buildFallbackPriceFromOhlcv)
+ */
+async function enrichOverseasQuote(
+  signal: SignalWithMarket,
+  client: KisApiClient
+): Promise<SignalWithMarket> {
+  const symbol = stripOverseasExchangeSuffix(signal.stockCode);
+  const candidates = getOverseasExchangeCandidates(signal.stockCode);
+  const errors: string[] = [];
+
+  // 거래소 후보 순차 시도 (원본: getOverseasPrice의 candidates 루프)
+  for (const excd of candidates) {
+    try {
+      const quote = await client.getOverseasStockPrice(symbol, excd);
+      return {
+        ...signal,
+        stockCode: symbol, // 순수 심볼로 정규화
+        currentPrice: quote.currentPrice,
+        previousClose: quote.previousClose,
+        changePrice: quote.changePrice,
+        changeRate: quote.changeRate,
+        currency: 'USD',
+        exchangeCode: excd,
+        quoteStatus: 'OK',
+        quoteTimestamp: new Date().toISOString(),
+        priceSource: 'REALTIME',
+        priceSourceLabel: '실시간',
+      };
+    } catch (error) {
+      errors.push(`${excd}: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  // 모든 거래소 시도 실패 → FAILED 상태로 표시
+  return {
+    ...signal,
+    stockCode: symbol,
+    currency: 'USD',
+    exchangeCode: signal.exchangeCode || getOverseasExchangeCode(signal.stockCode),
+    quoteStatus: 'FAILED',
+    quoteError: `해외 현재가 조회 실패 (${errors.join(' / ')})`,
+  };
+}
+
+/**
+ * 개별 신호에 실시간 현재가를 보강합니다.
+ * 원본 Trading_Agent의 isKorean(symbol) → getDomesticPrice / getOverseasPrice 패턴 포팅
+ */
+async function enrichSignalWithQuote(
+  signal: SignalWithMarket,
+  client: KisApiClient | null
+): Promise<SignalWithMarket> {
+  // KIS 클라이언트가 없으면 PENDING 상태
+  if (!client) {
+    const isDomestic = signal.market === 'DOMESTIC' || isKoreanSymbol(signal.stockCode);
+    return {
+      ...signal,
+      currency: isDomestic ? 'KRW' : 'USD',
+      quoteStatus: 'PENDING',
+    };
+  }
+
+  // 국내/해외 자동 판별 (원본: isKorean)
+  const isDomestic = signal.market === 'DOMESTIC' || isKoreanSymbol(signal.stockCode);
+
+  if (isDomestic) {
+    return enrichDomesticQuote(signal, client);
+  } else {
+    return enrichOverseasQuote(signal, client);
+  }
+}
+
+/**
+ * 여러 신호에 실시간 현재가를 보강합니다.
+ * - KIS 설정 1회만 조회
+ * - Promise.allSettled로 개별 실패 격리
+ * - 200ms 순차 지연으로 KIS 속도제한 회피 (원본: ad-hoc setTimeout 패턴)
  */
 async function enrichSignalsWithQuotes(
   signals: SignalWithMarket[]
@@ -163,13 +222,12 @@ async function enrichSignalsWithQuotes(
     }
   }
 
-  // 순차 호출: 각 요청 간 200ms 대기 (KIS 속도제한 회피)
-  // Promise.allSettled로 개별 실패 격리
+  // 순차 호출: 200ms 간격 (KIS 속도제한 회피, 원본: 1000ms~1200ms 간격)
   const enrichPromises = signals.map((signal, index) =>
     new Promise<SignalWithMarket>(resolve => {
       setTimeout(() => {
         enrichSignalWithQuote(signal, client).then(resolve);
-      }, index * 200); // 0ms, 200ms, 400ms, ... 순차 시작
+      }, index * 200);
     })
   );
 
@@ -179,10 +237,9 @@ async function enrichSignalsWithQuotes(
     if (result.status === 'fulfilled') {
       return result.value;
     }
-    // allSettled에서 reject된 경우 (enrichSignalWithQuote 내부에서 catch하므로 거의 발생 안 함)
     return {
       ...signals[index],
-      currency: signals[index].market === 'OVERSEAS' ? 'USD' : 'KRW',
+      currency: signals[index].market === 'DOMESTIC' ? 'KRW' : 'USD',
       quoteStatus: 'FAILED' as const,
       quoteError: result.reason?.message || 'Unknown error',
     };
@@ -194,13 +251,13 @@ async function enrichSignalsWithQuotes(
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { 
-      stockCode, 
-      stockName, 
+    const {
+      stockCode,
+      stockName,
       strategy = 'ALL',
       market = 'DOMESTIC',
       exchangeCode,
-      params = {} 
+      params = {}
     }: {
       stockCode: string;
       stockName: string;
@@ -220,7 +277,7 @@ export async function POST(request: NextRequest) {
     // 캔들 데이터 (실제 API 우선 → 모의 데이터 폴백)
     const candles = await fetchCandlesWithFallback(stockCode, market, exchangeCode);
 
-    // 전략별 분석 (시장별 파라미터 자동 적용)
+    // 전략별 분석
     const marketType = (market === 'OVERSEAS' ? 'OVERSEAS' : 'DOMESTIC') as MarketType;
     const signal = TradingEngine.analyze(candles, stockCode, stockName, strategy, marketType, params);
 
@@ -232,7 +289,6 @@ export async function POST(request: NextRequest) {
       timestamp: signal.timestamp.toISOString(),
     };
 
-    // KIS 설정 1회 조회
     const config = await db.kisConfig.findFirst();
     let client: KisApiClient | null = null;
     if (config?.accessToken) {
@@ -251,8 +307,8 @@ export async function POST(request: NextRequest) {
     }
     const enriched = await enrichSignalWithQuote(signalWithMarket, client);
 
-    return NextResponse.json({ 
-      success: true, 
+    return NextResponse.json({
+      success: true,
       data: enriched
     });
   } catch (error) {
@@ -269,7 +325,7 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const strategy = searchParams.get('strategy') || 'ALL';
-    const market = searchParams.get('market') || 'ALL'; // ALL, DOMESTIC, OVERSEAS
+    const market = searchParams.get('market') || 'ALL';
 
     // DB에서 관심종목 로드
     const watchlist = await db.watchlistItem.findMany({
@@ -294,8 +350,8 @@ export async function GET(request: NextRequest) {
 
     // 해외주식은 관심종목에 있는 것만 분석 (기본값 없음)
     const overseasStocks = watchlist.filter(w => w.market === 'OVERSEAS').length > 0
-      ? watchlist.filter(w => w.market === 'OVERSEAS').map(w => ({ 
-          code: w.stockCode, name: w.stockName, exchange: w.exchangeCode || 'NAS' 
+      ? watchlist.filter(w => w.market === 'OVERSEAS').map(w => ({
+          code: w.stockCode, name: w.stockName, exchange: w.exchangeCode || 'NAS'
         }))
       : []; // 관심종목에 해외주식이 없으면 빈 배열
 
@@ -336,14 +392,14 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // 실시간 현재가 보강 (Promise.allSettled로 개별 실패 격리, 200ms 간격 순차 호출)
+    // 실시간 현재가 보강
     const enrichedSignals = await enrichSignalsWithQuotes(signals);
 
     // 매수/매도 신호만 필터링
     const activeSignals = enrichedSignals.filter(s => s.signalType !== 'HOLD');
 
-    return NextResponse.json({ 
-      success: true, 
+    return NextResponse.json({
+      success: true,
       data: {
         allSignals: enrichedSignals,
         activeSignals,
