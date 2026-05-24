@@ -281,7 +281,6 @@ export function searchOverseasMaster(
   const seen = new Set<string>();
 
   for (const item of Object.values(OVERSEAS_MASTER_INDEX)) {
-    if (results.length >= limit) break;
     if (seen.has(item.symbol)) continue;
 
     const matches =
@@ -296,5 +295,12 @@ export function searchOverseasMaster(
     }
   }
 
-  return results;
+  // 정렬: 정확히 일치(symbol === query) 먼저, 그 다음 symbol 접두사 일치, 나머지
+  results.sort((a, b) => {
+    const aExact = a.symbol.toUpperCase() === upperQuery ? 0 : a.symbol.toUpperCase().startsWith(upperQuery) ? 1 : 2;
+    const bExact = b.symbol.toUpperCase() === upperQuery ? 0 : b.symbol.toUpperCase().startsWith(upperQuery) ? 1 : 2;
+    return aExact - bExact;
+  });
+
+  return results.slice(0, limit);
 }

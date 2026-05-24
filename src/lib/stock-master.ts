@@ -1,11 +1,14 @@
 // 종목 마스터 통합 정규화 모듈
 // 국내/해외 전체 KIS 종목 마스터 기반 정규화 + 검색
 //
-// 데이터 소스 우선순위:
-// 해외: data/overseas-symbols.json → kis-overseas-master.ts fallback
-// 국내: data/domestic-symbols.json → 기존 6자리 코드 정규화 fallback
+// 데이터 소스:
+// 해외: data/overseas-symbols.json (12,161종목 - KIS COD 파일에서 생성)
+// 국내: data/korean-stocks.json (4,456종목 - KRX 마스터 파일에서 생성)
+//
+// 원본: renee1004/Trading_Agent → trading_agent_v1 포팅
+// 해외 COD → JSON 변환: scripts/build-overseas-symbols.mjs
 
-import domesticSymbolsData from '../../data/domestic-symbols.json';
+import koreanStocksData from '../../data/korean-stocks.json';
 import {
   findOverseasMasterItem,
   normalizeOverseasDisplayCode,
@@ -30,28 +33,63 @@ export type StockMasterItem = {
   englishName?: string;
 };
 
-// ─── 국내 종목 마스터 JSON 타입 ───
-type DomesticSymbolEntry = {
-  symbol: string;
-  displayCode: string;
-  stockName: string;
-  market: string;
-  exchangeCode: string;
-  currency: string;
+// ─── 국내 종목 마스터 JSON 타입 (korean-stocks.json 포맷) ───
+type KoreanStockEntry = {
+  code: string;           // "005930", "F70100026" 등
+  symbol: string;         // "005930.KS", "F70100026.KS" 등
+  standardCode?: string;  // "KR7005930009"
+  name: string;           // "삼성전자"
+  nameEn?: string;        // 영문명 (있을 경우)
+  market: string;         // "KOSPI", "KOSDAQ", "KONEX"
+  venue?: string;         // "MAIN"
+  type: string;           // "EQUITY", "ETF" 등
+  source: string;         // "kospi_code.mst", "kosdaq_code.mst" 등
 };
 
-// ─── 국내 마스터 인덱스 ───
-const DOMESTIC_MASTER_ITEMS: DomesticSymbolEntry[] =
-  domesticSymbolsData as DomesticSymbolEntry[];
+// ─── 국내 마스터 인덱스 구축 ───
+const KOREAN_STOCK_ITEMS: KoreanStockEntry[] = koreanStocksData as KoreanStockEntry[];
 
-const DOMESTIC_MASTER_BY_SYMBOL = new Map<string, DomesticSymbolEntry>();
-const DOMESTIC_MASTER_BY_NAME = new Map<string, DomesticSymbolEntry>();
+/** 6자리 종목코드 추출 (code에서 순수 6자리 부분) */
+function extractSixDigitCode(code: string): string | null {
+  const match = code.match(/^(\d{6})/);
+  return match ? match[1] : null;
+}
 
-for (const entry of DOMESTIC_MASTER_ITEMS) {
-  DOMESTIC_MASTER_BY_SYMBOL.set(entry.symbol, entry);
-  // 종목명 → symbol 매핑 (첫 번째 항목만)
-  if (!DOMESTIC_MASTER_BY_NAME.has(entry.stockName)) {
-    DOMESTIC_MASTER_BY_NAME.set(entry.stockName, entry);
+/** 검색/정규화에 사용할 국내 종목 인덱스 (6자리 코드 기준) */
+interface DomesticIndexEntry {
+  symbol: string;       // 6자리 종목코드 "005930"
+  displayCode: string;  // "KRX:005930"
+  stockName: string;    // "삼성전자"
+  market: string;       // "KOSPI" | "KOSDAQ" | "KONEX"
+  exchangeCode: string; // "KRX"
+  currency: string;     // "KRW"
+}
+
+const DOMESTIC_MASTER_ITEMS: DomesticIndexEntry[] = [];
+const DOMESTIC_MASTER_BY_SYMBOL = new Map<string, DomesticIndexEntry>();
+const DOMESTIC_MASTER_BY_NAME = new Map<string, DomesticIndexEntry>();
+
+for (const entry of KOREAN_STOCK_ITEMS) {
+  const sixDigit = extractSixDigitCode(entry.code);
+  if (!sixDigit) continue; // 6자리 코드 추출 불가한 항목(ETF F코드 등)은 건너뜀
+
+  const displayCode = `KRX:${sixDigit}`;
+  // 동일 6자리 코드가 이미 있으면 건너뜀 (첫 번째 항목 우선 - 보통 보통주)
+  if (DOMESTIC_MASTER_BY_SYMBOL.has(sixDigit)) continue;
+
+  const indexEntry: DomesticIndexEntry = {
+    symbol: sixDigit,
+    displayCode,
+    stockName: entry.name,
+    market: entry.market,
+    exchangeCode: 'KRX',
+    currency: 'KRW',
+  };
+
+  DOMESTIC_MASTER_ITEMS.push(indexEntry);
+  DOMESTIC_MASTER_BY_SYMBOL.set(sixDigit, indexEntry);
+  if (!DOMESTIC_MASTER_BY_NAME.has(entry.name)) {
+    DOMESTIC_MASTER_BY_NAME.set(entry.name, indexEntry);
   }
 }
 
@@ -82,6 +120,7 @@ export function normalizeDomesticStockCode(code: string): StockMasterItem {
     stockName,
     currency: 'KRW',
     source: masterEntry ? 'DOMESTIC_MASTER' : 'DOMESTIC_CODE',
+    koreanName: masterEntry?.stockName,
   };
 }
 
@@ -169,7 +208,7 @@ export type StockSearchResult = {
  * 국내+해외 통합 종목 검색 (로컬 마스터만 사용, KIS API 호출 없음)
  *
  * 검색 대상:
- * - 국내: 종목코드(symbol), 종목명(stockName)
+ * - 국내: 종목코드(6자리), 종목명(name), 마켓명(market)
  * - 해외: 티커(symbol), 한글명(koreanName), 영문명(englishName)
  * - displayCode, 거래소 코드
  */
@@ -186,25 +225,23 @@ export function searchAllStocks(
 
   // ─── 국내 검색 ───
   for (const entry of DOMESTIC_MASTER_ITEMS) {
-    if (results.length >= limit) break;
-
-    const displayCode = `KRX:${entry.symbol}`;
-    if (seenDisplayCodes.has(displayCode)) continue;
+    if (seenDisplayCodes.has(entry.displayCode)) continue;
 
     const matches =
       entry.symbol.includes(query) ||
       entry.symbol.includes(upperQuery) ||
       entry.stockName.includes(query) ||
-      displayCode.toUpperCase().includes(upperQuery) ||
+      entry.displayCode.toUpperCase().includes(upperQuery) ||
+      entry.market.toUpperCase().includes(upperQuery) ||
       entry.exchangeCode.toUpperCase().includes(upperQuery);
 
     if (matches) {
-      seenDisplayCodes.add(displayCode);
+      seenDisplayCodes.add(entry.displayCode);
       results.push({
         market: 'DOMESTIC',
         exchangeCode: 'KRX',
         symbol: entry.symbol,
-        displayCode,
+        displayCode: entry.displayCode,
         stockName: entry.stockName,
         koreanName: entry.stockName,
         currency: 'KRW',
@@ -212,6 +249,13 @@ export function searchAllStocks(
       });
     }
   }
+
+  // 국내 정렬: 정확히 일치 → 접두사 일치 → 나머지
+  results.sort((a, b) => {
+    const aExact = a.symbol === query || a.symbol === upperQuery ? 0 : a.symbol.startsWith(query) || a.symbol.startsWith(upperQuery) ? 1 : 2;
+    const bExact = b.symbol === query || b.symbol === upperQuery ? 0 : b.symbol.startsWith(query) || b.symbol.startsWith(upperQuery) ? 1 : 2;
+    return aExact - bExact;
+  });
 
   // ─── 해외 검색 (kis-overseas-master의 searchOverseasMaster 사용) ───
   if (results.length < limit) {
