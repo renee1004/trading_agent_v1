@@ -34,7 +34,17 @@ interface SignalData {
   signalType: 'BUY' | 'SELL' | 'HOLD';
   strategy: string;
   confidence: number;
-  price: number;
+  price: number; // 기존 호환용 (분석 기준가)
+  currentPrice?: number; // 실시간 현재가
+  previousClose?: number; // 전일 종가
+  changePrice?: number; // 전일 대비
+  changeRate?: number; // 등락률 (%)
+  currency?: 'KRW' | 'USD'; // 통화
+  market?: 'DOMESTIC' | 'OVERSEAS'; // 시장 구분
+  exchangeCode?: string; // 해외 거래소 코드
+  quoteStatus?: 'OK' | 'FAILED' | 'PENDING' | 'DELAYED'; // 시세 상태
+  quoteTimestamp?: string; // 시세 조회 시간
+  quoteError?: string; // 시세 조회 실패 사유
   reason: string;
   indicators: Record<string, number>;
   timestamp: string;
@@ -137,6 +147,52 @@ function formatMoney(amount: number): string {
 
 function formatFullMoney(amount: number): string {
   return new Intl.NumberFormat('ko-KR').format(amount);
+}
+
+/**
+ * 통화별 가격 포맷
+ * 국내(KRW): 72,300원
+ * 해외(USD): $125.42
+ */
+function formatQuotePrice(amount: number, currency: 'KRW' | 'USD' = 'KRW'): string {
+  if (currency === 'USD') {
+    return `$${new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(amount)}`;
+  }
+  return `${new Intl.NumberFormat('ko-KR').format(amount)}원`;
+}
+
+/**
+ * 등락률 포맷 (+/- 부호 포함)
+ */
+function formatChangeRate(rate: number): string {
+  const sign = rate >= 0 ? '+' : '';
+  return `${sign}${rate.toFixed(2)}%`;
+}
+
+/**
+ * 시세 상태 한글 라벨
+ */
+function quoteStatusLabel(status?: string): string {
+  switch (status) {
+    case 'OK': return '시세 정상';
+    case 'FAILED': return '시세 실패';
+    case 'PENDING': return '시세 대기';
+    case 'DELAYED': return '시세 지연';
+    default: return '';
+  }
+}
+
+/**
+ * 시세 상태 색상
+ */
+function quoteStatusColor(status?: string): string {
+  switch (status) {
+    case 'OK': return 'text-emerald-600';
+    case 'FAILED': return 'text-red-500';
+    case 'PENDING': return 'text-amber-500';
+    case 'DELAYED': return 'text-amber-500';
+    default: return 'text-muted-foreground';
+  }
 }
 
 // 신호 배지
@@ -1293,7 +1349,11 @@ export default function TradingDashboard() {
                 <CardContent>
                   <ScrollArea className="h-[400px]">
                     <div className="space-y-3">
-                      {signals.map((signal, index) => (
+                      {signals.map((signal, index) => {
+                        const displayPrice = signal.currentPrice ?? signal.price;
+                        const currency = signal.currency || (signal.market === 'OVERSEAS' ? 'USD' : 'KRW');
+                        const isQuoteOk = signal.quoteStatus === 'OK';
+                        return (
                         <div 
                           key={`${signal.stockCode}-${index}`}
                           className="flex items-center justify-between rounded-lg border p-3 hover:bg-muted/50 transition-colors"
@@ -1306,14 +1366,44 @@ export default function TradingDashboard() {
                             </div>
                           </div>
                           <div className="text-right">
-                            <div className="text-sm font-medium">{formatFullMoney(signal.price)}원</div>
-                            <div className="flex items-center gap-1">
+                            {isQuoteOk ? (
+                              <>
+                                <div className="text-sm font-medium">
+                                  현재가 {formatQuotePrice(displayPrice, currency)}
+                                </div>
+                                {signal.changeRate != null && (
+                                  <div className={`text-xs font-medium ${signal.changeRate >= 0 ? 'text-red-500' : 'text-blue-500'}`}>
+                                    {formatChangeRate(signal.changeRate)}
+                                  </div>
+                                )}
+                                <div className={`text-xs ${quoteStatusColor(signal.quoteStatus)}`}>
+                                  {signal.market === 'OVERSEAS' && signal.exchangeCode ? `${signal.exchangeCode} · ` : ''}
+                                  {quoteStatusLabel(signal.quoteStatus)}
+                                </div>
+                              </>
+                            ) : signal.quoteStatus === 'FAILED' ? (
+                              <>
+                                <div className="text-xs text-red-500">현재가 조회 실패</div>
+                                <div className="text-xs text-muted-foreground">
+                                  분석가 {formatQuotePrice(signal.price, currency)} 기준
+                                </div>
+                              </>
+                            ) : (
+                              <>
+                                <div className="text-sm font-medium">{formatQuotePrice(displayPrice, currency)}</div>
+                                <div className={`text-xs ${quoteStatusColor(signal.quoteStatus)}`}>
+                                  {quoteStatusLabel(signal.quoteStatus)}
+                                </div>
+                              </>
+                            )}
+                            <div className="flex items-center gap-1 mt-0.5">
                               <Progress value={signal.confidence} className="h-1.5 w-16" />
                               <span className="text-xs text-muted-foreground">{signal.confidence}%</span>
                             </div>
                           </div>
                         </div>
-                      ))}
+                        );
+                      })}
                       {signals.length === 0 && (
                         <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
                           <Activity className="h-12 w-12 mb-3 opacity-20" />
@@ -1557,7 +1647,11 @@ export default function TradingDashboard() {
               <CardContent>
                 <ScrollArea className="h-[600px]">
                   <div className="space-y-4">
-                    {signals.map((signal, index) => (
+                    {signals.map((signal, index) => {
+                      const displayPrice = signal.currentPrice ?? signal.price;
+                      const currency = signal.currency || (signal.market === 'OVERSEAS' ? 'USD' : 'KRW');
+                      const isQuoteOk = signal.quoteStatus === 'OK';
+                      return (
                       <div 
                         key={`detail-${signal.stockCode}-${index}`}
                         className={`rounded-lg border p-4 ${
@@ -1575,8 +1669,43 @@ export default function TradingDashboard() {
                             </div>
                           </div>
                           <div className="text-right">
-                            <p className="font-semibold">{formatFullMoney(signal.price)}원</p>
-                            <div className="flex items-center gap-2 justify-end">
+                            {isQuoteOk ? (
+                              <>
+                                <p className="font-semibold">
+                                  현재가 {formatQuotePrice(displayPrice, currency)}
+                                </p>
+                                {signal.changeRate != null && (
+                                  <p className={`text-sm font-medium ${signal.changeRate >= 0 ? 'text-red-500' : 'text-blue-500'}`}>
+                                    {signal.changePrice != null && (
+                                      <span>{currency === 'KRW' ? formatFullMoney(signal.changePrice) : signal.changePrice.toFixed(2)} ({formatChangeRate(signal.changeRate)})</span>
+                                    )}
+                                    {signal.changePrice == null && formatChangeRate(signal.changeRate)}
+                                  </p>
+                                )}
+                                <div className={`text-xs ${quoteStatusColor(signal.quoteStatus)}`}>
+                                  {signal.market === 'OVERSEAS' && signal.exchangeCode ? `${signal.exchangeCode} · ` : ''}
+                                  {currency} · {quoteStatusLabel(signal.quoteStatus)}
+                                  {signal.quoteTimestamp && (
+                                    <> · {new Date(signal.quoteTimestamp).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</>
+                                  )}
+                                </div>
+                              </>
+                            ) : signal.quoteStatus === 'FAILED' ? (
+                              <>
+                                <div className="text-sm text-red-500">현재가 조회 실패</div>
+                                <div className="text-xs text-muted-foreground">
+                                  분석가 {formatQuotePrice(signal.price, currency)} 기준
+                                </div>
+                              </>
+                            ) : (
+                              <>
+                                <p className="font-semibold">{formatQuotePrice(displayPrice, currency)}</p>
+                                <div className={`text-xs ${quoteStatusColor(signal.quoteStatus)}`}>
+                                  {quoteStatusLabel(signal.quoteStatus)}
+                                </div>
+                              </>
+                            )}
+                            <div className="flex items-center gap-2 justify-end mt-1">
                               <Progress value={signal.confidence} className="h-2 w-24" />
                               <span className="text-sm font-medium">신뢰도 {signal.confidence}%</span>
                             </div>
@@ -1602,7 +1731,8 @@ export default function TradingDashboard() {
                           )}
                         </div>
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </ScrollArea>
               </CardContent>
