@@ -46,6 +46,11 @@ COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/public ./public
 
+# 종목 검색용 마스터 데이터 복사
+# /api/stocks/search 는 data/domestic-symbols.json, data/overseas-symbols.json 을 사용합니다.
+# Next standalone 런타임 이미지에도 data 디렉토리가 있어야 Railway에서 검색 API가 정상 동작합니다.
+COPY --from=builder /app/data ./data
+
 # Prisma 스키마/마이그레이션/엔진 복사
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
