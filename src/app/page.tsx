@@ -1068,7 +1068,7 @@ export default function TradingDashboard() {
                   )}
                 </Button>
               </DialogTrigger>
-              <DialogContent>
+              <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-[425px] max-h-[85vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>한국투자증권 API 설정</DialogTitle>
                   <DialogDescription>
@@ -1306,10 +1306,10 @@ export default function TradingDashboard() {
                   <Coins className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-xl sm:text-2xl font-bold">
+                  <div className="text-lg sm:text-2xl font-bold break-all">
                     {dataSource === 'mock' && accountBalance === 0 ? '—' : `${formatFullMoney(accountBalance + todayProfit)}원`}
                   </div>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-muted-foreground break-all">
                     {dataSource === 'api' ? `예수금: ${formatMoney(accountBalance)}원` : 'KIS API 연결 시 표시됩니다'}
                   </p>
                 </CardContent>
@@ -1321,7 +1321,7 @@ export default function TradingDashboard() {
                   {todayProfit >= 0 ? <ArrowUpRight className="h-4 w-4 text-emerald-500" /> : <ArrowDownRight className="h-4 w-4 text-red-500" />}
                 </CardHeader>
                 <CardContent>
-                  <div className={`text-xl sm:text-2xl font-bold ${dataSource === 'mock' ? 'text-muted-foreground' : todayProfit >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                  <div className={`text-lg sm:text-2xl font-bold break-all ${dataSource === 'mock' ? 'text-muted-foreground' : todayProfit >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
                     {dataSource === 'mock' ? '—' : `${todayProfit >= 0 ? '+' : ''}${formatFullMoney(todayProfit)}원`}
                   </div>
                   <p className={`text-xs ${todayProfit >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
@@ -1336,7 +1336,7 @@ export default function TradingDashboard() {
                   <TrendingUp className="h-4 w-4 text-emerald-500" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-xl sm:text-2xl font-bold text-emerald-600">{buySignals.length}</div>
+                  <div className="text-lg sm:text-2xl font-bold text-emerald-600">{buySignals.length}</div>
                   <p className="text-xs text-muted-foreground">
                     매도 {sellSignals.length} | 관망 {signals.filter(s => s.signalType === 'HOLD').length}
                   </p>
@@ -1349,7 +1349,7 @@ export default function TradingDashboard() {
                   <LineChart className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className={`text-xl sm:text-2xl font-bold ${dataSource === 'mock' ? 'text-muted-foreground' : totalProfitRate >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                  <div className={`text-lg sm:text-2xl font-bold ${dataSource === 'mock' ? 'text-muted-foreground' : totalProfitRate >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
                     {dataSource === 'mock' ? '—' : `${totalProfitRate >= 0 ? '+' : ''}${totalProfitRate.toFixed(1)}%`}
                   </div>
                   <p className="text-xs text-muted-foreground">
@@ -1394,22 +1394,22 @@ export default function TradingDashboard() {
                         return (
                         <div 
                           key={`${signal.stockCode}-${index}`}
-                          className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between rounded-lg border p-3 hover:bg-muted/50 transition-colors"
+                          className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between rounded-lg border p-3 hover:bg-muted/50 transition-colors min-w-0"
                         >
-                          <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-2 min-w-0">
                             <SignalBadge type={signal.signalType} />
-                            <div>
-                              <div className="font-medium text-sm">{signal.stockName}</div>
-                              <div className="flex items-center gap-1">
+                            <div className="min-w-0">
+                              <div className="font-medium text-sm truncate">{signal.stockName}</div>
+                              <div className="flex items-center gap-1 flex-wrap">
                                 <span className="text-xs text-muted-foreground">{signal.stockCode}</span>
                                 <PriceSourceBadgeLabel signal={signal} />
                               </div>
                             </div>
                           </div>
-                          <div className="text-right">
+                          <div className="text-right pl-2">
                             {isQuoteOk ? (
                               <>
-                                <div className="text-sm font-medium">
+                                <div className="text-sm font-medium break-all">
                                   현재가 {formatQuotePrice(displayPrice, currency)}
                                 </div>
                                 {signal.changeRate != null && (
@@ -1642,7 +1642,7 @@ export default function TradingDashboard() {
             </div>
 
             {/* 신호 요약 */}
-            <div className="grid gap-3 grid-cols-1 sm:grid-cols-3">
+            <div className="grid gap-3 grid-cols-2 sm:grid-cols-3">
               <Card className="border-emerald-200 bg-emerald-50/50 dark:bg-emerald-950/20 dark:border-emerald-800">
                 <CardContent className="pt-6">
                   <div className="flex items-center gap-3">
@@ -1705,21 +1705,21 @@ export default function TradingDashboard() {
                           ''
                         }`}
                       >
-                        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                          <div className="flex items-center gap-3">
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between min-w-0">
+                          <div className="flex items-center gap-2 min-w-0">
                             <SignalBadge type={signal.signalType} />
-                            <div>
-                              <h3 className="font-semibold">{signal.stockName}</h3>
-                              <div className="flex items-center gap-1">
+                            <div className="min-w-0">
+                              <h3 className="font-semibold truncate">{signal.stockName}</h3>
+                              <div className="flex items-center gap-1 flex-wrap">
                                 <p className="text-sm text-muted-foreground">{signal.stockCode}</p>
                                 <PriceSourceBadgeLabel signal={signal} />
                               </div>
                             </div>
                           </div>
-                          <div className="text-right">
+                          <div className="text-left sm:text-right break-all">
                             {isQuoteOk ? (
                               <>
-                                <p className="font-semibold">
+                                <p className="font-semibold text-sm sm:text-base">
                                   현재가 {formatQuotePrice(displayPrice, currency)}
                                 </p>
                                 {signal.changeRate != null && (
@@ -1758,19 +1758,19 @@ export default function TradingDashboard() {
                                 </div>
                               </>
                             )}
-                            <div className="flex items-center gap-2 justify-end mt-1">
-                              <Progress value={signal.confidence} className="h-2 w-24" />
-                              <span className="text-sm font-medium">신뢰도 {signal.confidence}%</span>
+                            <div className="flex items-center gap-2 justify-start sm:justify-end mt-1 flex-wrap">
+                              <Progress value={signal.confidence} className="h-2 w-20 sm:w-24" />
+                              <span className="text-xs sm:text-sm font-medium">신뢰도 {signal.confidence}%</span>
                             </div>
                           </div>
                         </div>
                         
                         <Separator className="my-3" />
                         
-                        <div className="space-y-2">
-                          <div className="flex items-center gap-2">
+                        <div className="space-y-2 min-w-0">
+                          <div className="flex items-start gap-2 flex-wrap">
                             <StrategyTypeBadge type={signal.strategy} />
-                            <span className="text-sm text-muted-foreground">{signal.reason}</span>
+                            <span className="text-xs sm:text-sm text-muted-foreground break-all">{signal.reason}</span>
                           </div>
                           
                           {Object.keys(signal.indicators).length > 0 && (
@@ -1812,7 +1812,7 @@ export default function TradingDashboard() {
                       종목 검색 추가
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="sm:max-w-[540px]">
+                  <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-[540px] max-h-[85vh] overflow-y-auto">
                     <DialogHeader>
                       <DialogTitle>종목 검색</DialogTitle>
                       <DialogDescription>
@@ -1917,7 +1917,7 @@ export default function TradingDashboard() {
             </div>
 
             {/* 관심종목 통계 */}
-            <div className="grid gap-3 grid-cols-1 sm:grid-cols-3">
+            <div className="grid gap-3 grid-cols-2 sm:grid-cols-3">
               <Card>
                 <CardContent className="pt-6">
                   <div className="flex items-center gap-3">
@@ -2076,7 +2076,7 @@ export default function TradingDashboard() {
                       미국종목 검색
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="sm:max-w-[540px]">
+                  <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-[540px] max-h-[85vh] overflow-y-auto">
                     <DialogHeader>
                       <DialogTitle>미국 종목 검색</DialogTitle>
                       <DialogDescription>
@@ -2173,10 +2173,10 @@ export default function TradingDashboard() {
                   <Coins className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">
+                  <div className="text-lg sm:text-2xl font-bold break-all">
                     {dataSource === 'mock' && overseasBalance === 0 ? '—' : `${formatMoney(overseasBalance)}원`}
                   </div>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-muted-foreground break-all">
                     {dataSource === 'api' ? `출금가능: ${formatMoney(overseasAvailable)}원` : 'KIS API 연결 시 표시됩니다'}
                   </p>
                 </CardContent>
@@ -2188,7 +2188,7 @@ export default function TradingDashboard() {
                   <LineChart className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className={`text-2xl font-bold ${dataSource === 'mock' ? 'text-muted-foreground' : overseasProfitRate >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                  <div className={`text-lg sm:text-2xl font-bold ${dataSource === 'mock' ? 'text-muted-foreground' : overseasProfitRate >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
                     {dataSource === 'mock' ? '—' : `${overseasProfitRate >= 0 ? '+' : ''}${overseasProfitRate.toFixed(1)}%`}
                   </div>
                   <p className="text-xs text-muted-foreground">
@@ -2203,7 +2203,7 @@ export default function TradingDashboard() {
                   <Globe className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{overseasPositions.length}개</div>
+                  <div className="text-lg sm:text-2xl font-bold">{overseasPositions.length}개</div>
                   <p className="text-xs text-muted-foreground">
                     나스닥/뉴욕/아멕스
                   </p>
@@ -2216,10 +2216,10 @@ export default function TradingDashboard() {
                   <Wallet className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">
+                  <div className="text-lg sm:text-2xl font-bold break-all">
                     {formatMoney(overseasPositions.reduce((sum, p) => sum + p.evaluationAmount, 0))}원
                   </div>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-muted-foreground break-all">
                     {formatMoney(overseasPositions.reduce((sum, p) => sum + p.foreignEvaluation, 0))} USD
                   </p>
                 </CardContent>
@@ -2504,7 +2504,7 @@ export default function TradingDashboard() {
                     </div>
                     <div>
                       <p className="text-sm text-muted-foreground">에이전트 상태</p>
-                      <p className={`text-2xl font-bold ${tradingStatus === 'RUNNING' ? 'text-emerald-600' : tradingStatus === 'PAUSED' ? 'text-amber-600' : 'text-gray-600'}`}>
+                      <p className={`text-base sm:text-2xl font-bold ${tradingStatus === 'RUNNING' ? 'text-emerald-600' : tradingStatus === 'PAUSED' ? 'text-amber-600' : 'text-gray-600'}`}>
                         {tradingStatus === 'RUNNING' ? '실행 중' : tradingStatus === 'PAUSED' ? '일시정지' : '대기'}
                       </p>
                     </div>
@@ -2519,7 +2519,7 @@ export default function TradingDashboard() {
                     </div>
                     <div>
                       <p className="text-sm text-muted-foreground">실행 사이클</p>
-                      <p className="text-2xl font-bold">{schedulerInfo?.totalCycles || agentStatus?.totalCycles || 0}회</p>
+                      <p className="text-base sm:text-2xl font-bold">{schedulerInfo?.totalCycles || agentStatus?.totalCycles || 0}회</p>
                     </div>
                   </div>
                 </CardContent>
@@ -2532,7 +2532,7 @@ export default function TradingDashboard() {
                     </div>
                     <div>
                       <p className="text-sm text-muted-foreground">총 주문 건수</p>
-                      <p className="text-2xl font-bold">{schedulerInfo?.totalTrades || agentStatus?.totalTrades || 0}건</p>
+                      <p className="text-base sm:text-2xl font-bold">{schedulerInfo?.totalTrades || agentStatus?.totalTrades || 0}건</p>
                     </div>
                   </div>
                 </CardContent>
@@ -2545,7 +2545,7 @@ export default function TradingDashboard() {
                     </div>
                     <div>
                       <p className="text-sm text-muted-foreground">다음 실행</p>
-                      <p className="text-lg font-bold">
+                      <p className="text-sm sm:text-lg font-bold">
                         {schedulerInfo?.nextCycleAt 
                           ? new Date(schedulerInfo.nextCycleAt).toLocaleTimeString('ko-KR')
                           : agentStatus?.lastCycleTime
@@ -2572,8 +2572,7 @@ export default function TradingDashboard() {
                 <CardDescription>에이전트 자동 실행 주기 및 장시간 설정</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid gap-4 md:grid-cols-2">
-                  {/* 사이클 주기 */}
+                <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
                   <div className="space-y-2">
                     <Label>사이클 실행 주기</Label>
                     <Select 
@@ -2625,7 +2624,7 @@ export default function TradingDashboard() {
                 </div>
 
                 {/* 장시간 설정 */}
-                <div className="grid gap-4 md:grid-cols-2">
+                <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
                   <div className="space-y-2">
                     <Label className="text-sm">국내 장시간</Label>
                     <div className="flex items-center gap-2">
@@ -2726,7 +2725,7 @@ export default function TradingDashboard() {
                 <CardDescription>1사이클 실행 시 아래 순서로 자동 매매가 진행됩니다</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="grid gap-3 md:grid-cols-4">
+                <div className="grid gap-3 grid-cols-2 md:grid-cols-4">
                   <div className="flex flex-col items-center rounded-lg border p-4 text-center">
                     <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900 mb-2">
                       <span className="text-lg font-bold text-blue-600">1</span>
@@ -2827,11 +2826,11 @@ export default function TradingDashboard() {
               <CardContent>
                 <ScrollArea className="h-[400px]">
                   {agentLogs.length > 0 ? (
-                    <div className="space-y-2 font-mono text-sm">
+                    <div className="space-y-2 font-mono text-xs sm:text-sm">
                       {agentLogs.map((log) => (
                         <div 
                           key={log.id}
-                          className={`flex items-start gap-2 rounded-md px-3 py-2 ${
+                          className={`flex items-start gap-1 sm:gap-2 rounded-md px-2 sm:px-3 py-2 flex-wrap ${
                             log.type === 'ERROR' ? 'bg-red-50 dark:bg-red-950/20' :
                             log.type === 'TRADE' ? 'bg-violet-50 dark:bg-violet-950/20' :
                             log.type === 'SIGNAL' ? 'bg-emerald-50 dark:bg-emerald-950/20' :
@@ -2840,7 +2839,7 @@ export default function TradingDashboard() {
                             'bg-muted/30'
                           }`}
                         >
-                          <span className="text-xs text-muted-foreground whitespace-nowrap">
+                          <span className="text-xs text-muted-foreground whitespace-nowrap shrink-0">
                             {new Date(log.timestamp).toLocaleTimeString('ko-KR')}
                           </span>
                           <Badge variant="outline" className="text-xs py-0 px-1 shrink-0">
@@ -2849,7 +2848,7 @@ export default function TradingDashboard() {
                           <Badge variant="outline" className="text-xs py-0 px-1 shrink-0">
                             {log.market === 'DOMESTIC' ? '국내' : '해외'}
                           </Badge>
-                          <span className="text-xs">{log.message}</span>
+                          <span className="text-xs break-all">{log.message}</span>
                         </div>
                       ))}
                     </div>
@@ -2870,7 +2869,6 @@ export default function TradingDashboard() {
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-xl font-bold">매매 전략 관리</h2>
-                <p className="text-sm text-muted-foreground">인터넷/유튜브 수익률 검증 전략 5종</p>
               </div>
             </div>
 
