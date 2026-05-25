@@ -153,13 +153,39 @@ export interface AccountBalance {
   overseasAvailableAmount?: number;
 }
 
+// 시세 출처 타입 (원본 Trading_Agent의 PriceApiResponse에서 포팅)
+export type PriceSource = 'REALTIME' | 'DAILY_FALLBACK';
+
+// 시세 API 응답 (원본 Trading_Agent의 types/kis.ts에서 포팅)
+export interface PriceApiResponse {
+  symbol: string;
+  price: number;
+  change: number;    // 등락률 (%)
+  volume: number;
+  updatedAt: string;
+  priceSource?: PriceSource;
+  priceSourceLabel?: string; // "실시간" | "최신 종가"
+}
+
 export interface TradingSignal {
   stockCode: string;
   stockName: string;
   signalType: 'BUY' | 'SELL' | 'HOLD';
   strategy: string;
   confidence: number; // 0-100
-  price: number;
+  price: number; // 기존 호환용 (분석 기준가)
+  currentPrice?: number; // 실시간 현재가
+  previousClose?: number; // 전일 종가
+  changePrice?: number; // 전일 대비
+  changeRate?: number; // 등락률 (%)
+  currency?: 'KRW' | 'USD'; // 통화
+  market?: MarketType; // 시장 구분
+  exchangeCode?: string; // 해외 거래소 코드
+  quoteStatus?: 'OK' | 'FAILED' | 'PENDING' | 'DELAYED'; // 시세 상태
+  quoteTimestamp?: string; // 시세 조회 시간
+  quoteError?: string; // 시세 조회 실패 사유
+  priceSource?: PriceSource; // 시세 출처 (원본 Trading_Agent에서 포팅)
+  priceSourceLabel?: string; // 시세 출처 한글 라벨 ("실시간" | "최신 종가")
   reason: string;
   indicators: Record<string, number>;
   timestamp: Date;
