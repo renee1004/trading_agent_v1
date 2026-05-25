@@ -13,6 +13,9 @@ import {
   findOverseasMasterItem,
   normalizeOverseasDisplayCode,
   searchOverseasMaster,
+  getOverseasMasterExchangeCode,
+  getExplicitOverseasExchangeCode,
+  stripOverseasExchangeSuffix as _stripOverseasExchangeSuffix,
   type OverseasExchangeCode,
   type OverseasMasterItem,
 } from './kis-overseas-master';
@@ -324,3 +327,68 @@ export function findDomesticNameBySymbol(symbol: string): string | undefined {
   const entry = DOMESTIC_MASTER_BY_SYMBOL.get(symbol);
   return entry?.stockName;
 }
+
+// ─── 실시간 현재가 보강용 유틸리티 (원본 Trading_Agent에서 포팅) ───
+// route.ts의 enrichSignalWithQuote에서 사용
+
+const FALLBACK_EXCD_SEQUENCE: OverseasExchangeCode[] = ['NAS', 'NYS', 'AMS'];
+
+/**
+ * 국내/해외 자동 판별
+ * 원본: isKorean (app/api/kis/price/route.ts)
+ *
+ * 국내: 6자리 숫자, .KS, .KQ, KRX: 접두사
+ * 해외: 그 외 모든 심볼
+ */
+export function isKoreanSymbol(symbol: string): boolean {
+  return isDomesticStockCode(symbol) ||
+    symbol.trim().endsWith('.KS') ||
+    symbol.trim().endsWith('.KQ');
+}
+
+/**
+ * 종목코드에서 순수 코드만 추출
+ * 국내: "KRX:005930" → "005930", "005930.KS" → "005930"
+ * 해외: "NAS:NVDA" → "NVDA", "NVDA.NAS" → "NVDA"
+ */
+export function normalizeStockCode(symbol: string): string {
+  // 국내: KRX: 접두사 제거
+  const withoutKrx = symbol.replace(/^KRX:/i, '');
+  // 국내: .KS/.KQ 접미사 제거
+  const withoutKs = withoutKrx.replace(/\.KS$/, '').replace(/\.KQ$/, '');
+  // 해외: 거래소 접미사 제거
+  if (!isKoreanSymbol(symbol)) {
+    return _stripOverseasExchangeSuffix(withoutKs);
+  }
+  return withoutKs;
+}
+
+/**
+ * 해외 종목의 거래소 코드 종합 판별
+ * 우선순위: 명시적 접미사 → 마스터 테이블 → 기본값 NAS
+ * 원본: getExcd (overseas.ts)
+ */
+export function getOverseasExchangeCode(symbol: string): OverseasExchangeCode {
+  const pureSymbol = _stripOverseasExchangeSuffix(symbol);
+
+  return (
+    getExplicitOverseasExchangeCode(symbol) ??
+    getOverseasMasterExchangeCode(symbol) ??
+    'NAS'
+  );
+}
+
+/**
+ * 해외 종목의 거래소 후보 목록 반환 (fallback 시퀀스)
+ * 원본: getExcdCandidates
+ */
+export function getOverseasExchangeCandidates(symbol: string): OverseasExchangeCode[] {
+  const first = getOverseasExchangeCode(symbol);
+  return [...new Set([first, ...FALLBACK_EXCD_SEQUENCE])];
+}
+
+/**
+ * 거래소 접미사를 제거한 순수 심볼 반환 (kis-overseas-master.ts에서 재수출)
+ * 예: "NAS:NVDA" → "NVDA", "SPY.AMS" → "SPY"
+ */
+export const stripOverseasExchangeSuffix = _stripOverseasExchangeSuffix;
