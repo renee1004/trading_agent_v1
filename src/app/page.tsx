@@ -613,13 +613,25 @@ export default function TradingDashboard() {
 
   // 관심종목 삭제
   const removeFromWatchlist = async (id: string) => {
-    try {
-      await fetch(`/api/watchlist?id=${id}`, { method: 'DELETE' });
-      await loadDashboardData();
-    } catch (error) {
-      console.error('관심종목 삭제 실패:', error);
+  const previous = watchlist;
+
+  // 즉시 화면에서 제거
+  setWatchlist(prev => prev.filter(item => item.id !== id));
+
+  try {
+    const res = await fetch(`/api/watchlist?id=${id}`, { method: 'DELETE' });
+
+    if (!res.ok) {
+      // 실패 시 원래 목록으로 복구
+      setWatchlist(previous);
+      console.error('관심종목 삭제 실패:', res.status);
     }
-  };
+  } catch (error) {
+    // 네트워크 오류 시 원래 목록으로 복구
+    setWatchlist(previous);
+    console.error('관심종목 삭제 실패:', error);
+  }
+};
 
   // 관심종목에 이미 있는지 확인
   const isInWatchlist = (code: string) => {
