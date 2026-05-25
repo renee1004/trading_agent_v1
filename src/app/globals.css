@@ -121,13 +121,7 @@
   }
 }
 
-/*
- * Mobile dashboard safety overrides
- *
- * The dashboard currently lives mostly in a single large page.tsx file.
- * These overrides apply the responsive intent from the mobile layout patch
- * without replacing the whole page component, reducing client-side regression risk.
- */
+/* Narrow mobile safety overrides. Do not override generic grid utilities. */
 @layer utilities {
   @media (max-width: 640px) {
     html,
@@ -176,24 +170,6 @@
       padding-right: 0.75rem;
     }
 
-    .grid.grid-cols-4,
-    .grid.md\:grid-cols-4,
-    .grid.lg\:grid-cols-4 {
-      grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-    }
-
-    .grid.grid-cols-6,
-    .grid.md\:grid-cols-6,
-    .grid.lg\:grid-cols-6 {
-      grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
-    }
-
-    .grid.grid-cols-7,
-    .grid.md\:grid-cols-7,
-    .grid.lg\:grid-cols-7 {
-      grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-    }
-
     table {
       min-width: 720px;
     }
@@ -207,29 +183,6 @@
     .text-3xl {
       font-size: 1.5rem;
       line-height: 2rem;
-    }
-
-    .text-2xl {
-      font-size: 1.25rem;
-      line-height: 1.75rem;
-    }
-
-    .p-6 {
-      padding: 1rem;
-    }
-
-    .px-6 {
-      padding-left: 1rem;
-      padding-right: 1rem;
-    }
-
-    .py-6 {
-      padding-top: 1rem;
-      padding-bottom: 1rem;
-    }
-
-    .gap-6 {
-      gap: 1rem;
     }
   }
 }
