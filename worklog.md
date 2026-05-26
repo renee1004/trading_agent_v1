@@ -159,3 +159,20 @@ Stage Summary:
 - 프론트 검색창: /api/stocks/search 연결 완료
 - 현재가/검색 분리: 검색은 로컬 마스터만, 현재가는 대시보드에서만 KIS API 호출
 - 테스트 통과: NVDA, TSLA, PLTR, RIVN, IONQ, HOOD, SOFI, SMR, RKLB, 삼성전자, SK하이닉스, NAVER, 카카오, 엔비디아, NVIDIA, 테슬라, 팔란티어
+
+---
+Task ID: 1
+Agent: full-stack-developer
+Task: Apply comprehensive mobile responsive fixes to page.tsx and globals.css
+
+Work Log:
+- Added mobile responsive base rules to globals.css (container full-width, CJK word-break, flex min-w-0, td/th overflow-wrap)
+- Applied ~40 responsive fixes to page.tsx (font sizing, text overflow, layout restructuring)
+- Removed incorrect strategy subtitle "인터넷/유튜브 수익률 검증 전략 5종"
+- Restructured strategy card layout for mobile (stacked: name+toggle → description → stats)
+- Built successfully and pushed to origin main
+
+Stage Summary:
+- All mobile responsive fixes applied
+- Build passes
+- Commit: fix: improve mobile layout and remove incorrect strategy subtitle
