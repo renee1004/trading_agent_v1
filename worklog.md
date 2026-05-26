@@ -185,3 +185,24 @@ Stage Summary:
 - FORCE_TEST_SIGNAL for pipeline validation (PAPER only)
 - Dashboard UI shows signal diagnostics with blocked reasons and BUY candidates
 - Git push requires GitHub credentials (not available in this environment)
+---
+Task ID: 1
+Agent: main
+Task: 6+1포인트 구현 - 신호/UI 임계값 통합, PAPER+DEMO 잔고조회 실패 허용
+
+Work Log:
+- 코드 전체 분석: trading-agent.ts, effective-settings.ts, status/route.ts, page.tsx, kis-api.ts, risk-manager.ts, trading/signals/route.ts
+- 기존 구현 상태 확인: strategyAggressiveness, AGGRESSIVENESS_THRESHOLDS, RiskManager 동적 임계값, FORCE_TEST_SIGNAL, Agent 탭 UI 이미 구현됨
+- 근본 원인 파악: /api/trading/signals GET이 TradingEngine.analyze() 호출 시 signalThreshold/weakSignalThreshold를 전달하지 않아 항상 기본값(60/40) 사용 → 공격성 설정 무시
+- 수정 1: /api/trading/signals GET/POST에 getEffectiveTradingSettings() 임계값 적용
+- 수정 2: 대시보드 "매수 신호" 카드에 실행 가능 신호 수 뱃지 추가 (불일치 시 amber badge)
+- 수정 3: validateOrderExecution에서 PAPER+DEMO 잔고 조회 실패 시 소액 주문 허용 (maxOrderAmount 이하)
+- 수정 4: trading-agent.ts 포지션 조회 실패 시 PAPER+DEMO 구분 처리
+- 빌드 테스트 통과
+- 커밋: 635a716
+
+Stage Summary:
+- 근본 원인 수정: signals API가 공격성 설정 무시하던 문제 해결
+- PAPER+DEMO에서 잔고 조회 실패해도 소액 주문 가능
+- 대시보드에 실행 가능 신호 수 표시로 UI/실행 불일치 시각화
+- GitHub push는 인증 문제로 불가 — 사용자가 직접 push 필요
