@@ -166,7 +166,7 @@ class KisApiThrottler {
 }
 
 // 전역 KIS API 스로틀러 인스턴스 (모든 KisApiClient가 공유)
-const kisThrottler = new KisApiThrottler(350);
+const kisThrottler = new KisApiThrottler(500);
 
 /**
  * KIS API 호출 속도제한(EGW00201) 재시도 래퍼
@@ -177,13 +177,13 @@ const kisThrottler = new KisApiThrottler(350);
  * @param fn - 실행할 비동기 함수
  * @param label - 로그용 라벨
  * @param maxRetries - 최대 재시도 횟수 (기본 3)
- * @param baseDelayMs - 첫 재시도 대기 시간 (기본 500ms, 이후 2배씩 증가)
+ * @param baseDelayMs - 첫 재시도 대기 시간 (기본 1000ms, 이후 2배씩 증가)
  */
 async function retryOnRateLimit<T>(
   fn: () => Promise<T>,
   label: string,
   maxRetries: number = 3,
-  baseDelayMs: number = 500,
+  baseDelayMs: number = 1000,
 ): Promise<T> {
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {

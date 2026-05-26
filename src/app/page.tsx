@@ -758,7 +758,10 @@ export default function TradingDashboard() {
       await loadSettingsFromServer();
       // KIS 설정/토큰 상태를 먼저 확인한 뒤 잔고 조회
       await loadKisConfig();
-      await Promise.all([loadDashboardData(), loadOverseasData(), loadAgentStatus()]);
+      // 잔고 순차 로드 (KIS API 속도제한 EGW00201 방지 — 동시 호출 금지)
+      await loadDashboardData();
+      await loadOverseasData();
+      await loadAgentStatus();
     };
     fetchData();
     const interval = setInterval(fetchData, 30000);
