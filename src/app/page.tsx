@@ -343,6 +343,7 @@ export default function TradingDashboard() {
   }>>([]);
   const [isRunningCycle, setIsRunningCycle] = useState(false);
   const [autoCycleEnabled, setAutoCycleEnabled] = useState(false);
+  const [isSwitchingMode, setIsSwitchingMode] = useState(false); // 주문 모드 전환 중
 
   // 서버 스케줄러 상태
   const [schedulerInfo, setSchedulerInfo] = useState<{
@@ -2529,90 +2530,139 @@ export default function TradingDashboard() {
 
             {/* 주문 실행 모드 표시 + PAPER 전환 */}
             {agentStatus?.effectiveSettings && (
-              <Card className="border-blue-200 bg-blue-50/30 dark:bg-blue-950/10 dark:border-blue-800">
+              <Card className={`transition-all duration-300 ${
+                agentStatus.effectiveSettings.orderExecutionMode === 'PAPER'
+                  ? 'border-blue-400 bg-blue-50/50 dark:bg-blue-950/20 dark:border-blue-700 ring-2 ring-blue-200 dark:ring-blue-800'
+                  : 'border-amber-200 bg-amber-50/30 dark:bg-amber-950/10 dark:border-amber-800'
+              }`}>
                 <CardContent className="pt-4 pb-4">
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <p className="text-sm font-medium">주문 실행 모드</p>
-                        <Badge variant="outline" className={
-                          agentStatus.effectiveSettings.orderExecutionMode === 'DRY_RUN' ? 'border-gray-300 text-gray-500' :
-                          agentStatus.effectiveSettings.orderExecutionMode === 'PAPER' ? 'border-blue-300 text-blue-600' :
-                          'border-red-300 text-red-600'
-                        }>
-                          {agentStatus.effectiveSettings.orderExecutionMode === 'DRY_RUN' ? 'DRY_RUN (신호만)' :
-                           agentStatus.effectiveSettings.orderExecutionMode === 'PAPER' ? 'PAPER (모의투자 주문)' :
-                           'LIVE (실전 주문)'}
-                        </Badge>
-                        <Badge variant="outline" className="border-emerald-300 text-emerald-600">
-                          {agentStatus.effectiveSettings.tradingMode === 'DEMO' ? '모의투자' : '실전'}
-                        </Badge>
-                      </div>
-                      {agentStatus.demoOrderGuide && (
-                        <div className="text-xs text-muted-foreground">
-                          {agentStatus.demoOrderGuide.canSendDemoDomesticOrder ? (
-                            <span className="text-emerald-600 font-medium">모의투자 주문 접수 가능</span>
-                          ) : (
-                            <span>모의투자 주문 차단: {agentStatus.demoOrderGuide.currentBlockingReasons?.join(', ')}</span>
-                          )}
-                        </div>
+                  <div className="flex flex-col gap-3">
+                    {/* 첫째 줄: 모드 뱃지 + 계정 모드 */}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-sm font-semibold">주문 실행 모드</p>
+                      <Badge className={`text-xs font-bold px-2.5 py-0.5 ${
+                        agentStatus.effectiveSettings.orderExecutionMode === 'DRY_RUN'
+                          ? 'bg-gray-100 text-gray-600 border border-gray-300'
+                          : agentStatus.effectiveSettings.orderExecutionMode === 'PAPER'
+                          ? 'bg-blue-500 text-white border border-blue-600'
+                          : 'bg-red-500 text-white border border-red-600'
+                      }`} variant="outline">
+                        {agentStatus.effectiveSettings.orderExecutionMode === 'DRY_RUN' ? 'DRY_RUN (신호만)' :
+                         agentStatus.effectiveSettings.orderExecutionMode === 'PAPER' ? 'PAPER (모의투자 주문)' :
+                         'LIVE (실전 주문)'}
+                      </Badge>
+                      <Badge variant="outline" className="border-emerald-300 text-emerald-600 text-xs">
+                        {agentStatus.effectiveSettings.tradingMode === 'DEMO' ? '모의투자 계정' : '실전 계정'}
+                      </Badge>
+                      {/* 전환 중 스피너 */}
+                      {isSwitchingMode && (
+                        <span className="flex items-center gap-1 text-xs text-blue-500 animate-pulse">
+                          <RefreshCw className="h-3 w-3 animate-spin" />
+                          전환 중…
+                        </span>
                       )}
-                      <p className="text-[11px] text-muted-foreground">
-                        allowRealDomesticOrder={String(agentStatus.effectiveSettings.allowRealDomesticOrder)} — 이 설정은 실전 주문(LIVE)에만 적용됨, PAPER 모드에는 영향 없음
-                      </p>
                     </div>
-                    {agentStatus.effectiveSettings.orderExecutionMode === 'DRY_RUN' && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="border-blue-300 text-blue-600 hover:bg-blue-50 shrink-0"
-                        onClick={async () => {
-                          try {
-                            const res = await fetch('/api/settings/trading', {
-                              method: 'POST',
-                              headers: { 'Content-Type': 'application/json' },
-                              body: JSON.stringify({
-                                orderExecutionMode: 'PAPER',
-                                autoDomesticOrderEnabled: true,
-                                killSwitchEnabled: false,
-                              }),
-                            });
-                            if (res.ok) {
-                              await loadDashboardData();
-                              await loadAgentStatus();
-                            }
-                          } catch (e) {
-                            console.error('PAPER 모드 전환 실패:', e);
-                          }
-                        }}
-                      >
-                        PAPER 모드로 전환 (모의투자 주문)
-                      </Button>
+
+                    {/* 둘째 줄: 주문 가능 여부 */}
+                    {agentStatus.demoOrderGuide && (
+                      <div className={`text-xs px-2.5 py-1 rounded-md inline-flex items-center gap-1.5 ${
+                        agentStatus.demoOrderGuide.canSendDemoDomesticOrder
+                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/30 dark:border-emerald-800 dark:text-emerald-400'
+                          : 'bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-950/30 dark:border-amber-800 dark:text-amber-400'
+                      }`}>
+                        {agentStatus.demoOrderGuide.canSendDemoDomesticOrder ? (
+                          <>
+                            <CheckCircle className="h-3.5 w-3.5 shrink-0" />
+                            <span className="font-medium">모의투자 주문 접수 가능</span>
+                          </>
+                        ) : (
+                          <>
+                            <XCircle className="h-3.5 w-3.5 shrink-0" />
+                            <span>차단: {agentStatus.demoOrderGuide.currentBlockingReasons?.join(', ')}</span>
+                          </>
+                        )}
+                      </div>
                     )}
-                    {agentStatus.effectiveSettings.orderExecutionMode === 'PAPER' && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="border-gray-300 text-gray-500 hover:bg-gray-50 shrink-0"
-                        onClick={async () => {
-                          try {
-                            const res = await fetch('/api/settings/trading', {
-                              method: 'POST',
-                              headers: { 'Content-Type': 'application/json' },
-                              body: JSON.stringify({ orderExecutionMode: 'DRY_RUN' }),
-                            });
-                            if (res.ok) {
-                              await loadDashboardData();
-                              await loadAgentStatus();
+
+                    {/* 셋째 줄: 안내 문구 */}
+                    <p className="text-[11px] text-muted-foreground">
+                      {agentStatus.effectiveSettings.orderExecutionMode === 'DRY_RUN'
+                        ? '현재 신호만 생성하고 KIS 주문 API는 호출하지 않습니다. PAPER로 전환하면 모의투자 서버에 실제 주문이 접수됩니다.'
+                        : agentStatus.effectiveSettings.orderExecutionMode === 'PAPER'
+                        ? 'PAPER 모드 활성 — 분석 신호 발생 시 KIS 모의투자 서버로 주문이 전송됩니다. 실전 계정에는 영향 없습니다.'
+                        : 'LIVE 모드 — 실전 주문이 활성화되어 있습니다.'}
+                    </p>
+
+                    {/* 넷째 줄: 전환 버튼 */}
+                    <div className="flex gap-2 pt-1">
+                      {agentStatus.effectiveSettings.orderExecutionMode === 'DRY_RUN' && (
+                        <Button
+                          size="sm"
+                          className="bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-sm shrink-0"
+                          disabled={isSwitchingMode}
+                          onClick={async () => {
+                            setIsSwitchingMode(true);
+                            try {
+                              const res = await fetch('/api/settings/trading', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                  orderExecutionMode: 'PAPER',
+                                  autoDomesticOrderEnabled: true,
+                                  killSwitchEnabled: false,
+                                }),
+                              });
+                              if (res.ok) {
+                                await loadDashboardData();
+                                await loadAgentStatus();
+                              }
+                            } catch (e) {
+                              console.error('PAPER 모드 전환 실패:', e);
+                            } finally {
+                              setIsSwitchingMode(false);
                             }
-                          } catch (e) {
-                            console.error('DRY_RUN 모드 전환 실패:', e);
-                          }
-                        }}
-                      >
-                        DRY_RUN으로 복귀
-                      </Button>
-                    )}
+                          }}
+                        >
+                          {isSwitchingMode ? (
+                            <><RefreshCw className="h-4 w-4 animate-spin mr-1" />전환 중…</>
+                          ) : (
+                            <><Zap className="h-4 w-4 mr-1" />PAPER 모드로 전환</>
+                          )}
+                        </Button>
+                      )}
+                      {agentStatus.effectiveSettings.orderExecutionMode === 'PAPER' && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="border-gray-400 text-gray-600 hover:bg-gray-100 font-semibold shadow-sm shrink-0"
+                          disabled={isSwitchingMode}
+                          onClick={async () => {
+                            setIsSwitchingMode(true);
+                            try {
+                              const res = await fetch('/api/settings/trading', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ orderExecutionMode: 'DRY_RUN' }),
+                              });
+                              if (res.ok) {
+                                await loadDashboardData();
+                                await loadAgentStatus();
+                              }
+                            } catch (e) {
+                              console.error('DRY_RUN 모드 전환 실패:', e);
+                            } finally {
+                              setIsSwitchingMode(false);
+                            }
+                          }}
+                        >
+                          {isSwitchingMode ? (
+                            <><RefreshCw className="h-4 w-4 animate-spin mr-1" />전환 중…</>
+                          ) : (
+                            <><Square className="h-4 w-4 mr-1" />DRY_RUN으로 복귀</>
+                          )}
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 </CardContent>
               </Card>
