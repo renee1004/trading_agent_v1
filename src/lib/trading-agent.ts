@@ -25,6 +25,11 @@ import {
   RuntimeDecision,
 } from './effective-settings';
 
+// 강제 테스트 신호 — 모의투자/DRY_RUN 파이프라인 검증용
+// 환경변수 FORCE_TEST_SIGNAL=true일 때만 활성화
+// 실제 운영에서는 절대 켜지지 않아야 함
+const FORCE_TEST_SIGNAL = process.env.FORCE_TEST_SIGNAL === 'true';
+
 // 에이전트 로그 타입
 export interface AgentLog {
   id: string;
@@ -54,6 +59,8 @@ export interface AgentCycleResult {
   overseasFailed: number;
   // stocksAnalyzed가 0일 때 원인
   zeroAnalysisReason?: string;
+  // 실패 종목 상세
+  failedStocks: Array<{ stockCode: string; stockName: string; market: string; reason: string }>;
 }
 
 // 에이전트 상태
@@ -167,6 +174,9 @@ async function fetchCandles(
   market: MarketType,
   exchangeCode?: string
 ): Promise<{ candles: StockCandle[]; error?: string }> {
+  // KRX: 접두사 제거 (예: KRX:069500 → 069500)
+  const normalizedCode = stockCode.replace(/^KRX:/i, '');
+
   // KIS 클라이언트가 없으면 조회 불가
   if (!kisClient) {
     const reason = 'KIS 클라이언트 없음';
@@ -177,7 +187,7 @@ async function fetchCandles(
   try {
     if (market === 'OVERSEAS' && exchangeCode) {
       const overseasCandles = await kisClient.getOverseasDailyCandles(
-        stockCode, exchangeCode, '3M'
+        normalizedCode, exchangeCode, '3M'
       );
       // OverseasStockCandle → StockCandle 변환
       const candles = overseasCandles.map(c => ({
@@ -190,13 +200,14 @@ async function fetchCandles(
       }));
       return { candles };
     } else {
-      const candles = await kisClient.getStockDailyCandles(stockCode, '3M');
+      const candles = await kisClient.getStockDailyCandles(normalizedCode, '3M');
       return { candles };
     }
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error);
     addLog('ERROR', market, `${stockName}(${stockCode}) 캔들 데이터 조회 실패`, {
       stockCode,
+      normalizedCode,
       stockName,
       market,
       exchangeCode: exchangeCode || '',
@@ -794,6 +805,28 @@ async function reconcilePositions(
 }
 
 /**
+ * 캔들 조회 에러 원인 분류
+ */
+function classifyCandleError(errorMsg: string): string {
+  if (errorMsg.includes('EGW00201') || errorMsg.includes('초당 거래건수')) {
+    return 'KIS 속도제한 (EGW00201)';
+  }
+  if (errorMsg.includes('output2') || errorMsg.includes('데이터 없음')) {
+    return '일봉 데이터 없음 (output2 empty)';
+  }
+  if (errorMsg.includes('HTTP 500')) {
+    return 'KIS 서버 오류 (HTTP 500)';
+  }
+  if (errorMsg.includes('rt_cd=1') || errorMsg.includes('rt_cd=8')) {
+    return `KIS API 오류: ${errorMsg.substring(0, 80)}`;
+  }
+  if (errorMsg.includes('종목코드') || errorMsg.includes('symbol')) {
+    return '종목코드 형식 오류';
+  }
+  return `기타: ${errorMsg.substring(0, 60)}`;
+}
+
+/**
  * stocksAnalyzed가 0일 때 원인을 진단하여 반환
  */
 function diagnoseZeroAnalysis(
@@ -857,6 +890,7 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
   let overseasSuccess = 0;
   let overseasFailed = 0;
   const candleErrors: string[] = [];
+  const failedStocks: Array<{ stockCode: string; stockName: string; market: string; reason: string }> = [];
 
   addLog('INFO', 'DOMESTIC', '자동 분석 사이클 시작');
 
@@ -877,6 +911,7 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
       positionsMonitored: 0, exitsExecuted: 0, logs: agentState.logs.slice(0, 10), errors: [],
       domesticSuccess: 0, domesticFailed: 0, overseasSuccess: 0, overseasFailed: 0,
       zeroAnalysisReason: 'autoAnalysisEnabled=false',
+      failedStocks: [],
     };
   }
 
@@ -892,6 +927,7 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
         positionsMonitored: 0, exitsExecuted: 0, logs: agentState.logs.slice(0, 10), errors: [],
         domesticSuccess: 0, domesticFailed: 0, overseasSuccess: 0, overseasFailed: 0,
         zeroAnalysisReason: 'runAnalysisOnlyDuringMarketHours + 장외',
+        failedStocks: [],
       };
     }
   }
@@ -948,11 +984,16 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
 
   for (const stock of domesticStocks) {
     try {
+      // KRX: 접두사 정규화
+      const normalizedCode = stock.code.replace(/^KRX:/i, '');
+
       // 캔들 데이터 조회
-      const { candles, error: candleError } = await fetchCandles(kisClient, stock.code, stock.name, 'DOMESTIC');
+      const { candles, error: candleError } = await fetchCandles(kisClient, normalizedCode, stock.name, 'DOMESTIC');
 
       if (candleError) {
         domesticFailed++;
+        const failReason = classifyCandleError(candleError);
+        failedStocks.push({ stockCode: stock.code, stockName: stock.name, market: 'DOMESTIC', reason: failReason });
         candleErrors.push(`${stock.name}: ${candleError}`);
         // 실패해도 다음 종목으로 계속
         continue;
@@ -960,6 +1001,7 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
 
       if (candles.length < 30) {
         domesticFailed++;
+        failedStocks.push({ stockCode: stock.code, stockName: stock.name, market: 'DOMESTIC', reason: `캔들 부족 (${candles.length}개/최소 30개)` });
         addLog('INFO', 'DOMESTIC', `${stock.name} 데이터 부족 (캔들 ${candles.length}개, 최소 30개 필요)`, {
           stockCode: stock.code,
           candlesLength: candles.length,
@@ -972,34 +1014,53 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
       stocksAnalyzed++;
 
       // 전략 분석
-      const signal = TradingEngine.analyze(candles, stock.code, stock.name, 'ALL', 'DOMESTIC');
+      const signal = TradingEngine.analyze(candles, normalizedCode, stock.name, 'ALL', 'DOMESTIC');
+
+      // FORCE_TEST_SIGNAL: 첫 번째 종목에 강제 BUY 신호 주입 (파이프라인 검증용)
+      const isForceTest = FORCE_TEST_SIGNAL && signal.signalType === 'HOLD' && stocksAnalyzed <= 1;
+      const finalAnalysisSignal = isForceTest ? {
+        ...signal,
+        signalType: 'BUY' as const,
+        confidence: 75,
+        reason: `[FORCE_TEST] 강제 매수 신호 — 파이프라인 검증용 (원본: ${signal.reason})`,
+        holdReason: undefined,
+      } : signal;
+
+      if (isForceTest) {
+        addLog('SIGNAL', 'DOMESTIC', `[FORCE_TEST] ${stock.name} 강제 BUY 신호 주입 — 파이프라인 검증`, {
+          stockCode: stock.code,
+          originalSignal: signal.signalType,
+          originalReason: signal.reason,
+        });
+      }
 
       // 종목별 상세 정보 로그
-      addLog('INFO', 'DOMESTIC', `${stock.name} 분석 결과: ${signal.signalType} (신뢰도: ${signal.confidence}%)`, {
-        stockCode: stock.code,
+      addLog('INFO', 'DOMESTIC', `${stock.name} 분석 결과: ${finalAnalysisSignal.signalType} (신뢰도: ${finalAnalysisSignal.confidence}%)${finalAnalysisSignal.signalType === 'HOLD' ? ' - ' + (finalAnalysisSignal.holdReason || finalAnalysisSignal.reason) : ''}`, {
+        stockCode: normalizedCode,
         candlesLength: candles.length,
         lastClose: candles[candles.length - 1].close,
-        signalType: signal.signalType,
-        strategy: signal.strategy,
+        signalType: finalAnalysisSignal.signalType,
+        strategy: finalAnalysisSignal.strategy,
+        holdReason: finalAnalysisSignal.holdReason,
       });
 
-      if (signal.signalType !== 'HOLD') {
+      if (finalAnalysisSignal.signalType !== 'HOLD') {
         signalsGenerated++;
         addLog('SIGNAL', 'DOMESTIC', 
-          `${stock.name} ${signal.signalType} 신호 (신뢰도: ${signal.confidence}%) - ${signal.reason}`,
-          { signalType: signal.signalType, confidence: signal.confidence, price: signal.price, strategy: signal.strategy }
+          `${stock.name} ${finalAnalysisSignal.signalType} 신호 (신뢰도: ${finalAnalysisSignal.confidence}%) - ${finalAnalysisSignal.reason}`,
+          { signalType: finalAnalysisSignal.signalType, confidence: finalAnalysisSignal.confidence, price: finalAnalysisSignal.price, strategy: finalAnalysisSignal.strategy }
         );
 
         // AI 분석으로 신호 검증 (비동기, 실패 시 기술적 신호만 사용)
-        let finalSignal = signal;
+        let finalSignal = finalAnalysisSignal;
         try {
           const aiResult = await aiAnalyzer.analyzeStock(
-            stock.name, stock.code, 'DOMESTIC', signal
+            stock.name, stock.code, 'DOMESTIC', finalAnalysisSignal
           );
           if (aiResult.confidence > 0) {
-            finalSignal = aiAnalyzer.combineSignals(signal, aiResult);
+            finalSignal = aiAnalyzer.combineSignals(finalAnalysisSignal, aiResult);
             addLog('SIGNAL', 'DOMESTIC',
-              `${stock.name} AI 검증: ${signal.signalType}→${finalSignal.signalType} (신뢰도: ${signal.confidence}%→${finalSignal.confidence}%) - AI심리: ${aiResult.sentiment}`,
+              `${stock.name} AI 검증: ${finalAnalysisSignal.signalType}→${finalSignal.signalType} (신뢰도: ${finalAnalysisSignal.confidence}%→${finalSignal.confidence}%) - AI심리: ${aiResult.sentiment}`,
               { aiRecommendation: aiResult.recommendation, aiConfidence: aiResult.confidence, aiRiskLevel: aiResult.riskLevel }
             );
           }
@@ -1088,12 +1149,15 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
 
         if (candleError) {
           overseasFailed++;
+          const failReason = classifyCandleError(candleError);
+          failedStocks.push({ stockCode: stock.code, stockName: stock.name, market: 'OVERSEAS', reason: failReason });
           candleErrors.push(`해외 ${stock.name}: ${candleError}`);
           continue;
         }
 
         if (candles.length < 30) {
           overseasFailed++;
+          failedStocks.push({ stockCode: stock.code, stockName: stock.name, market: 'OVERSEAS', reason: `캔들 부족 (${candles.length}개/최소 30개)` });
           addLog('INFO', 'OVERSEAS', `${stock.name} 데이터 부족 (캔들 ${candles.length}개)`, {
             stockCode: stock.code,
             normalizedSymbol,
@@ -1210,7 +1274,7 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
           ? `, currentPrice=${currentPrice}, gap=${(priceGapPercent * 100).toFixed(2)}%`
           : '';
         addLog('INFO', 'OVERSEAS',
-          `${stock.name} 분석 결과: ${signal.signalType} (신뢰도: ${signal.confidence}%), normalizedSymbol=${normalizedSymbol}, candles=${candles.length}, lastDailyClose=${analysisPrice}${gapDisplay}, source=${priceDataSource}`,
+          `${stock.name} 분석 결과: ${signal.signalType} (신뢰도: ${signal.confidence}%), normalizedSymbol=${normalizedSymbol}, candles=${candles.length}, lastDailyClose=${analysisPrice}${gapDisplay}, source=${priceDataSource}${signal.signalType === 'HOLD' ? ' - ' + (signal.holdReason || signal.reason) : ''}`,
           {
             originalStockCode: currentPriceInfo?.originalStockCode || stock.code,
             stockCode: currentPriceInfo?.stockCode || stock.code,
@@ -1227,6 +1291,7 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
             realtimeEnabled: false,
             signalType: signal.signalType,
             strategy: signal.strategy,
+            holdReason: signal.holdReason,
           }
         );
 
@@ -1484,6 +1549,7 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
     overseasSuccess,
     overseasFailed,
     zeroAnalysisReason,
+    failedStocks,
   };
 
   agentState.lastCycleTime = endTime;

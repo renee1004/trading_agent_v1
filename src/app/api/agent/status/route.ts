@@ -5,7 +5,7 @@
 import { NextResponse } from 'next/server';
 import { getAgentStatus, getAgentLogs } from '@/lib/trading-agent';
 import { getSchedulerStatus } from '@/lib/agent-scheduler';
-import { getEffectiveTradingSettings, computeRuntimeDecision } from '@/lib/effective-settings';
+import { getEffectiveTradingSettings, computeRuntimeDecision, getDemoOrderActivationGuide } from '@/lib/effective-settings';
 import { getOverseasMarketInfo, isUSDST, getCurrentKSTString, getCurrentETString } from '@/lib/market-hours';
 import { db } from '@/lib/db';
 
@@ -31,6 +31,7 @@ export async function GET() {
     // 실제 실행 설정 + 런타임 판단
     const { settings: effectiveSettings, source: settingsSource, sources: settingsSources } = await getEffectiveTradingSettings();
     const runtimeDecision = computeRuntimeDecision(effectiveSettings);
+    const demoOrderGuide = getDemoOrderActivationGuide(effectiveSettings);
 
     // DB에서 영속 로그 조회 (최근 30개)
     let dbLogs: Array<{
@@ -188,6 +189,17 @@ export async function GET() {
           analysisBlockedReason: runtimeDecision.analysisBlockedReason,
           domesticOrderBlockedReason: runtimeDecision.domesticOrderBlockedReason,
           overseasOrderBlockedReason: runtimeDecision.overseasOrderBlockedReason,
+        },
+
+        // 모의투자 주문 활성화 가이드
+        demoOrderGuide,
+
+        // FORCE_TEST_SIGNAL 경고
+        forceTestSignal: {
+          enabled: process.env.FORCE_TEST_SIGNAL === 'true',
+          warning: process.env.FORCE_TEST_SIGNAL === 'true' 
+            ? 'FORCE_TEST_SIGNAL 활성화 — 테스트용 강제 BUY 신호가 주입되고 있습니다. 실제 운영 시 반드시 비활성화하세요.'
+            : undefined,
         },
 
         // 로그

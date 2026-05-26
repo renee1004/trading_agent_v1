@@ -263,6 +263,16 @@ export class TradingEngine {
       ? reasons.join(' | ') 
       : signalType === 'HOLD' ? '명확한 신호 없음' : '복합 지표 신호';
 
+    // HOLD 상세 사유 생성
+    let holdReason: string | undefined;
+    if (signalType === 'HOLD') {
+      const holdReasons: string[] = [];
+      if (buyScore < 60) holdReasons.push(`매수스코어 미달(${buyScore}/60)`);
+      if (sellScore < 60) holdReasons.push(`매도신호 불충분`);
+      if (buyScore > sellScore && buyScore < 60) holdReasons.push(`추세 방향 불분명, RSI=${indicatorValues['rsi']?.toFixed(1) || '?'}, MACD=${indicatorValues['macdSignal']?.toFixed(1) || '?'}`);
+      holdReason = holdReasons.length > 0 ? holdReasons.join(', ') : '명확한 방향성 없음';
+    }
+
     return {
       stockCode,
       stockName,
@@ -271,6 +281,7 @@ export class TradingEngine {
       confidence,
       price: lastClose,
       reason,
+      holdReason,
       indicators: indicatorValues,
       timestamp: new Date(),
     };
@@ -389,6 +400,7 @@ export class TradingEngine {
       confidence: 30,
       price: todayClose,
       reason: `돌파가 미달 (현재:${todayClose}, 돌파가:${breakoutLevel.toFixed(0)})`,
+      holdReason: `돌파가 미달: 종가(${todayClose}) < 돌파가(${breakoutLevel.toFixed(0)})`,
       indicators: indicatorValues,
       timestamp: new Date(),
     };
@@ -506,6 +518,7 @@ export class TradingEngine {
       confidence: 40,
       price: lastClose,
       reason: `SuperTrend ${stDirection} 유지 중`,
+      holdReason: `추세 전환 대기: SuperTrend 방향 미변경`,
       indicators: indicatorValues,
       timestamp: new Date(),
     };
@@ -603,6 +616,11 @@ export class TradingEngine {
       };
     }
 
+    // BB 위치 계산
+    const bbPosition = (!isNaN(bbUpper) && !isNaN(bbLower) && (bbUpper - bbLower) > 0)
+      ? ((lastClose - bbLower) / (bbUpper - bbLower) * 100).toFixed(0)
+      : '?';
+
     return {
       stockCode,
       stockName,
@@ -611,6 +629,7 @@ export class TradingEngine {
       confidence: 25,
       price: lastClose,
       reason: '밴드 중간대 위치',
+      holdReason: `과매도/과매수 구간 아님: RSI=${!isNaN(rsi) ? rsi.toFixed(1) : '?'}, BB위치=${bbPosition}%`,
       indicators: indicatorValues,
       timestamp: new Date(),
     };
@@ -716,6 +735,10 @@ export class TradingEngine {
       };
     }
 
+    const maTrend = (!isNaN(maShort) && !isNaN(maLong))
+      ? (maShort > maLong ? '상승' : '하락')
+      : '불명';
+
     return {
       stockCode,
       stockName,
@@ -724,6 +747,7 @@ export class TradingEngine {
       confidence: 20,
       price: lastClose,
       reason: `거래량 비율: ${volumeRatio.toFixed(1)}배`,
+      holdReason: `모멘텀 부족: 거래량비율=${volumeRatio.toFixed(1)}, 추세=${maTrend}`,
       indicators: indicatorValues,
       timestamp: new Date(),
     };
@@ -793,6 +817,17 @@ export class TradingEngine {
       reason = `신호 혼재 [${strategyResults.join(', ')}]`;
     }
 
+    // HOLD 상세 사유 생성
+    let holdReason: string | undefined;
+    if (signalType === 'HOLD') {
+      const holdReasons: string[] = [];
+      if (buyScore < 50) holdReasons.push(`매수스코어 부족(${buyScore.toFixed(0)}/50)`);
+      if (sellScore < 50) holdReasons.push(`매도스코어 부족(${sellScore.toFixed(0)}/50)`);
+      if (buyScore - sellScore <= 15 && buyScore > sellScore) holdReasons.push('매수-매도 격차 미달(15pt 미만)');
+      if (sellScore - buyScore <= 15 && sellScore > buyScore) holdReasons.push('매도-매수 격차 미달(15pt 미만)');
+      holdReason = holdReasons.length > 0 ? holdReasons.join(', ') : '명확한 방향성 없음';
+    }
+
     // 모든 지표 합산
     const allIndicators: Record<string, number> = {};
     for (const signal of signals) {
@@ -811,6 +846,7 @@ export class TradingEngine {
       confidence,
       price: candles[candles.length - 1].close,
       reason,
+      holdReason,
       indicators: allIndicators,
       timestamp: new Date(),
     };
@@ -821,7 +857,8 @@ function createHoldSignal(
   stockCode: string, 
   stockName: string, 
   candles: StockCandle[], 
-  reason: string
+  reason: string,
+  holdReason?: string,
 ): TradingSignal {
   return {
     stockCode,
@@ -831,6 +868,7 @@ function createHoldSignal(
     confidence: 0,
     price: candles.length > 0 ? candles[candles.length - 1].close : 0,
     reason,
+    holdReason,
     indicators: {},
     timestamp: new Date(),
   };

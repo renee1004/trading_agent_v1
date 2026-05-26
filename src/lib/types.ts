@@ -187,6 +187,7 @@ export interface TradingSignal {
   priceSource?: PriceSource; // 시세 출처 (원본 Trading_Agent에서 포팅)
   priceSourceLabel?: string; // 시세 출처 한글 라벨 ("실시간" | "최신 종가")
   reason: string;
+  holdReason?: string; // HOLD 상세 사유 (RSI 미충족, 추세 부족, 거래량 부족, 신뢰도 기준 미달 등)
   indicators: Record<string, number>;
   timestamp: Date;
   // 해외주식 가격 검증 필드 (주문 전 분석가 vs 현재가 괴리율 체크)

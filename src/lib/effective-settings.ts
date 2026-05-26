@@ -519,3 +519,49 @@ export function validateOrderExecution(
   result.canPlaceOrder = true;
   return result;
 }
+
+/**
+ * 모의투자 주문 활성화에 필요한 설정값 안내
+ * 현재 설정 기준으로 모의투자 주문이 가능하려면 무엇을 변경해야 하는지 반환
+ */
+export function getDemoOrderActivationGuide(settings: EffectiveTradingSettings): {
+  canPlaceDemoOrder: boolean;
+  steps: string[];
+  currentValues: Record<string, any>;
+} {
+  const steps: string[] = [];
+  const currentValues: Record<string, any> = {
+    orderExecutionMode: settings.orderExecutionMode,
+    autoDomesticOrderEnabled: settings.autoDomesticOrderEnabled,
+    enableOverseasOrder: settings.enableOverseasOrder,
+    killSwitchEnabled: settings.killSwitchEnabled,
+    tradingMode: settings.tradingMode,
+  };
+
+  let canPlaceDemoOrder = true;
+
+  if (settings.killSwitchEnabled) {
+    steps.push('killSwitchEnabled=false로 변경 (현재: true — 모든 주문 차단)');
+    canPlaceDemoOrder = false;
+  }
+
+  const mode = settings.orderExecutionMode as string;
+  if (mode === 'DRY_RUN') {
+    steps.push('orderExecutionMode를 PAPER로 변경 (현재: DRY_RUN — 실제 주문 API 호출 차단)');
+    canPlaceDemoOrder = false;
+  } else if (mode === 'LIVE') {
+    steps.push('orderExecutionMode를 PAPER로 변경 (현재: LIVE — 실전 계정 전용 모드)');
+    canPlaceDemoOrder = false;
+  }
+
+  if (!settings.autoDomesticOrderEnabled) {
+    steps.push('autoDomesticOrderEnabled=true로 변경 (현재: false — 국내 자동 주문 비활성화)');
+    canPlaceDemoOrder = false;
+  }
+
+  if (canPlaceDemoOrder) {
+    steps.push('모의투자 주문 가능 — 현재 설정으로 모의투자 계정에서 주문 접수 가능');
+  }
+
+  return { canPlaceDemoOrder, steps, currentValues };
+}

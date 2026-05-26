@@ -314,6 +314,10 @@ export default function TradingDashboard() {
       positionsMonitored: number;
       exitsExecuted: number;
     } | null;
+    forceTestSignal?: {
+      enabled: boolean;
+      warning?: string;
+    };
   } | null>(null);
   const [agentLogs, setAgentLogs] = useState<Array<{
     id: string;
@@ -2498,6 +2502,15 @@ export default function TradingDashboard() {
             </Card>
 
             {/* 에이전트 상태 카드 */}
+            {/* FORCE_TEST_SIGNAL 경고 */}
+            {agentStatus?.forceTestSignal?.enabled && (
+              <Alert variant="destructive" className="mb-4">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>
+                  {agentStatus.forceTestSignal.warning || 'FORCE_TEST_SIGNAL 활성화 — 테스트용 강제 BUY 신호가 주입되고 있습니다.'}
+                </AlertDescription>
+              </Alert>
+            )}
             <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
               <Card className={tradingStatus === 'RUNNING' ? 'border-emerald-200 bg-emerald-50/50 dark:bg-emerald-950/20 dark:border-emerald-800' : ''}>
                 <CardContent className="pt-6">
@@ -2507,9 +2520,14 @@ export default function TradingDashboard() {
                     </div>
                     <div>
                       <p className="text-sm text-muted-foreground">에이전트 상태</p>
-                      <p className={`text-base sm:text-2xl font-bold ${tradingStatus === 'RUNNING' ? 'text-emerald-600' : tradingStatus === 'PAUSED' ? 'text-amber-600' : 'text-gray-600'}`}>
-                        {tradingStatus === 'RUNNING' ? '실행 중' : tradingStatus === 'PAUSED' ? '일시정지' : '대기'}
-                      </p>
+                      <div className="flex items-center gap-2">
+                        <p className={`text-base sm:text-2xl font-bold ${tradingStatus === 'RUNNING' ? 'text-emerald-600' : tradingStatus === 'PAUSED' ? 'text-amber-600' : 'text-gray-600'}`}>
+                          {tradingStatus === 'RUNNING' ? '실행 중' : tradingStatus === 'PAUSED' ? '일시정지' : '대기'}
+                        </p>
+                        {agentStatus?.forceTestSignal?.enabled && (
+                          <Badge variant="destructive" className="text-[10px] px-1.5 py-0">FORCE_TEST</Badge>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </CardContent>
