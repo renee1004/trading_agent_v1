@@ -1,44 +1,53 @@
-# Task 1 - full-stack-developer
+# Task 1 - full-stack-developer Work Record
 
-## Task: Apply comprehensive mobile responsive fixes to page.tsx and globals.css
-
-## Summary
-Applied comprehensive mobile responsive fixes to the KIS Trading Agent dashboard. All changes are committed and pushed.
+## Task: Implement 5 trading improvements
 
 ## Changes Made
 
-### globals.css
-- Added mobile responsive `@layer base` block with:
-  - Container full-width on mobile, responsive max-width at breakpoints
-  - CJK text word-break/overflow-wrap rules
-  - Card content min-width:0 and overflow-wrap
-  - Flex child min-width:0 for text wrapping
-  - Table cell overflow-wrap rules
+### Improvement 1: HOLD Reason Details in Signals
+- **`src/lib/types.ts`**: Added `holdReason?: string` field to `TradingSignal` interface
+- **`src/lib/trading-engine.ts`**:
+  - Updated `createHoldSignal()` to accept optional `holdReason` parameter
+  - Added specific `holdReason` to COMPOSITE strategy HOLD signals (buyScore < 60, sellScore insufficient, trend direction unclear)
+  - Added `holdReason` to VOLATILITY_BREAKOUT HOLD ("돌파가 미달: 종가(X) < 돌파가(Y)")
+  - Added `holdReason` to SUPER_TREND HOLD ("추세 전환 대기: SuperTrend 방향 미변경")
+  - Added `holdReason` to MEAN_REVERSION HOLD ("과매도/과매수 구간 아님: RSI=X, BB위치=Y%")
+  - Added `holdReason` to MOMENTUM HOLD ("모멘텀 부족: 거래량비율=X, 추세=Y")
+  - Added `holdReason` to analyzeAllStrategies() HOLD (score gaps, threshold checks)
+- **`src/lib/trading-agent.ts`**: Added holdReason to domestic and overseas analysis log messages
 
-### page.tsx
-- **Removed** incorrect strategy subtitle "인터넷/유튜브 수익률 검증 전략 5종"
-- **Dialog sizing**: Added `max-w-[calc(100vw-2rem)]` and `max-h-[85vh] overflow-y-auto` to all 3 DialogContent instances
-- **Dashboard stat cards**: `text-2xl` → `text-lg sm:text-2xl`, added `break-all` on monetary values
-- **Overseas stat cards**: Same responsive text sizing and `break-all` pattern
-- **Signal cards**: Added `min-w-0`, `truncate` on stock names, `flex-wrap` on badge containers, `break-all` on prices/reasons, responsive progress bar width, responsive confidence label sizing
-- **Signal summary grid**: `md:grid-cols-3` → `grid-cols-2 sm:grid-cols-3`
-- **Agent status cards**: `text-2xl` → `text-base sm:text-2xl`, next execution `text-sm sm:text-lg`
-- **Agent workflow grid**: `md:grid-cols-4` → `grid-cols-2 md:grid-cols-4`
-- **Scheduler settings**: `md:grid-cols-2` → `grid-cols-1 sm:grid-cols-2` (both grid instances)
-- **Agent logs**: `text-xs sm:text-sm` font sizing, `gap-1 sm:gap-2`, `px-2 sm:px-3`, `flex-wrap`, `shrink-0` on badges, `break-all` on messages
-- **Strategy tab cards**: Complete restructure from horizontal layout (description+stats+toggle in flex-row) to stacked mobile-first layout (name+toggle → description → stats)
-- **Watchlist stats grid**: `md:grid-cols-3` → `grid-cols-2 sm:grid-cols-3`, stat values `text-lg sm:text-2xl`
-- **Last cycle summary**: `grid-cols-5` → `grid-cols-2 sm:grid-cols-5`, all values `text-lg sm:text-2xl`
+### Improvement 2: PAPER Mode Clarity for Demo Accounts
+- **`src/lib/effective-settings.ts`**: Added `getDemoOrderActivationGuide()` function that checks killSwitch, orderExecutionMode, autoDomesticOrderEnabled and returns actionable steps
+- **`src/app/api/agent/status/route.ts`**: Added `demoOrderGuide` to API response
 
-## Commits
-- `3cef175`: fix: improve mobile layout and remove incorrect strategy subtitle
-- `b431005`: docs: update worklog for mobile responsive fixes
+### Improvement 3: Fix /api/trading/history empty result
+- **`src/app/api/trading/history/route.ts`**: Complete rewrite to return `success: true` with empty data on DB errors instead of 500 errors. Added inner try/catch for DB query failures, explicit `any` type annotations for filter/reduce callbacks to prevent type issues with Prisma types.
 
-## No Breaking Changes
-- No order execution logic, KIS API call logic, or risk calculation logic modified
-- FID_ORG_ADJ_PRC unchanged
-- No overseas current price validation logging removed
-- enableOverseasOrder not enabled by default
-- No appSecret/accessToken/account numbers logged
-- retryOnRateLimit, kisThrottler, maskAccountNo, HTTP 500 detail logging, balance stability logic all preserved
-- No .env or API keys committed
+### Improvement 4: Failed Analysis Details + KRX Code Normalization
+- **`src/lib/trading-agent.ts`**:
+  - Added `failedStocks` array to `AgentCycleResult` interface
+  - Added `classifyCandleError()` helper function (EGW00201, output2 empty, HTTP 500, rt_cd errors, symbol errors)
+  - Added `failedStocks` tracking in domestic and overseas analysis loops
+  - Added KRX prefix normalization (`KRX:069500` → `069500`) in `fetchCandles()`
+  - Added KRX prefix normalization in domestic analysis loop before fetchCandles call
+  - Added `failedStocks` to early return objects (autoAnalysisEnabled=false, runAnalysisOnlyDuringMarketHours)
+
+### Improvement 5: FORCE_TEST_SIGNAL Environment Variable
+- **`src/lib/trading-agent.ts`**: Added `FORCE_TEST_SIGNAL` constant, injected forced BUY signal on first stock when enabled and signal is HOLD
+- **`src/app/api/agent/status/route.ts`**: Added `forceTestSignal` object to API response
+- **`src/app/page.tsx`**: Added `forceTestSignal` to agentStatus state type, added destructive Alert banner when enabled, added FORCE_TEST Badge next to agent status
+
+## Safety Checks Passed
+- Did NOT change order execution logic, KIS order API call logic, or risk calculation logic
+- Did NOT change FID_ORG_ADJ_PRC
+- Did NOT delete overseas current price validation logging
+- Did NOT enable real orders by default or hardcode enableOverseasOrder=true
+- Did NOT log full KIS appSecret/accessToken/account numbers
+- Did NOT remove: retryOnRateLimit, kisThrottler, maskAccountNo, HTTP 500 detail logging, balance stability logic
+- Did NOT commit .env or API keys/secrets
+
+## Build & Deploy
+- `npx next build` passes successfully
+- Committed: `feat: HOLD reason details, demo order guide, trade history fix, failed stock details, FORCE_TEST_SIGNAL` (e5d5d6b)
+- Worklog commit: 6f01c53
+- Pushed to origin main
