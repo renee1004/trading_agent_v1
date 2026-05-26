@@ -101,6 +101,18 @@ export async function GET() {
           overseasSuccess: agentStatus.lastCycleResult.overseasSuccess,
           overseasFailed: agentStatus.lastCycleResult.overseasFailed,
           zeroAnalysisReason: agentStatus.lastCycleResult.zeroAnalysisReason,
+          // ── 진단 필드 ──
+          uiSignalsCount: agentStatus.lastCycleResult.uiSignalsCount,
+          executableSignalsCount: agentStatus.lastCycleResult.executableSignalsCount,
+          signalsBlockedReasons: agentStatus.lastCycleResult.signalsBlockedReasons,
+          topBuyCandidates: agentStatus.lastCycleResult.topBuyCandidates,
+          signalThreshold: agentStatus.lastCycleResult.signalThreshold,
+          weakSignalThreshold: agentStatus.lastCycleResult.weakSignalThreshold,
+          minConfidenceThreshold: agentStatus.lastCycleResult.minConfidenceThreshold,
+          strategyAggressiveness: agentStatus.lastCycleResult.strategyAggressiveness,
+          positionQueryFailed: agentStatus.lastCycleResult.positionQueryFailed,
+          positionQueryFailedReason: agentStatus.lastCycleResult.positionQueryFailedReason,
+          forceTestSignalUsed: agentStatus.lastCycleResult.forceTestSignalUsed,
         } : null,
 
         // 서버 스케줄러 상태
@@ -176,9 +188,38 @@ export async function GET() {
           maxDailyOverseasOrders: effectiveSettings.maxDailyOverseasOrders,
           maxOpenDomesticPositions: effectiveSettings.maxOpenDomesticPositions,
           maxOpenOverseasPositions: effectiveSettings.maxOpenOverseasPositions,
+          // ── 전략 공격성 설정 ──
+          strategyAggressiveness: effectiveSettings.strategyAggressiveness,
+          signalThreshold: effectiveSettings.signalThreshold,
+          weakSignalThreshold: effectiveSettings.weakSignalThreshold,
+          minConfidenceThreshold: effectiveSettings.minConfidenceThreshold,
         },
         settingsSource,
         settingsSources,
+
+        // ── 신호 진단 요약 ──
+        signalDiagnostics: {
+          strategyAggressiveness: effectiveSettings.strategyAggressiveness,
+          signalThreshold: effectiveSettings.signalThreshold,
+          weakSignalThreshold: effectiveSettings.weakSignalThreshold,
+          minConfidenceThreshold: effectiveSettings.minConfidenceThreshold,
+          // 마지막 사이클 결과에서 진단값 (없으면 빈 값)
+          uiSignalsCount: agentStatus.lastCycleResult?.uiSignalsCount ?? null,
+          executableSignalsCount: agentStatus.lastCycleResult?.executableSignalsCount ?? null,
+          signalsBlockedReasons: agentStatus.lastCycleResult?.signalsBlockedReasons ?? [],
+          topBuyCandidates: agentStatus.lastCycleResult?.topBuyCandidates ?? [],
+          positionQueryFailed: agentStatus.lastCycleResult?.positionQueryFailed ?? false,
+          positionQueryFailedReason: agentStatus.lastCycleResult?.positionQueryFailedReason ?? null,
+          forceTestSignalUsed: agentStatus.lastCycleResult?.forceTestSignalUsed ?? false,
+          // 주문 차단 사유 (런타임 판단 기준)
+          orderBlockedReason: !runtimeDecision.canPlaceDomesticOrderNow
+            ? runtimeDecision.domesticOrderBlockedReason
+            : effectiveSettings.killSwitchEnabled
+              ? 'killSwitchEnabled=true'
+              : effectiveSettings.orderExecutionMode === 'DRY_RUN'
+                ? 'DRY_RUN 모드 (주문 미실행)'
+                : null,
+        },
 
         // 런타임 판단 (현재 시각 기준 즉시 상태)
         runtimeDecision: {

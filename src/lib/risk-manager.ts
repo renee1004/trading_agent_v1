@@ -11,10 +11,14 @@ export class RiskManager {
   private dailyPnL: number = 0;
   private totalPnL: number = 0;
   private dailyStartDate: string = '';
+  private minConfidenceThreshold: number = 50;
 
-  constructor(config: RiskConfig, market: MarketType = 'DOMESTIC') {
+  constructor(config: RiskConfig, market: MarketType = 'DOMESTIC', minConfidenceThreshold?: number) {
     this.config = config;
     this.market = market;
+    if (minConfidenceThreshold !== undefined) {
+      this.minConfidenceThreshold = minConfidenceThreshold;
+    }
   }
 
   /**
@@ -77,11 +81,11 @@ export class RiskManager {
       }
     }
 
-    // 신뢰도 필터
-    if (signal.confidence < 50) {
+    // 신뢰도 필터 (strategyAggressiveness에 따른 동적 임계값)
+    if (signal.confidence < this.minConfidenceThreshold) {
       return {
         allowed: false,
-        reason: `신뢰도 낮음 (${signal.confidence}%)`,
+        reason: `신뢰도 낮음 (${signal.confidence}% < ${this.minConfidenceThreshold}%)`,
       };
     }
 
@@ -244,6 +248,13 @@ export class RiskManager {
   }
 
   /**
+   * 최소 신뢰도 임계값 업데이트
+   */
+  setMinConfidenceThreshold(threshold: number) {
+    this.minConfidenceThreshold = threshold;
+  }
+
+  /**
    * 현재 리스크 상태 조회
    */
   getStatus() {
@@ -252,6 +263,7 @@ export class RiskManager {
       dailyPnL: this.dailyPnL,
       totalPnL: this.totalPnL,
       config: this.config,
+      minConfidenceThreshold: this.minConfidenceThreshold,
       dailyLossLimit: this.config.maxDailyLoss,
       totalLossLimit: this.config.maxTotalLoss,
     };

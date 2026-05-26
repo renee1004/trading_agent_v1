@@ -15,6 +15,38 @@ import { isOverseasMarketOpen, getOverseasBlockedReason } from './market-hours';
 // =============================================
 // 설정 인터페이스 + 안전 기본값
 // =============================================
+export type StrategyAggressiveness = 'CONSERVATIVE' | 'TEST' | 'AGGRESSIVE';
+
+/**
+ * strategyAggressiveness에 따른 임계값 매핑
+ * - CONSERVATIVE: 기존 보수 기준 (신호 점수 ≥ 60 강매수, ≥ 40 약매수, 신뢰도 ≥ 50)
+ * - TEST: 모의투자 파이프라인 검증용 (신호 점수 ≥ 30, 신뢰도 ≥ 30)
+ * - AGGRESSIVE: 공격적 (신호 점수 ≥ 25, 신뢰도 ≥ 25)
+ *
+ * LIVE/REAL 모드에서는 항상 CONSERVATIVE 강제
+ */
+export const AGGRESSIVENESS_THRESHOLDS: Record<StrategyAggressiveness, {
+  signalThreshold: number;       // TradingEngine BUY 신호 최소 buyScore
+  weakSignalThreshold: number;   // 약한 BUY 신호 최소 buyScore
+  minConfidence: number;         // RiskManager 최소 신뢰도(%)
+}> = {
+  CONSERVATIVE: {
+    signalThreshold: 60,
+    weakSignalThreshold: 40,
+    minConfidence: 50,
+  },
+  TEST: {
+    signalThreshold: 30,
+    weakSignalThreshold: 25,
+    minConfidence: 30,
+  },
+  AGGRESSIVE: {
+    signalThreshold: 25,
+    weakSignalThreshold: 20,
+    minConfidence: 25,
+  },
+};
+
 export interface EffectiveTradingSettings {
   // 자동 분석/주문 제어
   autoAnalysisEnabled: boolean;                 // 기본 true — 분석 사이클 자동 실행
@@ -56,6 +88,13 @@ export interface EffectiveTradingSettings {
   maxDailyOverseasOrders: number;                         // 해외 일일 최대 주문 건수
   maxOpenDomesticPositions: number;                       // 국내 최대 보유 포지션 수
   maxOpenOverseasPositions: number;                       // 해외 최대 보유 포지션 수
+
+  // ── 전략 공격성 설정 ──
+  strategyAggressiveness: StrategyAggressiveness;          // 기본 CONSERVATIVE
+  // 런타임 계산값 (getEffectiveTradingSettings에서 자동 설정)
+  signalThreshold: number;           // BUY 신호 최소 buyScore
+  weakSignalThreshold: number;       // 약한 BUY 신호 최소 buyScore
+  minConfidenceThreshold: number;    // RiskManager 최소 신뢰도(%)
 }
 
 const DEFAULT_SETTINGS: EffectiveTradingSettings = {
@@ -93,6 +132,12 @@ const DEFAULT_SETTINGS: EffectiveTradingSettings = {
   maxDailyOverseasOrders: 1,
   maxOpenDomesticPositions: 1,
   maxOpenOverseasPositions: 1,
+
+  // 전략 공격성 기본값
+  strategyAggressiveness: 'CONSERVATIVE',
+  signalThreshold: AGGRESSIVENESS_THRESHOLDS.CONSERVATIVE.signalThreshold,
+  weakSignalThreshold: AGGRESSIVENESS_THRESHOLDS.CONSERVATIVE.weakSignalThreshold,
+  minConfidenceThreshold: AGGRESSIVENESS_THRESHOLDS.CONSERVATIVE.minConfidence,
 };
 
 export interface EffectiveSettingsResult {
@@ -296,6 +341,28 @@ export async function getEffectiveTradingSettings(): Promise<EffectiveSettingsRe
   }
 
   // =============================================
+  // 전략 공격성 + 임계값 설정
+  // =============================================
+  // strategyAggressiveness 유효성 검증
+  const validAggressiveness: StrategyAggressiveness[] = ['CONSERVATIVE', 'TEST', 'AGGRESSIVE'];
+  if (!validAggressiveness.includes(settings.strategyAggressiveness)) {
+    settings.strategyAggressiveness = 'CONSERVATIVE';
+  }
+
+  // LIVE/REAL 모드에서는 항상 CONSERVATIVE 강제 (안전장치)
+  const isLiveReal = settings.orderExecutionMode === 'LIVE' || settings.tradingMode === 'REAL';
+  if (isLiveReal && settings.strategyAggressiveness !== 'CONSERVATIVE') {
+    console.warn(`[EffectiveSettings] LIVE/REAL 모드에서는 CONSERVATIVE 강제 (원래=${settings.strategyAggressiveness})`);
+    settings.strategyAggressiveness = 'CONSERVATIVE';
+  }
+
+  // strategyAggressiveness에 따른 임계값 자동 설정
+  const thresholds = AGGRESSIVENESS_THRESHOLDS[settings.strategyAggressiveness];
+  settings.signalThreshold = thresholds.signalThreshold;
+  settings.weakSignalThreshold = thresholds.weakSignalThreshold;
+  settings.minConfidenceThreshold = thresholds.minConfidence;
+
+  // =============================================
   // 소스 추적
   // =============================================
   const source: 'db' | 'env' | 'default' = hasDbSettings
@@ -352,6 +419,9 @@ export function formatSettingsSummary(settings: EffectiveTradingSettings): strin
     `cycleMs=${settings.cycleIntervalMs}`,
     `strategy=${settings.selectedStrategy}`,
     `mode=${settings.tradingMode}/${settings.orderExecutionMode}`,
+    `aggressiveness=${settings.strategyAggressiveness}`,
+    `signalThreshold=${settings.signalThreshold}`,
+    `minConfidence=${settings.minConfidenceThreshold}`,
     `killSwitch=${settings.killSwitchEnabled}`,
     `allowRealDomestic=${settings.allowRealDomesticOrder}`,
     `allowRealOverseas=${settings.allowRealOverseasOrder}`,
@@ -510,7 +580,7 @@ export function validateOrderExecution(
     result.blockedReason = `가용금액 부족: 주문금액 ${estimatedOrderAmount.toLocaleString()} > 가용금액 ${availableAmount.toLocaleString()}`;
     return result;
   }
-  if (availableAmount <= 0 && settings.orderExecutionMode !== 'DRY_RUN') {
+  if (availableAmount <= 0 && (settings.orderExecutionMode as string) !== 'DRY_RUN') {
     result.blockedReason = `가용금액 조회 불가 (availableAmount=0): 주문 차단`;
     return result;
   }

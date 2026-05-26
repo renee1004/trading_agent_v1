@@ -54,6 +54,18 @@ export interface AgentCycleResult {
   overseasFailed: number;
   // stocksAnalyzed가 0일 때 원인
   zeroAnalysisReason?: string;
+  // ── 진단 필드 (status API에서 사용) ──
+  uiSignalsCount?: number;
+  executableSignalsCount?: number;
+  signalsBlockedReasons?: string[];
+  topBuyCandidates?: Array<{stockCode: string; stockName: string; confidence: number; signalType: string; blockedReason?: string}>;
+  signalThreshold?: number;
+  weakSignalThreshold?: number;
+  minConfidenceThreshold?: number;
+  strategyAggressiveness?: string;
+  positionQueryFailed?: boolean;
+  positionQueryFailedReason?: string;
+  forceTestSignalUsed?: boolean;
 }
 
 // 에이전트 상태
@@ -934,12 +946,60 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
   const { domestic: domesticStocks, overseas: overseasStocks } = await loadTargetStocks(kisClient);
   addLog('INFO', 'DOMESTIC', `분석 대상: 국내 ${domesticStocks.length}개, 해외 ${overseasStocks.length}개`);
 
-  // 3. 리스크 매니저 초기화 (DB 저장 리스크 설정 적용)
-  const domesticRisk = new RiskManager(buildRiskConfigFromSettings(effectiveSettings, 'DOMESTIC'), 'DOMESTIC');
-  const overseasRisk = new RiskManager(buildRiskConfigFromSettings(effectiveSettings, 'OVERSEAS'), 'OVERSEAS');
+  // 3. 리스크 매니저 초기화 (DB 저장 리스크 설정 + strategyAggressiveness 기반 신뢰도 임계값)
+  const domesticRisk = new RiskManager(
+    buildRiskConfigFromSettings(effectiveSettings, 'DOMESTIC'),
+    'DOMESTIC',
+    effectiveSettings.minConfidenceThreshold,
+  );
+  const overseasRisk = new RiskManager(
+    buildRiskConfigFromSettings(effectiveSettings, 'OVERSEAS'),
+    'OVERSEAS',
+    effectiveSettings.minConfidenceThreshold,
+  );
+
+  addLog('INFO', 'DOMESTIC', `전략 공격성: ${effectiveSettings.strategyAggressiveness} (signalThreshold=${effectiveSettings.signalThreshold}, weakThreshold=${effectiveSettings.weakSignalThreshold}, minConfidence=${effectiveSettings.minConfidenceThreshold}%)`);
+
+  // ── 진단 추적용 상태 ──
+  let uiSignalsCount = 0;          // TradingEngine이 생성한 BUY/SELL 신호 수 (HOLD 제외)
+  let executableSignalsCount = 0;  // 리스크 매니저 통과한 실행 가능 신호 수
+  const signalsBlockedReasons: string[] = [];  // 신호 차단 사유 수집
+  const topBuyCandidates: Array<{stockCode: string; stockName: string; confidence: number; signalType: string; blockedReason?: string}> = [];
+
+  // ── FORCE_TEST_SIGNAL ──
+  // PAPER 모드에서 주문 파이프라인 검증용: 1개 BUY 신호 강제 주입
+  // LIVE/REAL 모드에서는 절대 활성화 불가
+  const FORCE_TEST_SIGNAL = process.env.FORCE_TEST_SIGNAL === 'true' && effectiveSettings.orderExecutionMode === 'PAPER';
+  if (FORCE_TEST_SIGNAL) {
+    if (effectiveSettings.orderExecutionMode === 'LIVE' || effectiveSettings.tradingMode === 'REAL') {
+      addLog('RISK', 'DOMESTIC', 'FORCE_TEST_SIGNAL은 LIVE/REAL 모드에서 사용할 수 없습니다. 무시됩니다.');
+    } else {
+      addLog('RISK', 'DOMESTIC', '⚠️ FORCE_TEST_SIGNAL 활성화: 파이프라인 검증용 1회 소액 주문이 실행될 수 있습니다', {
+        orderExecutionMode: effectiveSettings.orderExecutionMode,
+        maxDomesticOrderAmount: effectiveSettings.maxDomesticOrderAmount,
+      });
+    }
+  }
+  let forceTestSignalUsed = false;
 
   // 4. 현재 포지션 조회
   const domesticPositions = await fetchPositions(kisClient, 'DOMESTIC');
+
+  // ── 포지션 조회 실패 시 주문 차단 ──
+  // 포지션을 알 수 없으면 리스크 평가가 불가하므로 신규 주문 차단
+  let positionQueryFailed = false;
+  let positionQueryFailedReason = '';
+  if (kisClient && domesticPositions.positions.length === 0 && domesticPositions.accountBalance === 0) {
+    // KIS 클라이언트가 있는데도 잔고/포지션이 0이면 조회 실패 가능성
+    // (정말 잔고가 0일 수도 있으므로 확정은 아니지만, 주문 차단 사유로 기록)
+    positionQueryFailed = true;
+    positionQueryFailedReason = '국내 포지션/잔고 조회 결과가 0 — KIS API 연결 문제 가능성';
+    addLog('RISK', 'DOMESTIC', `⚠️ ${positionQueryFailedReason}`, {
+      positionsCount: domesticPositions.positions.length,
+      accountBalance: domesticPositions.accountBalance,
+      hasKisClient: !!kisClient,
+    });
+  }
 
   // ========================================
   // 국내주식 분석 & 매매
@@ -971,8 +1031,13 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
       domesticSuccess++;
       stocksAnalyzed++;
 
-      // 전략 분석
-      const signal = TradingEngine.analyze(candles, stock.code, stock.name, 'ALL', 'DOMESTIC');
+      // 전략 분석 (strategyAggressiveness 기반 동적 임계값 적용)
+      const signal = TradingEngine.analyze(
+        candles, stock.code, stock.name, 'ALL', 'DOMESTIC',
+        {}, // userParams
+        effectiveSettings.signalThreshold,
+        effectiveSettings.weakSignalThreshold,
+      );
 
       // 종목별 상세 정보 로그
       addLog('INFO', 'DOMESTIC', `${stock.name} 분석 결과: ${signal.signalType} (신뢰도: ${signal.confidence}%)`, {
@@ -981,7 +1046,45 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
         lastClose: candles[candles.length - 1].close,
         signalType: signal.signalType,
         strategy: signal.strategy,
+        signalThreshold: effectiveSettings.signalThreshold,
+        weakSignalThreshold: effectiveSettings.weakSignalThreshold,
       });
+
+      // BUY/SELL 후보 추적 (진단용)
+      if (signal.signalType !== 'HOLD') {
+        uiSignalsCount++;
+        topBuyCandidates.push({
+          stockCode: stock.code,
+          stockName: stock.name,
+          confidence: signal.confidence,
+          signalType: signal.signalType,
+        });
+      }
+
+      // ── FORCE_TEST_SIGNAL: 첫 번째 BUY 후보에 강제 BUY 주입 ──
+      if (FORCE_TEST_SIGNAL && !forceTestSignalUsed && signal.signalType === 'HOLD' && domesticStocks.indexOf(stock) === 0) {
+        // 첫 번째 종목에 대해 강제 BUY 신호 주입
+        const forcedSignal: TradingSignal = {
+          stockCode: stock.code,
+          stockName: stock.name,
+          signalType: 'BUY',
+          strategy: 'FORCE_TEST',
+          confidence: effectiveSettings.minConfidenceThreshold,  // 최소 신뢰도로 설정
+          price: signal.price,
+          reason: `FORCE_TEST_SIGNAL 파이프라인 검증 (원래: ${signal.signalType}, 신뢰도: ${signal.confidence}%)`,
+          indicators: { ...signal.indicators, forceTest: 1 },
+          timestamp: new Date(),
+        };
+        // signal을 강제 BUY로 교체
+        Object.assign(signal, forcedSignal);
+        forceTestSignalUsed = true;
+        addLog('SIGNAL', 'DOMESTIC', `⚠️ FORCE_TEST_SIGNAL: ${stock.name} 강제 BUY 신호 주입 (파이프라인 검증용)`, {
+          stockCode: stock.code,
+          originalSignalType: 'HOLD',
+          originalConfidence: signal.confidence,
+          forcedConfidence: effectiveSettings.minConfidenceThreshold,
+        });
+      }
 
       if (signal.signalType !== 'HOLD') {
         signalsGenerated++;
@@ -1020,8 +1123,11 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
         );
 
         if (riskCheck.allowed) {
+          executableSignalsCount++;
+
           // 자동 국내 주문 허용 여부 체크
           if (!effectiveSettings.autoDomesticOrderEnabled) {
+            signalsBlockedReasons.push(`${stock.name}: autoDomesticOrderEnabled=false`);
             addLog('RISK', 'DOMESTIC',
               `국내 주문 차단: autoDomesticOrderEnabled=false - ${stock.name} ${finalSignal.signalType} 신호 생성만 수행`,
               { stockCode: stock.code, signalType: finalSignal.signalType, price: finalSignal.price }
@@ -1050,6 +1156,10 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
             );
           }
         } else {
+          signalsBlockedReasons.push(`${stock.name}: ${riskCheck.reason}`);
+          // 차단 사유를 후보에도 기록
+          const candidate = topBuyCandidates.find(c => c.stockCode === stock.code);
+          if (candidate) candidate.blockedReason = riskCheck.reason;
           addLog('RISK', 'DOMESTIC',
             `${stock.name} 매매 차단: ${riskCheck.reason}`,
             { reason: riskCheck.reason }
@@ -1196,8 +1306,13 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
           }
         }
 
-        // 전략 분석
-        const signal = TradingEngine.analyze(candles, stock.code, stock.name, 'ALL', 'OVERSEAS');
+        // 전략 분석 (strategyAggressiveness 기반 동적 임계값 적용)
+        const signal = TradingEngine.analyze(
+          candles, stock.code, stock.name, 'ALL', 'OVERSEAS',
+          {}, // userParams
+          effectiveSettings.signalThreshold,
+          effectiveSettings.weakSignalThreshold,
+        );
 
         // 분석가/현재가 정보를 시그널에 기록
         signal.analysisPrice = analysisPrice;
@@ -1484,6 +1599,18 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
     overseasSuccess,
     overseasFailed,
     zeroAnalysisReason,
+    // ── 진단 필드 ──
+    uiSignalsCount,
+    executableSignalsCount,
+    signalsBlockedReasons: signalsBlockedReasons.slice(0, 10),
+    topBuyCandidates: topBuyCandidates.slice(0, 5),
+    signalThreshold: effectiveSettings.signalThreshold,
+    weakSignalThreshold: effectiveSettings.weakSignalThreshold,
+    minConfidenceThreshold: effectiveSettings.minConfidenceThreshold,
+    strategyAggressiveness: effectiveSettings.strategyAggressiveness,
+    positionQueryFailed,
+    positionQueryFailedReason,
+    forceTestSignalUsed,
   };
 
   agentState.lastCycleTime = endTime;

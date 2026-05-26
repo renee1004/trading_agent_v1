@@ -15,6 +15,7 @@ export class TradingEngine {
   /**
    * 시장별 최적화된 파라미터로 전략 분석 (진입점)
    * market 파라미터에 따라 자동으로 최적의 파라미터 적용
+   * signalThreshold / weakSignalThreshold: strategyAggressiveness에 따른 동적 임계값
    */
   static analyze(
     candles: StockCandle[],
@@ -22,7 +23,9 @@ export class TradingEngine {
     stockName: string,
     strategy: string = 'ALL',
     market: MarketType = 'DOMESTIC',
-    userParams: StrategyParameters = {}
+    userParams: StrategyParameters = {},
+    signalThreshold: number = 60,
+    weakSignalThreshold: number = 40,
   ): TradingSignal {
     // 시장별 기본 파라미터 가져오기
     const marketDefaults = getMarketDefaults(market);
@@ -32,7 +35,7 @@ export class TradingEngine {
 
     switch (strategy) {
       case 'COMPOSITE':
-        return TradingEngine.analyzeComposite(candles, stockCode, stockName, params, market);
+        return TradingEngine.analyzeComposite(candles, stockCode, stockName, params, market, signalThreshold, weakSignalThreshold);
       case 'VOLATILITY_BREAKOUT':
         return TradingEngine.analyzeVolatilityBreakout(candles, stockCode, stockName, params, market);
       case 'SUPER_TREND':
@@ -43,7 +46,7 @@ export class TradingEngine {
         return TradingEngine.analyzeMomentum(candles, stockCode, stockName, params, market);
       case 'ALL':
       default:
-        return TradingEngine.analyzeAllStrategies(candles, stockCode, stockName, params, market);
+        return TradingEngine.analyzeAllStrategies(candles, stockCode, stockName, params, market, signalThreshold, weakSignalThreshold);
     }
   }
   /**
@@ -69,7 +72,9 @@ export class TradingEngine {
     stockCode: string,
     stockName: string,
     params: StrategyParameters = {},
-    market: MarketType = 'DOMESTIC'
+    market: MarketType = 'DOMESTIC',
+    signalThreshold: number = 60,
+    weakSignalThreshold: number = 40,
   ): TradingSignal {
     // 시장별 기본 파라미터 적용
     const marketDefaults = getMarketDefaults(market).strategy.composite;
@@ -237,21 +242,21 @@ export class TradingEngine {
       }
     }
 
-    // 신호 결정
+    // 신호 결정 (strategyAggressiveness 기반 동적 임계값)
     const totalScore = Math.max(buyScore, sellScore);
     let signalType: 'BUY' | 'SELL' | 'HOLD';
     let confidence: number;
 
-    if (buyScore >= 60 && buyScore > sellScore + 20) {
+    if (buyScore >= signalThreshold && buyScore > sellScore + 20) {
       signalType = 'BUY';
       confidence = Math.min(95, buyScore);
-    } else if (sellScore >= 60 && sellScore > buyScore + 20) {
+    } else if (sellScore >= signalThreshold && sellScore > buyScore + 20) {
       signalType = 'SELL';
       confidence = Math.min(95, sellScore);
-    } else if (buyScore > sellScore && buyScore >= 40) {
+    } else if (buyScore > sellScore && buyScore >= weakSignalThreshold) {
       signalType = 'BUY';
       confidence = Math.min(70, buyScore);
-    } else if (sellScore > buyScore && sellScore >= 40) {
+    } else if (sellScore > buyScore && sellScore >= weakSignalThreshold) {
       signalType = 'SELL';
       confidence = Math.min(70, sellScore);
     } else {
@@ -738,10 +743,12 @@ export class TradingEngine {
     stockCode: string,
     stockName: string,
     params: StrategyParameters = {},
-    market: MarketType = 'DOMESTIC'
+    market: MarketType = 'DOMESTIC',
+    signalThreshold: number = 60,
+    weakSignalThreshold: number = 40,
   ): TradingSignal {
     // 각 전략별 분석 (시장별 파라미터 자동 적용)
-    const composite = TradingEngine.analyzeComposite(candles, stockCode, stockName, params, market);
+    const composite = TradingEngine.analyzeComposite(candles, stockCode, stockName, params, market, signalThreshold, weakSignalThreshold);
     const volatility = TradingEngine.analyzeVolatilityBreakout(candles, stockCode, stockName, params, market);
     const superTrend = TradingEngine.analyzeSuperTrend(candles, stockCode, stockName, params, market);
     const meanReversion = TradingEngine.analyzeMeanReversion(candles, stockCode, stockName, params, market);

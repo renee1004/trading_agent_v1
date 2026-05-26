@@ -46,6 +46,11 @@ const DEFAULT_SETTINGS: EffectiveTradingSettings = {
   maxDailyOverseasOrders: 1,
   maxOpenDomesticPositions: 1,
   maxOpenOverseasPositions: 1,
+  // 전략 공격성 기본값
+  strategyAggressiveness: 'CONSERVATIVE',
+  signalThreshold: 60,
+  weakSignalThreshold: 40,
+  minConfidenceThreshold: 50,
 };
 
 type SettingsKey = keyof typeof DEFAULT_SETTINGS;

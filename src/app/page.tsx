@@ -2562,6 +2562,127 @@ export default function TradingDashboard() {
               </Card>
             </div>
 
+            {/* ── 전략 공격성 & 신호 진단 ── */}
+            <Card className="border-amber-200 bg-amber-50/30 dark:bg-amber-950/10 dark:border-amber-800">
+              <CardHeader>
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <Target className="h-5 w-5" />
+                      전략 공격성 & 신호 진단
+                    </CardTitle>
+                    <CardDescription>
+                      신호 임계값과 신뢰도 기준을 조정하여 PAPER 모드에서 주문 파이프라인을 검증하세요
+                    </CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* 공격성 선택 */}
+                <div className="grid gap-3 grid-cols-1 sm:grid-cols-3">
+                  {([
+                    { value: 'CONSERVATIVE', label: '보수', desc: '신호 ≥60, 신뢰도 ≥50%', color: 'emerald', note: 'LIVE/REAL 강제' },
+                    { value: 'TEST', label: '테스트', desc: '신호 ≥30, 신뢰도 ≥30%', color: 'amber', note: 'PAPER 모의투자용' },
+                    { value: 'AGGRESSIVE', label: '공격', desc: '신호 ≥25, 신뢰도 ≥25%', color: 'rose', note: '위험도 높음' },
+                  ] as const).map((mode) => {
+                    const isActive = (agentStatus as any)?.effectiveSettings?.strategyAggressiveness === mode.value;
+                    return (
+                      <button
+                        key={mode.value}
+                        className={`rounded-lg border-2 p-3 text-left transition-all ${
+                          isActive
+                            ? mode.color === 'emerald' ? 'border-emerald-500 bg-emerald-50/50'
+                              : mode.color === 'amber' ? 'border-amber-500 bg-amber-50/50'
+                              : 'border-rose-500 bg-rose-50/50'
+                            : 'border-gray-200 hover:border-gray-300'
+                        }`}
+                        onClick={async () => {
+                          try {
+                            await fetch('/api/settings/trading', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ strategyAggressiveness: mode.value }),
+                            });
+                            loadAgentStatus();
+                          } catch (e) {
+                            console.error('전략 공격성 변경 실패:', e);
+                          }
+                        }}
+                      >
+                        <div className="font-semibold text-sm">{mode.label} 모드</div>
+                        <div className="text-xs text-muted-foreground mt-1">{mode.desc}</div>
+                        <div className="text-xs mt-1 opacity-60">{mode.note}</div>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* 신호 진단 요약 */}
+                {(() => {
+                  const diag = (agentStatus as any)?.signalDiagnostics;
+                  const lastCycle = agentStatus?.lastCycleSummary as any;
+                  if (!diag && !lastCycle) return null;
+                  const uiCount = diag?.uiSignalsCount ?? lastCycle?.uiSignalsCount ?? '-';
+                  const exeCount = diag?.executableSignalsCount ?? lastCycle?.executableSignalsCount ?? '-';
+                  const blocked = diag?.signalsBlockedReasons ?? lastCycle?.signalsBlockedReasons ?? [];
+                  const candidates = diag?.topBuyCandidates ?? lastCycle?.topBuyCandidates ?? [];
+                  const posFailed = diag?.positionQueryFailed ?? lastCycle?.positionQueryFailed ?? false;
+                  const blockedReason = diag?.orderBlockedReason ?? null;
+
+                  return (
+                    <div className="space-y-3 mt-2">
+                      <div className="grid gap-2 grid-cols-2 sm:grid-cols-4 text-sm">
+                        <div className="rounded-lg bg-background p-3 border">
+                          <p className="text-xs text-muted-foreground">UI 신호 수</p>
+                          <p className="font-bold text-lg">{uiCount}</p>
+                        </div>
+                        <div className="rounded-lg bg-background p-3 border">
+                          <p className="text-xs text-muted-foreground">실행 가능 신호</p>
+                          <p className="font-bold text-lg text-emerald-600">{exeCount}</p>
+                        </div>
+                        <div className="rounded-lg bg-background p-3 border">
+                          <p className="text-xs text-muted-foreground">신호 임계값</p>
+                          <p className="font-bold text-lg">{diag?.signalThreshold ?? lastCycle?.signalThreshold ?? '-'}</p>
+                        </div>
+                        <div className="rounded-lg bg-background p-3 border">
+                          <p className="text-xs text-muted-foreground">최소 신뢰도</p>
+                          <p className="font-bold text-lg">{diag?.minConfidenceThreshold ?? lastCycle?.minConfidenceThreshold ?? '-'}%</p>
+                        </div>
+                      </div>
+
+                      {/* 차단 사유 */}
+                      {(blocked.length > 0 || blockedReason || posFailed) && (
+                        <div className="rounded-lg border border-amber-200 bg-amber-50/50 p-3">
+                          <p className="text-xs font-semibold text-amber-700 mb-1">차단 사유</p>
+                          {blockedReason && <p className="text-xs text-amber-600">{blockedReason}</p>}
+                          {posFailed && <p className="text-xs text-rose-600">포지션 조회 실패 — 주문 차단</p>}
+                          {blocked.slice(0, 3).map((r: string, i: number) => (
+                            <p key={i} className="text-xs text-amber-600">{r}</p>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* BUY 후보 */}
+                      {candidates.length > 0 && (
+                        <div className="rounded-lg border p-3">
+                          <p className="text-xs font-semibold mb-2">매수 후보 (상위 {candidates.length}개)</p>
+                          <div className="space-y-1">
+                            {candidates.map((c: any, i: number) => (
+                              <div key={i} className="flex items-center justify-between text-xs">
+                                <span className="font-medium">{c.stockName} ({c.stockCode})</span>
+                                <span className="text-muted-foreground">신뢰도 {c.confidence}%</span>
+                                {c.blockedReason && <span className="text-rose-500 ml-2">차단: {c.blockedReason}</span>}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+              </CardContent>
+            </Card>
+
             {/* 스케줄러 설정 */}
             <Card>
               <CardHeader>
