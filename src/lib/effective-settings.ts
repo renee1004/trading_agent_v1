@@ -581,8 +581,16 @@ export function validateOrderExecution(
     return result;
   }
   if (availableAmount <= 0 && (settings.orderExecutionMode as string) !== 'DRY_RUN') {
-    result.blockedReason = `가용금액 조회 불가 (availableAmount=0): 주문 차단`;
-    return result;
+    // PAPER + DEMO 모드에서 잔고 조회 실패 시: 소액 주문은 허용 (파이프라인 검증 목적)
+    // 주문금액이 maxOrderAmount 이하면 통과, 초과면 차단
+    const isPaperDemo = settings.orderExecutionMode === 'PAPER' && isDemo;
+    if (isPaperDemo && estimatedOrderAmount <= maxOrderAmount) {
+      // PAPER 모의투자: 잔고 조회 실패해도 소액 주문 허용 (경고 로그만 남김)
+      console.warn(`[OrderValidation] PAPER+DEMO 잔고 조회 실패 상태에서 소액 주문 허용 (주문금액=${estimatedOrderAmount}, 최대=${maxOrderAmount})`);
+    } else {
+      result.blockedReason = `가용금액 조회 불가 (availableAmount=0): 주문 차단`;
+      return result;
+    }
   }
 
   // 모든 검증 통과

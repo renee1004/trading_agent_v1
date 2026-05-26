@@ -1332,7 +1332,23 @@ export default function TradingDashboard() {
 
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">매수 신호</CardTitle>
+                  <div className="flex items-center gap-2">
+                    <CardTitle className="text-sm font-medium">매수 신호</CardTitle>
+                    {(() => {
+                      const diag = (agentStatus as any)?.signalDiagnostics;
+                      const exeCount = diag?.executableSignalsCount ?? (agentStatus?.lastCycleSummary as any)?.executableSignalsCount;
+                      const uiCount = buySignals.length;
+                      // UI 신호와 실행 가능 신호가 다르면 뱃지로 구분 표시
+                      if (exeCount !== undefined && exeCount !== null && exeCount !== uiCount) {
+                        return (
+                          <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 border-amber-300 text-amber-600">
+                            실행가능 {exeCount}
+                          </Badge>
+                        );
+                      }
+                      return null;
+                    })()}
+                  </div>
                   <TrendingUp className="h-4 w-4 text-emerald-500" />
                 </CardHeader>
                 <CardContent>

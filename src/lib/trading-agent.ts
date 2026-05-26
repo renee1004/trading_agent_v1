@@ -985,20 +985,31 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
   // 4. 현재 포지션 조회
   const domesticPositions = await fetchPositions(kisClient, 'DOMESTIC');
 
-  // ── 포지션 조회 실패 시 주문 차단 ──
-  // 포지션을 알 수 없으면 리스크 평가가 불가하므로 신규 주문 차단
+  // ── 포지션 조회 실패 감지 ──
+  // KIS 클라이언트가 있는데도 잔고/포지션이 0이면 조회 실패 가능성
+  // PAPER+DEMO 모드에서는 주문 차단하지 않음 (소액 주문 검증이 목적)
   let positionQueryFailed = false;
   let positionQueryFailedReason = '';
   if (kisClient && domesticPositions.positions.length === 0 && domesticPositions.accountBalance === 0) {
-    // KIS 클라이언트가 있는데도 잔고/포지션이 0이면 조회 실패 가능성
-    // (정말 잔고가 0일 수도 있으므로 확정은 아니지만, 주문 차단 사유로 기록)
     positionQueryFailed = true;
-    positionQueryFailedReason = '국내 포지션/잔고 조회 결과가 0 — KIS API 연결 문제 가능성';
-    addLog('RISK', 'DOMESTIC', `⚠️ ${positionQueryFailedReason}`, {
-      positionsCount: domesticPositions.positions.length,
-      accountBalance: domesticPositions.accountBalance,
-      hasKisClient: !!kisClient,
-    });
+    const isPaperDemo = effectiveSettings.orderExecutionMode === 'PAPER' && effectiveSettings.tradingMode === 'DEMO';
+    if (isPaperDemo) {
+      positionQueryFailedReason = '국내 포지션/잔고 조회 결과 0 (PAPER+DEMO: 소액 주문 허용)';
+      addLog('RISK', 'DOMESTIC', `⚠️ ${positionQueryFailedReason}`, {
+        positionsCount: domesticPositions.positions.length,
+        accountBalance: domesticPositions.accountBalance,
+        hasKisClient: !!kisClient,
+        orderExecutionMode: effectiveSettings.orderExecutionMode,
+        note: 'PAPER 모의투자에서는 잔고 조회 실패해도 maxDomesticOrderAmount 이하 주문 허용',
+      });
+    } else {
+      positionQueryFailedReason = '국내 포지션/잔고 조회 결과가 0 — KIS API 연결 문제 가능성';
+      addLog('RISK', 'DOMESTIC', `⚠️ ${positionQueryFailedReason}`, {
+        positionsCount: domesticPositions.positions.length,
+        accountBalance: domesticPositions.accountBalance,
+        hasKisClient: !!kisClient,
+      });
+    }
   }
 
   // ========================================

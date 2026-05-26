@@ -9,6 +9,7 @@ import { KisApiClient } from '@/lib/kis-api';
 import { TradingEngine } from '@/lib/trading-engine';
 import { StrategyParameters, MarketType, PriceSource } from '@/lib/types';
 import { db } from '@/lib/db';
+import { getEffectiveTradingSettings } from '@/lib/effective-settings';
 import {
   isKoreanSymbol,
   normalizeStockCode,
@@ -277,9 +278,12 @@ export async function POST(request: NextRequest) {
     // 캔들 데이터 (실제 API 우선 → 모의 데이터 폴백)
     const candles = await fetchCandlesWithFallback(stockCode, market, exchangeCode);
 
-    // 전략별 분석
+    // 현재 전략 공격성 설정 로드 (에이전트와 동일한 임계값 사용)
+    const { settings: effectiveSettings } = await getEffectiveTradingSettings();
+
+    // 전략별 분석 (공격성 임계값 적용)
     const marketType = (market === 'OVERSEAS' ? 'OVERSEAS' : 'DOMESTIC') as MarketType;
-    const signal = TradingEngine.analyze(candles, stockCode, stockName, strategy, marketType, params);
+    const signal = TradingEngine.analyze(candles, stockCode, stockName, strategy, marketType, params, effectiveSettings.signalThreshold, effectiveSettings.weakSignalThreshold);
 
     // 실시간 현재가 보강 (단일 종목)
     const signalWithMarket: SignalWithMarket = {
@@ -357,12 +361,17 @@ export async function GET(request: NextRequest) {
 
     const signals: SignalWithMarket[] = [];
 
+    // ── 현재 전략 공격성 설정 로드 (에이전트와 동일한 임계값 사용) ──
+    const { settings: effectiveSettings } = await getEffectiveTradingSettings();
+    const signalThreshold = effectiveSettings.signalThreshold;
+    const weakSignalThreshold = effectiveSettings.weakSignalThreshold;
+
     // 국내 분석
     if (market === 'ALL' || market === 'DOMESTIC') {
       for (const stock of domesticStocks) {
         try {
           const candles = await fetchCandlesWithFallback(stock.code, 'DOMESTIC');
-          const signal = TradingEngine.analyze(candles, stock.code, stock.name, strategy, 'DOMESTIC');
+          const signal = TradingEngine.analyze(candles, stock.code, stock.name, strategy, 'DOMESTIC', {}, signalThreshold, weakSignalThreshold);
           signals.push({
             ...signal,
             market: 'DOMESTIC',
@@ -379,7 +388,7 @@ export async function GET(request: NextRequest) {
       for (const stock of overseasStocks) {
         try {
           const candles = await fetchCandlesWithFallback(stock.code, 'OVERSEAS', stock.exchange);
-          const signal = TradingEngine.analyze(candles, stock.code, stock.name, strategy, 'OVERSEAS');
+          const signal = TradingEngine.analyze(candles, stock.code, stock.name, strategy, 'OVERSEAS', {}, signalThreshold, weakSignalThreshold);
           signals.push({
             ...signal,
             market: 'OVERSEAS',
@@ -409,6 +418,13 @@ export async function GET(request: NextRequest) {
         holdSignals: enrichedSignals.filter(s => s.signalType === 'HOLD').length,
         domesticSignals: enrichedSignals.filter(s => s.market === 'DOMESTIC').length,
         overseasSignals: enrichedSignals.filter(s => s.market === 'OVERSEAS').length,
+        // ── 임계값 정보 (UI에서 신호 기준 표시용) ──
+        thresholds: {
+          strategyAggressiveness: effectiveSettings.strategyAggressiveness,
+          signalThreshold,
+          weakSignalThreshold,
+          minConfidenceThreshold: effectiveSettings.minConfidenceThreshold,
+        },
       }
     });
   } catch (error) {
