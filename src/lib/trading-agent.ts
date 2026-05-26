@@ -372,6 +372,18 @@ async function executeOrder(
     // DB 조회 실패 시 기본값 유지
   }
 
+  // ── 실전 주문 하드 블록 ──
+  // isDemo=false(실전 계정) + orderExecutionMode=LIVE가 아니면 실전 주문 불가
+  // 현재 단계에서는 실전 주문을 완전 차단
+  if (!isDemo && settings.orderExecutionMode === 'LIVE') {
+    addLog('RISK', market, `실전 주문 하드 블록: 실전 계정에서 LIVE 모드 주문 시도 — 차단`, {
+      stockCode: signal.stockCode,
+      tradingMode: settings.tradingMode,
+      orderExecutionMode: settings.orderExecutionMode,
+    });
+    return { success: false, orderNo: '', message: '실전 주문 차단: 현재 실전 주문이 비활성화되어 있습니다' };
+  }
+
   // ── 일일 주문 건수 & 보유 포지션 수 조회 ──
   let dailyOrderCount = 0;
   let openPositions = 0;

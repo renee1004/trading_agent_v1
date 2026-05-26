@@ -318,6 +318,21 @@ export default function TradingDashboard() {
       enabled: boolean;
       warning?: string;
     };
+    demoOrderGuide?: {
+      canSendDemoDomesticOrder: boolean;
+      requiredSettings: string[];
+      currentValues: Record<string, any>;
+      currentBlockingReasons: string[];
+      modeExplanation: string;
+    };
+    effectiveSettings?: {
+      tradingMode: string;
+      orderExecutionMode: string;
+      autoDomesticOrderEnabled: boolean;
+      allowRealDomesticOrder: boolean;
+      killSwitchEnabled: boolean;
+      [key: string]: any;
+    };
   } | null>(null);
   const [agentLogs, setAgentLogs] = useState<Array<{
     id: string;
@@ -2510,6 +2525,97 @@ export default function TradingDashboard() {
                   {agentStatus.forceTestSignal.warning || 'FORCE_TEST_SIGNAL 활성화 — 테스트용 강제 BUY 신호가 주입되고 있습니다.'}
                 </AlertDescription>
               </Alert>
+            )}
+
+            {/* 주문 실행 모드 표시 + PAPER 전환 */}
+            {agentStatus?.effectiveSettings && (
+              <Card className="border-blue-200 bg-blue-50/30 dark:bg-blue-950/10 dark:border-blue-800">
+                <CardContent className="pt-4 pb-4">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-medium">주문 실행 모드</p>
+                        <Badge variant="outline" className={
+                          agentStatus.effectiveSettings.orderExecutionMode === 'DRY_RUN' ? 'border-gray-300 text-gray-500' :
+                          agentStatus.effectiveSettings.orderExecutionMode === 'PAPER' ? 'border-blue-300 text-blue-600' :
+                          'border-red-300 text-red-600'
+                        }>
+                          {agentStatus.effectiveSettings.orderExecutionMode === 'DRY_RUN' ? 'DRY_RUN (신호만)' :
+                           agentStatus.effectiveSettings.orderExecutionMode === 'PAPER' ? 'PAPER (모의투자 주문)' :
+                           'LIVE (실전 주문)'}
+                        </Badge>
+                        <Badge variant="outline" className="border-emerald-300 text-emerald-600">
+                          {agentStatus.effectiveSettings.tradingMode === 'DEMO' ? '모의투자' : '실전'}
+                        </Badge>
+                      </div>
+                      {agentStatus.demoOrderGuide && (
+                        <div className="text-xs text-muted-foreground">
+                          {agentStatus.demoOrderGuide.canSendDemoDomesticOrder ? (
+                            <span className="text-emerald-600 font-medium">모의투자 주문 접수 가능</span>
+                          ) : (
+                            <span>모의투자 주문 차단: {agentStatus.demoOrderGuide.currentBlockingReasons?.join(', ')}</span>
+                          )}
+                        </div>
+                      )}
+                      <p className="text-[11px] text-muted-foreground">
+                        allowRealDomesticOrder={String(agentStatus.effectiveSettings.allowRealDomesticOrder)} — 이 설정은 실전 주문(LIVE)에만 적용됨, PAPER 모드에는 영향 없음
+                      </p>
+                    </div>
+                    {agentStatus.effectiveSettings.orderExecutionMode === 'DRY_RUN' && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="border-blue-300 text-blue-600 hover:bg-blue-50 shrink-0"
+                        onClick={async () => {
+                          try {
+                            const res = await fetch('/api/settings/trading', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({
+                                orderExecutionMode: 'PAPER',
+                                autoDomesticOrderEnabled: true,
+                                killSwitchEnabled: false,
+                              }),
+                            });
+                            if (res.ok) {
+                              await loadDashboardData();
+                              await loadAgentStatus();
+                            }
+                          } catch (e) {
+                            console.error('PAPER 모드 전환 실패:', e);
+                          }
+                        }}
+                      >
+                        PAPER 모드로 전환 (모의투자 주문)
+                      </Button>
+                    )}
+                    {agentStatus.effectiveSettings.orderExecutionMode === 'PAPER' && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="border-gray-300 text-gray-500 hover:bg-gray-50 shrink-0"
+                        onClick={async () => {
+                          try {
+                            const res = await fetch('/api/settings/trading', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ orderExecutionMode: 'DRY_RUN' }),
+                            });
+                            if (res.ok) {
+                              await loadDashboardData();
+                              await loadAgentStatus();
+                            }
+                          } catch (e) {
+                            console.error('DRY_RUN 모드 전환 실패:', e);
+                          }
+                        }}
+                      >
+                        DRY_RUN으로 복귀
+                      </Button>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
             )}
             <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
               <Card className={tradingStatus === 'RUNNING' ? 'border-emerald-200 bg-emerald-50/50 dark:bg-emerald-950/20 dark:border-emerald-800' : ''}>

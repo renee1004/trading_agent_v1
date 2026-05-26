@@ -439,26 +439,36 @@ export function validateOrderExecution(
     return result;
   }
 
-  // 2. DRY_RUN — 실제 주문 API 호출 금지
+  // 2. DRY_RUN — 모든 주문 API 호출 금지 (신호만 생성)
   if (settings.orderExecutionMode === 'DRY_RUN') {
-    result.blockedReason = '주문 드라이런: 실제 주문 차단';
+    result.blockedReason = 'DRY_RUN 모드: 주문 API 호출 차단 (신호만 생성)';
     return result;
   }
 
-  // 3. PAPER — 모의투자 계정에서만 주문 허용
-  if (settings.orderExecutionMode === 'PAPER' && !isDemo) {
-    result.blockedReason = 'PAPER 모드는 모의투자 계정에서만 허용';
-    return result;
+  // 3. PAPER — 모의투자 계정(isDemo=true)에서만 주문 허용
+  //    실전 계정에서 PAPER 선택 불가
+  if (settings.orderExecutionMode === 'PAPER') {
+    if (!isDemo) {
+      result.blockedReason = 'PAPER 모드는 모의투자 계정(isDemo=true)에서만 허용 — 현재 실전 계정';
+      return result;
+    }
+    // PAPER + DEMO + isDemo=true → 모의투자 주문 허용 (통과)
   }
 
-  // 4. LIVE — 실전 계정에서만 + allowRealOrder 필요
+  // 4. LIVE — 실전 주문: 현재 단계에서 하드 블록
+  //    실전 주문은 LIVE_EXECUTE 모드 + 실전 키 + 명시적 허용 모두 필요
   if (settings.orderExecutionMode === 'LIVE') {
     if (isDemo) {
-      result.blockedReason = 'LIVE 모드는 실전 계정에서만 허용';
+      result.blockedReason = 'LIVE 모드는 실전 계정에서만 허용 — 현재 모의투자 계정';
       return result;
     }
     if (!allowRealOrder) {
-      result.blockedReason = `실전 주문 차단: allowRealOrder=false`;
+      result.blockedReason = '실전 주문 차단: allowRealOrder=false — 실전 주문을 허용하려면 명시적으로 true 설정 필요';
+      return result;
+    }
+    // 추가 안전장치: tradingMode가 REAL이 아니면 실전 주문 차단
+    if (settings.tradingMode !== 'REAL') {
+      result.blockedReason = '실전 주문 차단: tradingMode=DEMO — 실전 주문은 tradingMode=REAL 필요';
       return result;
     }
   }
@@ -525,43 +535,65 @@ export function validateOrderExecution(
  * 현재 설정 기준으로 모의투자 주문이 가능하려면 무엇을 변경해야 하는지 반환
  */
 export function getDemoOrderActivationGuide(settings: EffectiveTradingSettings): {
-  canPlaceDemoOrder: boolean;
-  steps: string[];
+  canSendDemoDomesticOrder: boolean;
+  requiredSettings: string[];
   currentValues: Record<string, any>;
+  currentBlockingReasons: string[];
+  modeExplanation: string;
 } {
-  const steps: string[] = [];
+  const requiredSettings = [
+    'tradingMode=DEMO',
+    'orderExecutionMode=PAPER',
+    'autoDomesticOrderEnabled=true',
+    'killSwitchEnabled=false',
+    'isDemo=true (KIS 모의투자 계정)',
+  ];
+
   const currentValues: Record<string, any> = {
+    tradingMode: settings.tradingMode,
     orderExecutionMode: settings.orderExecutionMode,
     autoDomesticOrderEnabled: settings.autoDomesticOrderEnabled,
-    enableOverseasOrder: settings.enableOverseasOrder,
     killSwitchEnabled: settings.killSwitchEnabled,
-    tradingMode: settings.tradingMode,
+    allowRealDomesticOrder: settings.allowRealDomesticOrder,
   };
 
-  let canPlaceDemoOrder = true;
+  const currentBlockingReasons: string[] = [];
 
   if (settings.killSwitchEnabled) {
-    steps.push('killSwitchEnabled=false로 변경 (현재: true — 모든 주문 차단)');
-    canPlaceDemoOrder = false;
+    currentBlockingReasons.push(`killSwitchEnabled=true — 모든 주문 차단`);
   }
 
-  const mode = settings.orderExecutionMode as string;
-  if (mode === 'DRY_RUN') {
-    steps.push('orderExecutionMode를 PAPER로 변경 (현재: DRY_RUN — 실제 주문 API 호출 차단)');
-    canPlaceDemoOrder = false;
-  } else if (mode === 'LIVE') {
-    steps.push('orderExecutionMode를 PAPER로 변경 (현재: LIVE — 실전 계정 전용 모드)');
-    canPlaceDemoOrder = false;
+  if (settings.orderExecutionMode === 'DRY_RUN') {
+    currentBlockingReasons.push(`orderExecutionMode=DRY_RUN — 주문 API 호출 차단 (PAPER로 변경 필요)`);
+  }
+
+  if (settings.orderExecutionMode === 'LIVE') {
+    currentBlockingReasons.push(`orderExecutionMode=LIVE — 실전 전용 모드 (PAPER로 변경 필요)`);
   }
 
   if (!settings.autoDomesticOrderEnabled) {
-    steps.push('autoDomesticOrderEnabled=true로 변경 (현재: false — 국내 자동 주문 비활성화)');
-    canPlaceDemoOrder = false;
+    currentBlockingReasons.push(`autoDomesticOrderEnabled=false — 국내 자동 주문 비활성화`);
   }
 
-  if (canPlaceDemoOrder) {
-    steps.push('모의투자 주문 가능 — 현재 설정으로 모의투자 계정에서 주문 접수 가능');
-  }
+  const canSendDemoDomesticOrder = currentBlockingReasons.length === 0;
 
-  return { canPlaceDemoOrder, steps, currentValues };
+  const modeExplanation = [
+    '■ 주문 실행 모드 설명:',
+    '- DRY_RUN: 신호만 생성, KIS 주문 API 호출 안함 (현재 모드)',
+    '- PAPER: 모의투자 계정(isDemo=true)에서 실제 주문 접수 — KIS 모의투자 서버로 주문 전송',
+    '- LIVE: 실전 계정에서 실제 주문 — tradingMode=REAL + allowRealDomesticOrder=true 필요 (현재 차단)',
+    '',
+    '■ allowRealDomesticOrder 설명:',
+    '- false (기본값): 실전 주문 차단 — PAPER 모드에서 모의투자 주문에는 영향 없음',
+    '- true: 실전 주문 허용 — LIVE 모드 + 실전 계정에서만 의미 있음',
+    '- 현재 모의투자 계정이므로 이 값이 false여도 PAPER 주문은 정상 작동',
+  ].join('\n');
+
+  return {
+    canSendDemoDomesticOrder,
+    requiredSettings,
+    currentValues,
+    currentBlockingReasons,
+    modeExplanation,
+  };
 }

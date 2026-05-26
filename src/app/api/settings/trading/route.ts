@@ -126,8 +126,19 @@ export async function POST(request: NextRequest) {
     if (!validTradingModes.includes(safetyChecked.tradingMode)) {
       safetyChecked.tradingMode = 'DEMO';
     }
-    if (safetyChecked.orderExecutionMode === 'LIVE' && !safetyChecked.allowRealDomesticOrder && !safetyChecked.allowRealOverseasOrder) {
+    // PAPER 모드는 DEMO에서만 허용 (tradingMode=REAL + PAPER 조합 불가)
+    if (safetyChecked.orderExecutionMode === 'PAPER' && safetyChecked.tradingMode === 'REAL') {
       safetyChecked.orderExecutionMode = 'DRY_RUN';
+    }
+    // LIVE 모드는 현재 단계에서 하드 블록
+    // 실전 주문을 원하면 tradingMode=REAL + allowRealDomesticOrder=true + orderExecutionMode=LIVE 모두 필요
+    if (safetyChecked.orderExecutionMode === 'LIVE') {
+      if (!safetyChecked.allowRealDomesticOrder && !safetyChecked.allowRealOverseasOrder) {
+        safetyChecked.orderExecutionMode = 'DRY_RUN';
+      }
+      if (safetyChecked.tradingMode !== 'REAL') {
+        safetyChecked.orderExecutionMode = 'DRY_RUN';
+      }
     }
     if (safetyChecked.tradingMode === 'REAL' && !safetyChecked.allowRealDomesticOrder && !safetyChecked.allowRealOverseasOrder) {
       safetyChecked.tradingMode = 'DEMO';
