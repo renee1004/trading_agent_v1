@@ -159,3 +159,29 @@ Stage Summary:
 - 프론트 검색창: /api/stocks/search 연결 완료
 - 현재가/검색 분리: 검색은 로컬 마스터만, 현재가는 대시보드에서만 KIS API 호출
 - 테스트 통과: NVDA, TSLA, PLTR, RIVN, IONQ, HOOD, SOFI, SMR, RKLB, 삼성전자, SK하이닉스, NAVER, 카카오, 엔비디아, NVIDIA, 테슬라, 팔란티어
+---
+Task ID: 1
+Agent: main
+Task: Implement strategyAggressiveness + dynamic thresholds + FORCE_TEST_SIGNAL + signal diagnostics
+
+Work Log:
+- Read and analyzed trading-agent.ts, effective-settings.ts, risk-manager.ts, trading-engine.ts, status route
+- Added StrategyAggressiveness type (CONSERVATIVE/TEST/AGGRESSIVE) with AGGRESSIVENESS_THRESHOLDS mapping
+- Added signalThreshold, weakSignalThreshold, minConfidenceThreshold to EffectiveTradingSettings
+- Made RiskManager confidence threshold configurable (constructor parameter + setMinConfidenceThreshold)
+- Updated TradingEngine.analyze/analyzeComposite/analyzeAllStrategies to accept dynamic thresholds
+- Added FORCE_TEST_SIGNAL logic (env var + PAPER mode only, blocked in LIVE/REAL)
+- Added signal diagnostics tracking (uiSignalsCount, executableSignalsCount, topBuyCandidates, signalsBlockedReasons)
+- Added position query failure detection and warning
+- Added signalDiagnostics section to /api/agent/status
+- Added strategyAggressiveness selector + signal diagnostics panel to dashboard UI
+- Added strategyAggressiveness to settings API DEFAULT_SETTINGS
+- Committed as 6d1438d
+
+Stage Summary:
+- strategyAggressiveness with 3 modes: CONSERVATIVE (signal>=60, confidence>=50), TEST (signal>=30, confidence>=30), AGGRESSIVE (signal>=25, confidence>=25)
+- LIVE/REAL 모드에서는 항상 CONSERVATIVE 강제
+- KODEX 200 (confidence=31.5) will now pass in TEST mode (minConfidence=30)
+- FORCE_TEST_SIGNAL for pipeline validation (PAPER only)
+- Dashboard UI shows signal diagnostics with blocked reasons and BUY candidates
+- Git push requires GitHub credentials (not available in this environment)
