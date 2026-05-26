@@ -2692,25 +2692,25 @@ export default function TradingDashboard() {
                   <CardTitle className="text-base">마지막 사이클 결과</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid gap-2 grid-cols-3 sm:grid-cols-5 text-center">
+                  <div className="grid gap-2 grid-cols-2 sm:grid-cols-5 text-center">
                     <div>
-                      <p className="text-2xl font-bold text-blue-600">{agentStatus.lastCycleSummary.stocksAnalyzed}</p>
+                      <p className="text-lg sm:text-2xl font-bold text-blue-600">{agentStatus.lastCycleSummary.stocksAnalyzed}</p>
                       <p className="text-xs text-muted-foreground">분석 종목</p>
                     </div>
                     <div>
-                      <p className="text-2xl font-bold text-emerald-600">{agentStatus.lastCycleSummary.signalsGenerated}</p>
+                      <p className="text-lg sm:text-2xl font-bold text-emerald-600">{agentStatus.lastCycleSummary.signalsGenerated}</p>
                       <p className="text-xs text-muted-foreground">발생 신호</p>
                     </div>
                     <div>
-                      <p className="text-2xl font-bold text-violet-600">{agentStatus.lastCycleSummary.ordersPlaced}</p>
+                      <p className="text-lg sm:text-2xl font-bold text-violet-600">{agentStatus.lastCycleSummary.ordersPlaced}</p>
                       <p className="text-xs text-muted-foreground">실행 주문</p>
                     </div>
                     <div>
-                      <p className="text-2xl font-bold text-amber-600">{agentStatus.lastCycleSummary.positionsMonitored}</p>
+                      <p className="text-lg sm:text-2xl font-bold text-amber-600">{agentStatus.lastCycleSummary.positionsMonitored}</p>
                       <p className="text-xs text-muted-foreground">모니터링 포지션</p>
                     </div>
                     <div>
-                      <p className="text-2xl font-bold text-red-600">{agentStatus.lastCycleSummary.exitsExecuted}</p>
+                      <p className="text-lg sm:text-2xl font-bold text-red-600">{agentStatus.lastCycleSummary.exitsExecuted}</p>
                       <p className="text-xs text-muted-foreground">자동 청산</p>
                     </div>
                   </div>
@@ -2839,7 +2839,7 @@ export default function TradingDashboard() {
                             'bg-muted/30'
                           }`}
                         >
-                          <span className="text-xs text-muted-foreground whitespace-nowrap shrink-0">
+                          <span className="text-xs text-muted-foreground shrink-0">
                             {new Date(log.timestamp).toLocaleTimeString('ko-KR')}
                           </span>
                           <Badge variant="outline" className="text-xs py-0 px-1 shrink-0">
@@ -2875,27 +2875,12 @@ export default function TradingDashboard() {
             <div className="grid gap-4">
               {strategies.map((strategy) => (
                 <Card key={strategy.id} className={strategy.isActive ? 'border-l-4 border-l-emerald-500' : 'opacity-70'}>
-                  <CardHeader>
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <StrategyTypeBadge type={strategy.type} />
-                          <CardTitle className="text-base">{strategy.name}</CardTitle>
-                        </div>
-                        <CardDescription className="max-w-2xl">{strategy.description}</CardDescription>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <div className="text-right">
-                          <div className="text-sm font-medium">수익률</div>
-                          <div className="text-lg font-bold text-emerald-600">+{strategy.profitRate}%</div>
-                        </div>
-                        <Separator orientation="vertical" className="h-10" />
-                        <div className="text-right">
-                          <div className="text-sm font-medium">승률</div>
-                          <div className="text-lg font-bold">{strategy.winRate}%</div>
-                        </div>
-                        <Separator orientation="vertical" className="h-10" />
-                        <Switch 
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <StrategyTypeBadge type={strategy.type} />
+                      <CardTitle className="text-sm sm:text-base truncate">{strategy.name}</CardTitle>
+                      <div className="ml-auto shrink-0">
+                        <Switch
                           checked={strategy.isActive}
                           onCheckedChange={async (checked) => {
                             await fetch('/api/strategy/list', {
@@ -2908,7 +2893,20 @@ export default function TradingDashboard() {
                         />
                       </div>
                     </div>
+                    <CardDescription className="text-xs sm:text-sm break-all leading-relaxed">{strategy.description}</CardDescription>
                   </CardHeader>
+                  <CardContent className="pt-0 pb-4">
+                    <div className="flex items-center gap-4 text-xs sm:text-sm">
+                      <div>
+                        <span className="text-muted-foreground">수익률</span>{' '}
+                        <span className="font-bold text-emerald-600">+{strategy.profitRate}%</span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">승률</span>{' '}
+                        <span className="font-bold">{strategy.winRate}%</span>
+                      </div>
+                    </div>
+                  </CardContent>
                 </Card>
               ))}
             </div>
