@@ -46,6 +46,9 @@ const DEFAULT_SETTINGS: EffectiveTradingSettings = {
   maxDailyOverseasOrders: 1,
   maxOpenDomesticPositions: 1,
   maxOpenOverseasPositions: 1,
+  // 신호 임계값 기본값
+  strategyAggressiveness: 'CONSERVATIVE' as const,
+  signalThreshold: 40,
 };
 
 type SettingsKey = keyof typeof DEFAULT_SETTINGS;
@@ -142,6 +145,11 @@ export async function POST(request: NextRequest) {
     }
     if (safetyChecked.tradingMode === 'REAL' && !safetyChecked.allowRealDomesticOrder && !safetyChecked.allowRealOverseasOrder) {
       safetyChecked.tradingMode = 'DEMO';
+    }
+    // strategyAggressiveness 유효성 검증
+    const validAggressiveness = ['CONSERVATIVE', 'TEST', 'AGGRESSIVE'];
+    if (safetyChecked.strategyAggressiveness && !validAggressiveness.includes(safetyChecked.strategyAggressiveness)) {
+      safetyChecked.strategyAggressiveness = 'CONSERVATIVE';
     }
 
     // 유효성 검증

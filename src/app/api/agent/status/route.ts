@@ -102,6 +102,7 @@ export async function GET() {
           overseasSuccess: agentStatus.lastCycleResult.overseasSuccess,
           overseasFailed: agentStatus.lastCycleResult.overseasFailed,
           zeroAnalysisReason: agentStatus.lastCycleResult.zeroAnalysisReason,
+          topBuyCandidates: agentStatus.lastCycleResult.topBuyCandidates,
         } : null,
 
         // 서버 스케줄러 상태
@@ -177,6 +178,9 @@ export async function GET() {
           maxDailyOverseasOrders: effectiveSettings.maxDailyOverseasOrders,
           maxOpenDomesticPositions: effectiveSettings.maxOpenDomesticPositions,
           maxOpenOverseasPositions: effectiveSettings.maxOpenOverseasPositions,
+          // 신호 임계값
+          strategyAggressiveness: effectiveSettings.strategyAggressiveness,
+          signalThreshold: effectiveSettings.signalThreshold,
         },
         settingsSource,
         settingsSources,
@@ -193,6 +197,23 @@ export async function GET() {
 
         // 모의투자 주문 활성화 가이드
         demoOrderGuide,
+
+        // 신호 분석 상세
+        signalAnalysis: {
+          uiSignalsCount: agentStatus.lastCycleResult ? agentStatus.lastCycleResult.stocksAnalyzed : 0,
+          executableSignalsCount: agentStatus.lastCycleResult ? agentStatus.lastCycleResult.signalsGenerated : 0,
+          signalsBlockedReason: agentStatus.lastCycleResult && agentStatus.lastCycleResult.signalsGenerated === 0
+            ? (agentStatus.lastCycleResult.topBuyCandidates?.length > 0
+              ? `BUY 후보 ${agentStatus.lastCycleResult.topBuyCandidates.length}개 있으나 signalThreshold(${effectiveSettings.signalThreshold}) 미달`
+              : '명확한 매수/매도 신호 없음')
+            : '',
+          signalThreshold: effectiveSettings.signalThreshold,
+          strategyAggressiveness: effectiveSettings.strategyAggressiveness,
+          topBuyCandidates: agentStatus.lastCycleResult?.topBuyCandidates || [],
+          orderBlockedReason: !runtimeDecision.canPlaceDomesticOrderNow
+            ? runtimeDecision.domesticOrderBlockedReason
+            : '',
+        },
 
         // FORCE_TEST_SIGNAL 경고
         forceTestSignal: {

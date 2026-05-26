@@ -56,6 +56,10 @@ export interface EffectiveTradingSettings {
   maxDailyOverseasOrders: number;                         // 해외 일일 최대 주문 건수
   maxOpenDomesticPositions: number;                       // 국내 최대 보유 포지션 수
   maxOpenOverseasPositions: number;                       // 해외 최대 보유 포지션 수
+
+  // ── 신호 임계값 설정 ──
+  strategyAggressiveness: 'CONSERVATIVE' | 'TEST' | 'AGGRESSIVE'; // 공격성 수준
+  signalThreshold: number;                                // BUY 신호 최소 매수스코어 (자동 계산)
 }
 
 const DEFAULT_SETTINGS: EffectiveTradingSettings = {
@@ -93,6 +97,10 @@ const DEFAULT_SETTINGS: EffectiveTradingSettings = {
   maxDailyOverseasOrders: 1,
   maxOpenDomesticPositions: 1,
   maxOpenOverseasPositions: 1,
+
+  // 신호 임계값 기본값
+  strategyAggressiveness: 'CONSERVATIVE',
+  signalThreshold: 40,  // CONSERVATIVE 기본값 (원래 60이었으나 40으로 완화)
 };
 
 export interface EffectiveSettingsResult {
@@ -296,6 +304,37 @@ export async function getEffectiveTradingSettings(): Promise<EffectiveSettingsRe
   }
 
   // =============================================
+  // strategyAggressiveness → signalThreshold 자동 계산
+  // =============================================
+  const validAggressiveness = ['CONSERVATIVE', 'TEST', 'AGGRESSIVE'];
+  if (!validAggressiveness.includes(settings.strategyAggressiveness)) {
+    settings.strategyAggressiveness = 'CONSERVATIVE';
+  }
+  // aggressiveness에 따른 BUY 신호 최소 매수스코어
+  // CONSERVATIVE: 40 (기존 60에서 완화 — 모의투자 테스트 가능 수준)
+  // TEST: 30 (테스트 모드 — 더 많은 신호 생성)
+  // AGGRESSIVE: 25 (공격적 — 높은 거래 빈도)
+  switch (settings.strategyAggressiveness) {
+    case 'AGGRESSIVE':
+      settings.signalThreshold = 25;
+      break;
+    case 'TEST':
+      settings.signalThreshold = 30;
+      break;
+    case 'CONSERVATIVE':
+    default:
+      settings.signalThreshold = 40;
+      break;
+  }
+  // 환경변수로 명시적 오버라이드 가능
+  if (process.env.SIGNAL_THRESHOLD) {
+    const parsed = Number(process.env.SIGNAL_THRESHOLD);
+    if (Number.isFinite(parsed) && parsed >= 10 && parsed <= 80) {
+      settings.signalThreshold = parsed;
+    }
+  }
+
+  // =============================================
   // 소스 추적
   // =============================================
   const source: 'db' | 'env' | 'default' = hasDbSettings
@@ -355,6 +394,8 @@ export function formatSettingsSummary(settings: EffectiveTradingSettings): strin
     `killSwitch=${settings.killSwitchEnabled}`,
     `allowRealDomestic=${settings.allowRealDomesticOrder}`,
     `allowRealOverseas=${settings.allowRealOverseasOrder}`,
+    `aggressiveness=${settings.strategyAggressiveness}`,
+    `signalThreshold=${settings.signalThreshold}`,
   ].join(', ');
 }
 
@@ -555,6 +596,8 @@ export function getDemoOrderActivationGuide(settings: EffectiveTradingSettings):
     autoDomesticOrderEnabled: settings.autoDomesticOrderEnabled,
     killSwitchEnabled: settings.killSwitchEnabled,
     allowRealDomesticOrder: settings.allowRealDomesticOrder,
+    strategyAggressiveness: settings.strategyAggressiveness,
+    signalThreshold: settings.signalThreshold,
   };
 
   const currentBlockingReasons: string[] = [];
@@ -575,18 +618,27 @@ export function getDemoOrderActivationGuide(settings: EffectiveTradingSettings):
     currentBlockingReasons.push(`autoDomesticOrderEnabled=false — 국내 자동 주문 비활성화`);
   }
 
+  if (settings.strategyAggressiveness === 'CONSERVATIVE' && settings.signalThreshold > 35) {
+    currentBlockingReasons.push(`signalThreshold=${settings.signalThreshold} — 매수스코어 ${settings.signalThreshold}점 이상만 BUY 신호 생성 (TEST=30, AGGRESSIVE=25)`);
+  }
+
   const canSendDemoDomesticOrder = currentBlockingReasons.length === 0;
 
   const modeExplanation = [
     '■ 주문 실행 모드 설명:',
-    '- DRY_RUN: 신호만 생성, KIS 주문 API 호출 안함 (현재 모드)',
+    '- DRY_RUN: 신호만 생성, KIS 주문 API 호출 안함',
     '- PAPER: 모의투자 계정(isDemo=true)에서 실제 주문 접수 — KIS 모의투자 서버로 주문 전송',
     '- LIVE: 실전 계정에서 실제 주문 — tradingMode=REAL + allowRealDomesticOrder=true 필요 (현재 차단)',
+    '',
+    '■ 신호 임계값 (strategyAggressiveness):',
+    `- CONSERVATIVE: 매수스코어 40점 이상 → BUY (현재: ${settings.strategyAggressiveness === 'CONSERVATIVE' ? '선택됨' : '미선택'})`,
+    `- TEST: 매수스코어 30점 이상 → BUY (현재: ${settings.strategyAggressiveness === 'TEST' ? '선택됨' : '미선택'})`,
+    `- AGGRESSIVE: 매수스코어 25점 이상 → BUY (현재: ${settings.strategyAggressiveness === 'AGGRESSIVE' ? '선택됨' : '미선택'})`,
+    `- 현재 signalThreshold=${settings.signalThreshold}`,
     '',
     '■ allowRealDomesticOrder 설명:',
     '- false (기본값): 실전 주문 차단 — PAPER 모드에서 모의투자 주문에는 영향 없음',
     '- true: 실전 주문 허용 — LIVE 모드 + 실전 계정에서만 의미 있음',
-    '- 현재 모의투자 계정이므로 이 값이 false여도 PAPER 주문은 정상 작동',
   ].join('\n');
 
   return {

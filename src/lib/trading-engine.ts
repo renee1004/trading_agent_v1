@@ -22,7 +22,8 @@ export class TradingEngine {
     stockName: string,
     strategy: string = 'ALL',
     market: MarketType = 'DOMESTIC',
-    userParams: StrategyParameters = {}
+    userParams: StrategyParameters = {},
+    signalThreshold: number = 40
   ): TradingSignal {
     // 시장별 기본 파라미터 가져오기
     const marketDefaults = getMarketDefaults(market);
@@ -32,7 +33,7 @@ export class TradingEngine {
 
     switch (strategy) {
       case 'COMPOSITE':
-        return TradingEngine.analyzeComposite(candles, stockCode, stockName, params, market);
+        return TradingEngine.analyzeComposite(candles, stockCode, stockName, params, market, signalThreshold);
       case 'VOLATILITY_BREAKOUT':
         return TradingEngine.analyzeVolatilityBreakout(candles, stockCode, stockName, params, market);
       case 'SUPER_TREND':
@@ -43,7 +44,7 @@ export class TradingEngine {
         return TradingEngine.analyzeMomentum(candles, stockCode, stockName, params, market);
       case 'ALL':
       default:
-        return TradingEngine.analyzeAllStrategies(candles, stockCode, stockName, params, market);
+        return TradingEngine.analyzeAllStrategies(candles, stockCode, stockName, params, market, signalThreshold);
     }
   }
   /**
@@ -69,7 +70,8 @@ export class TradingEngine {
     stockCode: string,
     stockName: string,
     params: StrategyParameters = {},
-    market: MarketType = 'DOMESTIC'
+    market: MarketType = 'DOMESTIC',
+    signalThreshold: number = 40
   ): TradingSignal {
     // 시장별 기본 파라미터 적용
     const marketDefaults = getMarketDefaults(market).strategy.composite;
@@ -237,23 +239,32 @@ export class TradingEngine {
       }
     }
 
-    // 신호 결정
+    // 신호 결정 — signalThreshold 적용
+    // CONSERVATIVE: threshold=40, TEST: threshold=30, AGGRESSIVE: threshold=25
+    // 기존: buyScore >= 60 + 20 격차 → BUY (너무 엄격하여 모의투자 테스트 불가)
+    // 변경: signalThreshold 이상 + 매수/매도 격차 10점 이상 → BUY
     const totalScore = Math.max(buyScore, sellScore);
     let signalType: 'BUY' | 'SELL' | 'HOLD';
     let confidence: number;
+    const threshold = signalThreshold || 40;
+    const gapRequired = threshold >= 40 ? 15 : 10; // 보수 모드는 격차 15, 나머지는 10
 
-    if (buyScore >= 60 && buyScore > sellScore + 20) {
+    if (buyScore >= threshold + 20 && buyScore > sellScore + gapRequired) {
+      // 강한 매수 신호 (threshold + 20 이상)
       signalType = 'BUY';
       confidence = Math.min(95, buyScore);
-    } else if (sellScore >= 60 && sellScore > buyScore + 20) {
+    } else if (sellScore >= threshold + 20 && sellScore > buyScore + gapRequired) {
+      // 강한 매도 신호
       signalType = 'SELL';
       confidence = Math.min(95, sellScore);
-    } else if (buyScore > sellScore && buyScore >= 40) {
+    } else if (buyScore >= threshold && buyScore > sellScore + gapRequired) {
+      // 일반 매수 신호 (threshold 이상)
       signalType = 'BUY';
-      confidence = Math.min(70, buyScore);
-    } else if (sellScore > buyScore && sellScore >= 40) {
+      confidence = Math.min(75, buyScore);
+    } else if (sellScore >= threshold && sellScore > buyScore + gapRequired) {
+      // 일반 매도 신호
       signalType = 'SELL';
-      confidence = Math.min(70, sellScore);
+      confidence = Math.min(75, sellScore);
     } else {
       signalType = 'HOLD';
       confidence = Math.max(buyScore, sellScore);
@@ -267,9 +278,10 @@ export class TradingEngine {
     let holdReason: string | undefined;
     if (signalType === 'HOLD') {
       const holdReasons: string[] = [];
-      if (buyScore < 60) holdReasons.push(`매수스코어 미달(${buyScore}/60)`);
-      if (sellScore < 60) holdReasons.push(`매도신호 불충분`);
-      if (buyScore > sellScore && buyScore < 60) holdReasons.push(`추세 방향 불분명, RSI=${indicatorValues['rsi']?.toFixed(1) || '?'}, MACD=${indicatorValues['macdSignal']?.toFixed(1) || '?'}`);
+      if (buyScore < threshold) holdReasons.push(`매수스코어 미달(${buyScore}/${threshold})`);
+      if (sellScore < threshold) holdReasons.push(`매도신호 불충분`);
+      if (buyScore >= threshold && buyScore <= sellScore + gapRequired) holdReasons.push(`매수-매도 격차 미달(${buyScore - sellScore}/${gapRequired})`);
+      if (buyScore > sellScore && buyScore < threshold) holdReasons.push(`추세 방향 불분명, RSI=${indicatorValues['rsi']?.toFixed(1) || '?'}, MACD=${indicatorValues['macdSignal']?.toFixed(1) || '?'}`);
       holdReason = holdReasons.length > 0 ? holdReasons.join(', ') : '명확한 방향성 없음';
     }
 
@@ -762,10 +774,11 @@ export class TradingEngine {
     stockCode: string,
     stockName: string,
     params: StrategyParameters = {},
-    market: MarketType = 'DOMESTIC'
+    market: MarketType = 'DOMESTIC',
+    signalThreshold: number = 40
   ): TradingSignal {
     // 각 전략별 분석 (시장별 파라미터 자동 적용)
-    const composite = TradingEngine.analyzeComposite(candles, stockCode, stockName, params, market);
+    const composite = TradingEngine.analyzeComposite(candles, stockCode, stockName, params, market, signalThreshold);
     const volatility = TradingEngine.analyzeVolatilityBreakout(candles, stockCode, stockName, params, market);
     const superTrend = TradingEngine.analyzeSuperTrend(candles, stockCode, stockName, params, market);
     const meanReversion = TradingEngine.analyzeMeanReversion(candles, stockCode, stockName, params, market);
@@ -798,16 +811,18 @@ export class TradingEngine {
     buyScore /= totalWeight;
     sellScore /= totalWeight;
 
-    // 최종 신호 결정
+    // 최종 신호 결정 — signalThreshold 적용
     let signalType: 'BUY' | 'SELL' | 'HOLD';
     let confidence: number;
     let reason: string;
+    const threshold = signalThreshold || 40;
+    const gapRequired = threshold >= 40 ? 15 : 10;
 
-    if (buyScore > sellScore + 15 && buyScore >= 50) {
+    if (buyScore > sellScore + gapRequired && buyScore >= threshold) {
       signalType = 'BUY';
       confidence = Math.min(95, buyScore);
       reason = `종합 매수신호 [${strategyResults.join(', ')}]`;
-    } else if (sellScore > buyScore + 15 && sellScore >= 50) {
+    } else if (sellScore > buyScore + gapRequired && sellScore >= threshold) {
       signalType = 'SELL';
       confidence = Math.min(95, sellScore);
       reason = `종합 매도신호 [${strategyResults.join(', ')}]`;
@@ -821,10 +836,10 @@ export class TradingEngine {
     let holdReason: string | undefined;
     if (signalType === 'HOLD') {
       const holdReasons: string[] = [];
-      if (buyScore < 50) holdReasons.push(`매수스코어 부족(${buyScore.toFixed(0)}/50)`);
-      if (sellScore < 50) holdReasons.push(`매도스코어 부족(${sellScore.toFixed(0)}/50)`);
-      if (buyScore - sellScore <= 15 && buyScore > sellScore) holdReasons.push('매수-매도 격차 미달(15pt 미만)');
-      if (sellScore - buyScore <= 15 && sellScore > buyScore) holdReasons.push('매도-매수 격차 미달(15pt 미만)');
+      if (buyScore < threshold) holdReasons.push(`매수스코어 부족(${buyScore.toFixed(0)}/${threshold})`);
+      if (sellScore < threshold) holdReasons.push(`매도스코어 부족(${sellScore.toFixed(0)}/${threshold})`);
+      if (buyScore - sellScore <= gapRequired && buyScore > sellScore) holdReasons.push(`매수-매도 격차 미달(${(buyScore - sellScore).toFixed(0)}/${gapRequired}pt)`);
+      if (sellScore - buyScore <= gapRequired && sellScore > buyScore) holdReasons.push(`매도-매수 격차 미달(${(sellScore - buyScore).toFixed(0)}/${gapRequired}pt)`);
       holdReason = holdReasons.length > 0 ? holdReasons.join(', ') : '명확한 방향성 없음';
     }
 

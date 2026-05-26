@@ -313,6 +313,7 @@ export default function TradingDashboard() {
       ordersPlaced: number;
       positionsMonitored: number;
       exitsExecuted: number;
+      topBuyCandidates?: Array<{ stockCode: string; stockName: string; buyScore: number; threshold: number; reason: string }>;
     } | null;
     forceTestSignal?: {
       enabled: boolean;
@@ -331,7 +332,18 @@ export default function TradingDashboard() {
       autoDomesticOrderEnabled: boolean;
       allowRealDomesticOrder: boolean;
       killSwitchEnabled: boolean;
+      strategyAggressiveness?: string;
+      signalThreshold?: number;
       [key: string]: any;
+    };
+    signalAnalysis?: {
+      uiSignalsCount: number;
+      executableSignalsCount: number;
+      signalsBlockedReason: string;
+      signalThreshold: number;
+      strategyAggressiveness: string;
+      topBuyCandidates: Array<{ stockCode: string; stockName: string; buyScore: number; threshold: number; reason: string }>;
+      orderBlockedReason: string;
     };
   } | null>(null);
   const [agentLogs, setAgentLogs] = useState<Array<{
@@ -2592,6 +2604,70 @@ export default function TradingDashboard() {
                         ? 'PAPER 모드 활성 — 분석 신호 발생 시 KIS 모의투자 서버로 주문이 전송됩니다. 실전 계정에는 영향 없습니다.'
                         : 'LIVE 모드 — 실전 주문이 활성화되어 있습니다.'}
                     </p>
+
+                    {/* 신호 분석 상세 */}
+                    {agentStatus.signalAnalysis && (
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 text-xs">
+                          <span className="text-muted-foreground">실행 신호:</span>
+                          <span className={`font-semibold ${agentStatus.signalAnalysis.executableSignalsCount > 0 ? 'text-emerald-600' : 'text-amber-600'}`}>
+                            {agentStatus.signalAnalysis.executableSignalsCount}개
+                          </span>
+                          <span className="text-muted-foreground">| 관찰 종목:</span>
+                          <span>{agentStatus.signalAnalysis.uiSignalsCount}개</span>
+                          <span className="text-muted-foreground">| 임계값:</span>
+                          <span className="font-mono text-blue-600">{agentStatus.signalAnalysis.signalThreshold}점</span>
+                        </div>
+                        {agentStatus.signalAnalysis.signalsBlockedReason && (
+                          <div className="text-[11px] text-amber-600 bg-amber-50 px-2 py-1 rounded border border-amber-200">
+                            {agentStatus.signalAnalysis.signalsBlockedReason}
+                          </div>
+                        )}
+                        {/* strategyAggressiveness 선택 */}
+                        <div className="flex items-center gap-2">
+                          <span className="text-[11px] text-muted-foreground">공격성:</span>
+                          {(['CONSERVATIVE', 'TEST', 'AGGRESSIVE'] as const).map(mode => (
+                            <button
+                              key={mode}
+                              className={`text-[10px] px-2 py-0.5 rounded border font-medium transition-colors ${
+                                agentStatus.effectiveSettings?.strategyAggressiveness === mode
+                                  ? mode === 'CONSERVATIVE' ? 'bg-gray-600 text-white border-gray-600'
+                                    : mode === 'TEST' ? 'bg-blue-600 text-white border-blue-600'
+                                    : 'bg-orange-600 text-white border-orange-600'
+                                  : 'bg-white text-gray-600 border-gray-300 hover:border-gray-400'
+                              }`}
+                              onClick={async () => {
+                                try {
+                                  await fetch('/api/settings/trading', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ strategyAggressiveness: mode }),
+                                  });
+                                  await loadAgentStatus();
+                                } catch (e) {
+                                  console.error('공격성 변경 실패:', e);
+                                }
+                              }}
+                            >
+                              {mode === 'CONSERVATIVE' ? '보수(40)' : mode === 'TEST' ? '테스트(30)' : '공격(25)'}
+                            </button>
+                          ))}
+                        </div>
+                        {/* BUY 후보 종목 */}
+                        {agentStatus.signalAnalysis.topBuyCandidates.length > 0 && (
+                          <div className="text-[11px]">
+                            <p className="text-muted-foreground mb-1">BUY 후보 (임계값 미달):</p>
+                            <div className="flex flex-wrap gap-1">
+                              {agentStatus.signalAnalysis.topBuyCandidates.slice(0, 5).map(c => (
+                                <span key={c.stockCode} className="inline-flex items-center gap-0.5 bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded border border-blue-200">
+                                  {c.stockName} <span className="font-mono">{c.buyScore}</span>/{c.threshold}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
 
                     {/* 넷째 줄: 전환 버튼 */}
                     <div className="flex gap-2 pt-1">

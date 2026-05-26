@@ -61,6 +61,8 @@ export interface AgentCycleResult {
   zeroAnalysisReason?: string;
   // 실패 종목 상세
   failedStocks: Array<{ stockCode: string; stockName: string; market: string; reason: string }>;
+  // BUY 후보 종목 (signalThreshold 미만이지만 근접한 종목 포함)
+  topBuyCandidates: Array<{ stockCode: string; stockName: string; buyScore: number; threshold: number; reason: string }>;
 }
 
 // 에이전트 상태
@@ -406,6 +408,7 @@ async function executeOrder(
 
   // ── 가용금액 ──
   let availableAmount = 0;
+  let balanceFetchError = '';
   try {
     if (kisClient) {
       if (market === 'DOMESTIC') {
@@ -416,8 +419,20 @@ async function executeOrder(
         availableAmount = balance.availableAmount;
       }
     }
-  } catch (_e) {
-    // 잔고 조회 실패 시 0 유지
+  } catch (balanceErr) {
+    balanceFetchError = balanceErr instanceof Error ? balanceErr.message : String(balanceErr);
+    addLog('ERROR', market, `잔고/가용금액 조회 실패: ${balanceFetchError}`, {
+      stockCode: signal.stockCode,
+      market,
+    });
+    // PAPER 모드 + 모의투자에서 잔고 조회 실패 시에도 최소 주문은 시도
+    // (모의투자 서버 일시적 오류 가능성)
+    if (settings.orderExecutionMode === 'PAPER' && isDemo) {
+      availableAmount = settings.maxDomesticOrderAmount; // 제한 금액까지만 허용
+      addLog('INFO', market, `PAPER 모드: 가용금액 조회 실패, maxDomesticOrderAmount(${availableAmount})로 대체`, {
+        stockCode: signal.stockCode,
+      });
+    }
   }
 
   // ── 주문 사전검증 ──
@@ -903,6 +918,7 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
   let overseasFailed = 0;
   const candleErrors: string[] = [];
   const failedStocks: Array<{ stockCode: string; stockName: string; market: string; reason: string }> = [];
+  const topBuyCandidates: Array<{ stockCode: string; stockName: string; buyScore: number; threshold: number; reason: string }> = [];
 
   addLog('INFO', 'DOMESTIC', '자동 분석 사이클 시작');
 
@@ -924,6 +940,7 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
       domesticSuccess: 0, domesticFailed: 0, overseasSuccess: 0, overseasFailed: 0,
       zeroAnalysisReason: 'autoAnalysisEnabled=false',
       failedStocks: [],
+      topBuyCandidates: [],
     };
   }
 
@@ -940,6 +957,7 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
         domesticSuccess: 0, domesticFailed: 0, overseasSuccess: 0, overseasFailed: 0,
         zeroAnalysisReason: 'runAnalysisOnlyDuringMarketHours + 장외',
         failedStocks: [],
+        topBuyCandidates: [],
       };
     }
   }
@@ -1025,11 +1043,15 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
       domesticSuccess++;
       stocksAnalyzed++;
 
-      // 전략 분석
-      const signal = TradingEngine.analyze(candles, normalizedCode, stock.name, 'ALL', 'DOMESTIC');
+      // 전략 분석 — signalThreshold 적용
+      const signal = TradingEngine.analyze(candles, normalizedCode, stock.name, 'ALL', 'DOMESTIC', {}, effectiveSettings.signalThreshold);
 
-      // FORCE_TEST_SIGNAL: 첫 번째 종목에 강제 BUY 신호 주입 (파이프라인 검증용)
-      const isForceTest = FORCE_TEST_SIGNAL && signal.signalType === 'HOLD' && stocksAnalyzed <= 1;
+      // FORCE_TEST_SIGNAL: PAPER 모드에서만 허용, LIVE/REAL에서는 무조건 차단
+      // 첫 번째 종목에 강제 BUY 신호 주입 (파이프라인 검증용)
+      const isForceTestAllowed = FORCE_TEST_SIGNAL
+        && effectiveSettings.orderExecutionMode === 'PAPER'
+        && effectiveSettings.tradingMode === 'DEMO';
+      const isForceTest = isForceTestAllowed && signal.signalType === 'HOLD' && stocksAnalyzed <= 1;
       const finalAnalysisSignal = isForceTest ? {
         ...signal,
         signalType: 'BUY' as const,
@@ -1038,11 +1060,16 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
         holdReason: undefined,
       } : signal;
 
+      if (FORCE_TEST_SIGNAL && !isForceTestAllowed && effectiveSettings.orderExecutionMode !== 'PAPER') {
+        addLog('RISK', 'DOMESTIC', `FORCE_TEST_SIGNAL 차단: PAPER 모드에서만 허용 (현재: ${effectiveSettings.orderExecutionMode})`);
+      }
+
       if (isForceTest) {
         addLog('SIGNAL', 'DOMESTIC', `[FORCE_TEST] ${stock.name} 강제 BUY 신호 주입 — 파이프라인 검증`, {
           stockCode: stock.code,
           originalSignal: signal.signalType,
           originalReason: signal.reason,
+          orderExecutionMode: effectiveSettings.orderExecutionMode,
         });
       }
 
@@ -1055,6 +1082,20 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
         strategy: finalAnalysisSignal.strategy,
         holdReason: finalAnalysisSignal.holdReason,
       });
+
+      // BUY 후보 추적: signalThreshold 근접 종목 (HOLD지만 매수 방향)
+      if (finalAnalysisSignal.signalType === 'HOLD' && finalAnalysisSignal.confidence > 0) {
+        const buyScore = finalAnalysisSignal.confidence; // confidence에 buyScore가 저장됨
+        if (buyScore >= effectiveSettings.signalThreshold * 0.6) { // threshold의 60% 이상이면 후보
+          topBuyCandidates.push({
+            stockCode: normalizedCode,
+            stockName: stock.name,
+            buyScore,
+            threshold: effectiveSettings.signalThreshold,
+            reason: finalAnalysisSignal.holdReason || finalAnalysisSignal.reason,
+          });
+        }
+      }
 
       if (finalAnalysisSignal.signalType !== 'HOLD') {
         signalsGenerated++;
@@ -1562,6 +1603,7 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
     overseasFailed,
     zeroAnalysisReason,
     failedStocks,
+    topBuyCandidates,
   };
 
   agentState.lastCycleTime = endTime;
