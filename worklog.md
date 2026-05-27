@@ -41,3 +41,23 @@ Stage Summary:
 - All KIS API methods now have normalizeStockCode safety nets
 - UI shows clear success/failure feedback on TEST mode toggle
 - PAT removed from git remote after push
+
+---
+Task ID: 3
+Agent: Main Agent
+Task: strategyAggressiveness=TEST Raw SQL 직접 저장 + 오버라이드 키 폴백
+
+Work Log:
+- Identified that settingsSources.strategyAggressiveness=default means DB field is missing
+- Root cause hypothesis: Prisma Json field serialization may be dropping strategyAggressiveness
+- Rewrote test-mode POST to use ONLY Raw SQL ($queryRaw/$executeRaw), bypassing Prisma upsert
+- Added 6-step verification: raw before → merge → raw save → raw verify (3 retries) → override key backup → effective check
+- Added strategy_aggressiveness_override separate DB key as nuclear fallback
+- Modified getEffectiveTradingSettings() to check override key when strategyAggressiveness is undefined
+- Enhanced GET diagnostic with Raw SQL vs Prisma comparison
+- Pushed to GitHub (1599b03)
+
+Stage Summary:
+- Raw SQL bypass completely avoids Prisma's Json serialization
+- Override key provides a guaranteed fallback even if main record fails
+- getEffectiveTradingSettings() now has 2-tier strategyAggressiveness resolution
