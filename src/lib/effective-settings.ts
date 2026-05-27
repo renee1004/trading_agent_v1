@@ -373,9 +373,18 @@ export async function getEffectiveTradingSettings(): Promise<EffectiveSettingsRe
 
   const sources: Record<string, 'db' | 'env' | 'default'> = {};
   for (const key of Object.keys(DEFAULT_SETTINGS)) {
+    // signalThreshold, weakSignalThreshold, minConfidenceThreshold은
+    // strategyAggressiveness로부터 계산되므로, DB에 있더라도 'computed'로 표시
+    // 하지만 sources 타입이 'db'|'env'|'default'이므로 'db'로 표시 (계산의 근원이 DB이므로)
     if (envValues[key as keyof EffectiveTradingSettings] !== undefined) {
       sources[key] = 'env';
     } else if (dbSettings?.[key] !== undefined) {
+      sources[key] = 'db';
+    } else if (
+      (key === 'signalThreshold' || key === 'weakSignalThreshold' || key === 'minConfidenceThreshold') &&
+      dbSettings?.strategyAggressiveness !== undefined
+    ) {
+      // 임계값 자체는 DB에 없어도, strategyAggressiveness가 DB에 있으면 'db'로 표시
       sources[key] = 'db';
     } else {
       sources[key] = 'default';

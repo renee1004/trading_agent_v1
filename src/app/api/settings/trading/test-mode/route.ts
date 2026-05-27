@@ -1,0 +1,101 @@
+// POST /api/settings/trading/test-mode
+// PAPER + 테스트 모드 전용 엔드포인트
+// UI 버튼이 동작하지 않을 때 강제로 모든 설정을 한 번에 저장
+//
+// 저장값:
+//   tradingMode=DEMO, orderExecutionMode=PAPER, strategyAggressiveness=TEST
+//   autoDomesticOrderEnabled=true, killSwitchEnabled=false
+//   allowRealDomesticOrder=false, allowRealOverseasOrder=false
+//
+// 응답: 저장 후 effectiveSettings (임계값 계산 포함)
+
+import { NextResponse } from 'next/server';
+import { db } from '@/lib/db';
+import { getEffectiveTradingSettings } from '@/lib/effective-settings';
+
+const SETTINGS_DB_KEY = 'trading_settings';
+
+export async function POST() {
+  try {
+    // 1) 강제 설정값
+    const forceSettings: Record<string, unknown> = {
+      tradingMode: 'DEMO',
+      orderExecutionMode: 'PAPER',
+      strategyAggressiveness: 'TEST',
+      autoDomesticOrderEnabled: true,
+      killSwitchEnabled: false,
+      allowRealDomesticOrder: false,
+      allowRealOverseasOrder: false,
+    };
+
+    // 2) 기존 DB 값 읽기 + 병합
+    const existing = await db.appSetting.findUnique({ where: { key: SETTINGS_DB_KEY } });
+    const existingValue = (existing?.value && typeof existing.value === 'object')
+      ? existing.value as Record<string, unknown>
+      : {};
+
+    const merged = { ...existingValue, ...forceSettings };
+
+    // 계산된 임계값 제거 (strategyAggressiveness로부터 자동 계산)
+    delete merged.signalThreshold;
+    delete merged.weakSignalThreshold;
+    delete merged.minConfidenceThreshold;
+
+    // 3) DB에 저장
+    try {
+      await db.appSetting.upsert({
+        where: { key: SETTINGS_DB_KEY },
+        update: { value: merged },
+        create: { key: SETTINGS_DB_KEY, value: merged },
+      });
+      console.log('[TestMode] TEST 모드 강제 설정 저장 성공', {
+        strategyAggressiveness: merged.strategyAggressiveness,
+        orderExecutionMode: merged.orderExecutionMode,
+        tradingMode: merged.tradingMode,
+      });
+    } catch (dbError) {
+      console.error('[TestMode] DB 저장 실패:', dbError instanceof Error ? dbError.message : 'Unknown');
+      return NextResponse.json(
+        { success: false, error: `DB 저장 실패: ${dbError instanceof Error ? dbError.message : 'Unknown'}` },
+        { status: 500 }
+      );
+    }
+
+    // 4) 저장 후 effectiveSettings 재계산
+    const { settings: effectiveResult, source: resultSource, sources: resultSources } = await getEffectiveTradingSettings();
+
+    // 5) 검증: strategyAggressiveness가 실제로 TEST인지 확인
+    const verified = effectiveResult.strategyAggressiveness === 'TEST'
+      && effectiveResult.orderExecutionMode === 'PAPER'
+      && effectiveResult.signalThreshold === 30
+      && effectiveResult.minConfidenceThreshold === 30;
+
+    if (!verified) {
+      console.error('[TestMode] 저장 후 검증 실패:', {
+        strategyAggressiveness: effectiveResult.strategyAggressiveness,
+        orderExecutionMode: effectiveResult.orderExecutionMode,
+        signalThreshold: effectiveResult.signalThreshold,
+        minConfidenceThreshold: effectiveResult.minConfidenceThreshold,
+        source: resultSource,
+        sourcesStrategyAgg: resultSources.strategyAggressiveness,
+      });
+    }
+
+    return NextResponse.json({
+      success: true,
+      data: effectiveResult,
+      source: resultSource,
+      sources: resultSources,
+      verified,
+      message: verified
+        ? 'TEST 모드 전환 완료: DEMO/PAPER/TEST, signalThreshold=30, minConfidence=30'
+        : 'TEST 모드 전환 후 검증 실패 — 서버 로그를 확인하세요',
+      appliedSettings: forceSettings,
+    });
+  } catch (error) {
+    return NextResponse.json(
+      { success: false, error: `TEST 모드 전환 실패: ${error instanceof Error ? error.message : 'Unknown'}` },
+      { status: 500 }
+    );
+  }
+}

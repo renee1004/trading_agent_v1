@@ -8,6 +8,7 @@
 
 import { db } from './db';
 import { KisApiClient } from './kis-api';
+import { normalizeStockCode } from './stock-master';
 
 /**
  * 국내 우량 대형주 풀 (거래대금 상위 + 시가총액 상위 기준)
@@ -116,10 +117,11 @@ export async function scanTargetStocks(
     try {
       const balance = await kisClient.getAccountBalance();
       for (const pos of balance.positions) {
-        if (pos.quantity > 0 && !domesticSeen.has(pos.stockCode)) {
-          domesticSeen.add(pos.stockCode);
+        const normalizedCode = normalizeStockCode(pos.stockCode);
+        if (pos.quantity > 0 && !domesticSeen.has(normalizedCode)) {
+          domesticSeen.add(normalizedCode);
           domesticScored.push({
-            code: pos.stockCode,
+            code: normalizedCode,
             name: pos.stockName,
             score: SOURCE_PRIORITY.POSITION,
             source: 'POSITION',
@@ -135,10 +137,11 @@ export async function scanTargetStocks(
     try {
       const overseasBalance = await kisClient.getOverseasAccountBalance();
       for (const pos of overseasBalance.positions) {
-        if (pos.quantity > 0 && !overseasSeen.has(pos.stockCode)) {
-          overseasSeen.add(pos.stockCode);
+        const normalizedCode = normalizeStockCode(pos.stockCode);
+        if (pos.quantity > 0 && !overseasSeen.has(normalizedCode)) {
+          overseasSeen.add(normalizedCode);
           overseasScored.push({
-            code: pos.stockCode,
+            code: normalizedCode,
             name: pos.stockName,
             exchange: pos.exchangeCode || 'NAS',
             score: SOURCE_PRIORITY.POSITION,
@@ -160,19 +163,20 @@ export async function scanTargetStocks(
     });
 
     for (const item of watchlist) {
-      if (item.market === 'DOMESTIC' && !domesticSeen.has(item.stockCode)) {
-        domesticSeen.add(item.stockCode);
+      const normalizedCode = normalizeStockCode(item.stockCode);
+      if (item.market === 'DOMESTIC' && !domesticSeen.has(normalizedCode)) {
+        domesticSeen.add(normalizedCode);
         domesticScored.push({
-          code: item.stockCode,
+          code: normalizedCode,
           name: item.stockName,
           score: SOURCE_PRIORITY.WATCHLIST,
           source: 'WATCHLIST',
         });
         sources.watchlist++;
-      } else if (item.market === 'OVERSEAS' && !overseasSeen.has(item.stockCode)) {
-        overseasSeen.add(item.stockCode);
+      } else if (item.market === 'OVERSEAS' && !overseasSeen.has(normalizedCode)) {
+        overseasSeen.add(normalizedCode);
         overseasScored.push({
-          code: item.stockCode,
+          code: normalizedCode,
           name: item.stockName,
           exchange: item.exchangeCode || 'NAS',
           score: SOURCE_PRIORITY.WATCHLIST,

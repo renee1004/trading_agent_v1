@@ -2607,6 +2607,27 @@ export default function TradingDashboard() {
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
+                {/* ── PAPER+CONSERVATIVE 경고 ── */}
+                {(() => {
+                  const blocking = (agentStatus as any)?.currentBlockingSummary;
+                  if (!blocking) return null;
+                  const warning = blocking.paperConservativeWarning;
+                  if (!warning) return null;
+                  return (
+                    <div className="rounded-lg border-2 border-red-300 bg-red-50 p-3">
+                      <div className="flex items-center gap-2 mb-1">
+                        <AlertTriangle className="h-4 w-4 text-red-600" />
+                        <span className="font-semibold text-sm text-red-700">설정 불일치 경고</span>
+                      </div>
+                      <p className="text-sm text-red-700 font-medium">{warning}</p>
+                      <p className="text-xs text-red-600 mt-1">
+                        현재: signalThreshold={blocking.signalThreshold}, minConfidence={blocking.minConfidenceThreshold}% —
+                        신호 생성이 매우 어렵습니다.
+                      </p>
+                    </div>
+                  );
+                })()}
+
                 {/* ── PAPER 테스트 통합 전환 버튼 ── */}
                 <div className="rounded-lg border-2 border-blue-200 bg-blue-50/50 p-4">
                   <div className="flex items-center gap-2 mb-2">
@@ -2618,6 +2639,23 @@ export default function TradingDashboard() {
                       className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors disabled:opacity-50"
                       onClick={async () => {
                         try {
+                          const res = await fetch('/api/settings/trading/test-mode', {
+                            method: 'POST',
+                          });
+                          const data = await res.json();
+                          console.log('[TestMode] 전환 결과:', data.verified ? '성공' : '검증 실패', data);
+                          await loadAgentStatus();
+                        } catch (e) {
+                          console.error('PAPER 테스트 모드 전환 실패:', e);
+                        }
+                      }}
+                    >
+                      PAPER + 테스트 모드로 전환 (전용 API)
+                    </button>
+                    <button
+                      className="rounded-lg border border-blue-400 bg-blue-50 px-3 py-2 text-xs font-medium text-blue-700 hover:bg-blue-100 transition-colors"
+                      onClick={async () => {
+                        try {
                           await fetch('/api/settings/trading', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
@@ -2627,7 +2665,6 @@ export default function TradingDashboard() {
                               strategyAggressiveness: 'TEST',
                               autoDomesticOrderEnabled: true,
                               killSwitchEnabled: false,
-                              // 실전 주문은 절대 켜지지 않게
                               allowRealDomesticOrder: false,
                               allowRealOverseasOrder: false,
                             }),
@@ -2638,7 +2675,7 @@ export default function TradingDashboard() {
                         }
                       }}
                     >
-                      PAPER + 테스트 모드로 전환
+                      PAPER + 테스트 (일반 API)
                     </button>
                     <button
                       className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
@@ -2664,6 +2701,15 @@ export default function TradingDashboard() {
                   <p className="text-xs text-muted-foreground mt-2">
                     PAPER+테스트: DEMO 모의투자, 신호≥30, 신뢰도≥30% — 소액 주문 파이프라인 검증용 (실전 주문 불가)
                   </p>
+                  {(() => {
+                    const blocking = (agentStatus as any)?.currentBlockingSummary;
+                    if (!blocking?.testModeApplied) return null;
+                    return (
+                      <p className="text-xs text-emerald-600 font-medium mt-1">
+                        ✓ TEST 모드 활성: signalThreshold=30, minConfidence=30%
+                      </p>
+                    );
+                  })()}
                 </div>
 
                 {/* ── 공격성 선택 (개별) ── */}

@@ -20,6 +20,9 @@ import {
   type OverseasMasterItem,
 } from './kis-overseas-master';
 
+// 재수출: signals/route.ts 등에서 stock-master만 import해도 사용 가능
+export type { OverseasExchangeCode } from './kis-overseas-master';
+
 export type DashboardMarket = 'DOMESTIC' | 'OVERSEAS' | 'UNKNOWN';
 
 export type StockMasterItem = {

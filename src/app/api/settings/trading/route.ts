@@ -165,14 +165,36 @@ export async function POST(request: NextRequest) {
     delete validated.weakSignalThreshold;
     delete validated.minConfidenceThreshold;
 
-    // DB에 upsert
+    // ── 기존 DB 값과 병합 (merge) 후 upsert ──
+    // 핵심 수정: 이전에는 validated만 저장해서 기존 필드가 모두 지워졌음
+    // 이제는 기존 DB 값에 validated를 덮어쓰는 방식으로 병합
     try {
+      // 1) 기존 DB 값 읽기
+      const existing = await db.appSetting.findUnique({ where: { key: SETTINGS_DB_KEY } });
+      const existingValue = (existing?.value && typeof existing.value === 'object')
+        ? existing.value as Record<string, unknown>
+        : {};
+
+      // 2) 기존 값에 validated 덮어쓰기 (새 값이 우선)
+      const merged = { ...existingValue, ...validated };
+
+      // 3) 계산된 임계값이 병합 결과에 있으면 제거
+      //    (strategyAggressiveness 변경 시 임계값이 덮어쓰기되지 않도록)
+      delete merged.signalThreshold;
+      delete merged.weakSignalThreshold;
+      delete merged.minConfidenceThreshold;
+
       await db.appSetting.upsert({
         where: { key: SETTINGS_DB_KEY },
-        update: { value: validated },
-        create: { key: SETTINGS_DB_KEY, value: validated },
+        update: { value: merged },
+        create: { key: SETTINGS_DB_KEY, value: merged },
       });
-      console.log('[Settings] 설정 저장 성공 (DB upsert)', { keys: Object.keys(validated) });
+      console.log('[Settings] 설정 저장 성공 (DB upsert, merge)', {
+        existingKeys: Object.keys(existingValue),
+        newKeys: Object.keys(validated),
+        mergedKeys: Object.keys(merged),
+        strategyAggressiveness: merged.strategyAggressiveness,
+      });
     } catch (dbError) {
       console.error('[Settings] DB 저장 실패:', dbError instanceof Error ? dbError.message : 'Unknown');
       // DB 저장 실패해도 응답은 반환 (인메모리로 동작)

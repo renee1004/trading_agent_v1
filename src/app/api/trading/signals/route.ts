@@ -27,6 +27,14 @@ async function fetchCandlesWithFallback(
   market: string,
   exchangeCode?: string
 ) {
+  // ── KRX 코드 정규화 ──
+  // stockCode에 'KRX:069500' 같은 접두사가 있으면 '069500'으로 변환
+  // KIS API는 순수 6자리 종목코드만 허용
+  const normalizedCode = normalizeStockCode(stockCode);
+  if (normalizedCode !== stockCode) {
+    console.log(`[Signals] 종목코드 정규화: ${stockCode} → ${normalizedCode} (market=${market})`);
+  }
+
   const config = await db.kisConfig.findFirst();
 
   if (config?.accessToken) {
@@ -41,12 +49,12 @@ async function fetchCandlesWithFallback(
       });
 
       if (market === 'OVERSEAS' && exchangeCode) {
-        const overseasCandles = await client.getOverseasDailyCandles(stockCode, exchangeCode, '3M');
+        const overseasCandles = await client.getOverseasDailyCandles(normalizedCode, exchangeCode, '3M');
         return overseasCandles.map(c => ({
           date: c.date, open: c.open, high: c.high, low: c.low, close: c.close, volume: c.volume,
         }));
       } else {
-        return await client.getStockDailyCandles(stockCode, '3M');
+        return await client.getStockDailyCandles(normalizedCode, '3M');
       }
     } catch {
       // API 실패 시 빈 배열 반환

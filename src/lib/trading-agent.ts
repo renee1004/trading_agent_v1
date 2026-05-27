@@ -8,6 +8,7 @@ import { TradingEngine } from './trading-engine';
 import { RiskManager } from './risk-manager';
 import { scanTargetStocks } from './market-scanner';
 import { aiAnalyzer } from './ai-analyzer';
+import { normalizeStockCode, isKoreanSymbol } from './stock-master';
 import { 
   KisConfig, StockCandle, OverseasStockCandle, 
   BalanceItem, OverseasBalanceItem, MarketType,
@@ -186,10 +187,22 @@ async function fetchCandles(
     return { candles: [], error: reason };
   }
 
+  // ── KRX 코드 정규화 ──
+  // stockCode에 'KRX:069500' 같은 접두사가 있으면 '069500'으로 변환
+  // KIS API는 순수 6자리 종목코드만 허용
+  const normalizedCode = normalizeStockCode(stockCode);
+  if (normalizedCode !== stockCode) {
+    addLog('INFO', market, `${stockName} 종목코드 정규화: ${stockCode} → ${normalizedCode}`, {
+      originalCode: stockCode,
+      normalizedCode,
+      market,
+    });
+  }
+
   try {
     if (market === 'OVERSEAS' && exchangeCode) {
       const overseasCandles = await kisClient.getOverseasDailyCandles(
-        stockCode, exchangeCode, '3M'
+        normalizedCode, exchangeCode, '3M'
       );
       // OverseasStockCandle → StockCandle 변환
       const candles = overseasCandles.map(c => ({
@@ -202,13 +215,14 @@ async function fetchCandles(
       }));
       return { candles };
     } else {
-      const candles = await kisClient.getStockDailyCandles(stockCode, '3M');
+      const candles = await kisClient.getStockDailyCandles(normalizedCode, '3M');
       return { candles };
     }
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error);
     addLog('ERROR', market, `${stockName}(${stockCode}) 캔들 데이터 조회 실패`, {
-      stockCode,
+      originalCode: stockCode,
+      normalizedCode,
       stockName,
       market,
       exchangeCode: exchangeCode || '',

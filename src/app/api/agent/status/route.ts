@@ -287,6 +287,14 @@ export async function GET() {
             orderExecutionMode: effectiveSettings.orderExecutionMode,
             signalsGenerated: agentStatus.lastCycleResult?.signalsGenerated ?? 0,
             ordersPlaced: agentStatus.lastCycleResult?.ordersPlaced ?? 0,
+            // ── testModeApplied: PAPER+TEST가 올바르게 적용되었는지 ──
+            testModeApplied: effectiveSettings.orderExecutionMode === 'PAPER'
+              && effectiveSettings.strategyAggressiveness === 'TEST',
+            // ── PAPER 모드인데 CONSERVATIVE인 경우 강한 경고 ──
+            paperConservativeWarning: effectiveSettings.orderExecutionMode === 'PAPER'
+              && effectiveSettings.strategyAggressiveness === 'CONSERVATIVE'
+              ? 'PAPER 모드는 켜졌지만 신호 기준은 보수 모드입니다. TEST 모드로 전환해야 모의주문 테스트가 가능합니다.'
+              : null,
           };
         })(),
 
