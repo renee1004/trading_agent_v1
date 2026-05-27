@@ -206,3 +206,35 @@ Stage Summary:
 - PAPER+DEMO에서 잔고 조회 실패해도 소액 주문 가능
 - 대시보드에 실행 가능 신호 수 표시로 UI/실행 불일치 시각화
 - GitHub push는 인증 문제로 불가 — 사용자가 직접 push 필요
+
+---
+Task ID: 2
+Agent: main
+Task: 8포인트 종합 개선 - PAPER+TEST 통합 버튼, 설정 저장 수정, currentBlockingSummary, 장외 안내
+
+Work Log:
+- 문제 파악: strategyAggressiveness=TEST가 DB에 저장되지 않는 근본 원인
+  - /api/settings/trading POST에서 signalThreshold 등 계산값도 같이 DB에 저장
+  - getEffectiveTradingSettings()에서 DB 값이 strategyAggressiveness보다 우선
+  - 결과: TEST로 변경해도 DB에 남아있던 CONSERVATIVE 임계값(60/50)이 계속 사용됨
+- 수정 1: /api/settings/trading - 계산된 임계값(signalThreshold 등) 저장 시 제외
+- 수정 2: page.tsx Agent 탭 대폭 개선
+  - PAPER+테스트 통합 전환 버튼 (1클릭으로 DEMO+PAPER+TEST+autoDomesticOrder=true)
+  - DRY_RUN+보수 복귀 버튼
+  - 전략 공격성 개별 선택 (✓ 표시)
+  - 현재 모드 Badge (PAPER+TEST 활성 / DRY_RUN/CONSERVATIVE)
+  - 장외/시간외 안내 메시지 ("정규장 09:00~15:10에 테스트하세요")
+  - 차단 원인 요약 (번호 목록)
+  - FORCE_TEST_SIGNAL 경고 (빨간색)
+- 수정 3: /api/agent/status에 currentBlockingSummary 추가
+  - canAnalyze, canGenerateSignal, canSendOrder
+  - reasons[] 배열로 구조화
+  - currentSession, currentSessionLabel 포함
+- 빌드 테스트 통과
+- Push 성공 (커밋 7231137)
+
+Stage Summary:
+- 설정 저장 근본 원인 수정: 계산값 DB 저장 제거로 strategyAggressiveness 변경 즉시 반영
+- PAPER+TEST 1클릭 전환 버튼으로 UX 대폭 개선
+- currentBlockingSummary로 차단 원인 종합 진단 가능
+- 장외 안내로 "왜 주문이 안 되지?" 혼란 해소
