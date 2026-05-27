@@ -138,6 +138,14 @@ export async function POST(request: NextRequest) {
       safetyChecked.tradingMode = 'DEMO';
     }
 
+    // ── strategyAggressiveness 화이트리스트 검증 ──
+    // orderExecutionMode와 동일하게 유효값이 아니면 기본값(CONSERVATIVE)으로 복구
+    const validAggressiveness = ['CONSERVATIVE', 'TEST', 'AGGRESSIVE'];
+    if (safetyChecked.strategyAggressiveness && !validAggressiveness.includes(safetyChecked.strategyAggressiveness)) {
+      console.warn('[Settings] strategyAggressiveness 무효값, CONSERVATIVE로 복구:', safetyChecked.strategyAggressiveness);
+      safetyChecked.strategyAggressiveness = 'CONSERVATIVE';
+    }
+
     // 유효성 검증
     const validated: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(safetyChecked)) {
@@ -154,7 +162,20 @@ export async function POST(request: NextRequest) {
         } else if (typeof defaultValue === 'boolean' && typeof value === 'string') {
           validated[key] = value === 'true';
         }
+      } else {
+        // DEFAULT_SETTINGS에 없는 키 — 무시하되 로그 남김
+        console.warn('[Settings] 알 수 없는 설정 키 무시:', key, '=', value);
       }
+    }
+
+    // strategyAggressiveness가 validated에 들어갔는지 최종 확인
+    if (safetyChecked.strategyAggressiveness && !validated.strategyAggressiveness) {
+      console.error('[Settings] BUG: strategyAggressiveness가 검증 후 사라짐!', {
+        original: safetyChecked.strategyAggressiveness,
+        validatedKeys: Object.keys(validated),
+      });
+      // 강제 주입
+      validated.strategyAggressiveness = safetyChecked.strategyAggressiveness;
     }
 
     // ── 계산된 임계값은 DB에 저장하지 않음 ──
@@ -229,6 +250,14 @@ export async function POST(request: NextRequest) {
         mergedKeys: Object.keys(merged),
         strategyAggressiveness: merged.strategyAggressiveness,
         savedAggressiveness: (savedValue as Record<string, unknown>)?.strategyAggressiveness,
+        // 전체 merged 값 로그 (디버깅용)
+        mergedPreview: {
+          orderExecutionMode: merged.orderExecutionMode,
+          tradingMode: merged.tradingMode,
+          strategyAggressiveness: merged.strategyAggressiveness,
+          autoDomesticOrderEnabled: merged.autoDomesticOrderEnabled,
+          killSwitchEnabled: merged.killSwitchEnabled,
+        },
       });
     } catch (dbError) {
       console.error('[Settings] DB 저장 실패:', dbError instanceof Error ? dbError.message : 'Unknown');

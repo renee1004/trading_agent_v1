@@ -2643,10 +2643,23 @@ export default function TradingDashboard() {
                             method: 'POST',
                           });
                           const data = await res.json();
-                          console.log('[TestMode] 전환 결과:', data.verified ? '성공' : '검증 실패', data);
+                          if (data.verified) {
+                            console.log('[TestMode] 전환 성공 ✓', data.message);
+                          } else {
+                            console.error('[TestMode] 전환 검증 실패!', {
+                              strategyAggressiveness: data.data?.strategyAggressiveness,
+                              signalThreshold: data.data?.signalThreshold,
+                              minConfidenceThreshold: data.data?.minConfidenceThreshold,
+                              dbVerification: data.dbVerification,
+                            });
+                            alert(`TEST 모드 전환 검증 실패!\nstrategyAggressiveness=${data.data?.strategyAggressiveness}\nsignalThreshold=${data.data?.signalThreshold}\n서버 로그를 확인하세요.`);
+                          }
+                          // 반드시 상태 재조회
                           await loadAgentStatus();
+                          await loadSettingsFromServer();
                         } catch (e) {
                           console.error('PAPER 테스트 모드 전환 실패:', e);
+                          alert('PAPER 테스트 모드 전환 실패: ' + (e instanceof Error ? e.message : '네트워크 오류'));
                         }
                       }}
                     >
@@ -2656,7 +2669,7 @@ export default function TradingDashboard() {
                       className="rounded-lg border border-blue-400 bg-blue-50 px-3 py-2 text-xs font-medium text-blue-700 hover:bg-blue-100 transition-colors"
                       onClick={async () => {
                         try {
-                          await fetch('/api/settings/trading', {
+                          const res = await fetch('/api/settings/trading', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({
@@ -2669,9 +2682,18 @@ export default function TradingDashboard() {
                               allowRealOverseasOrder: false,
                             }),
                           });
+                          const data = await res.json();
+                          if (!data.success || data.data?.strategyAggressiveness !== 'TEST') {
+                            console.error('[Settings] 일반 API TEST 전환 실패:', data);
+                            alert(`TEST 모드 저장 실패!\n반환값: strategyAggressiveness=${data.data?.strategyAggressiveness}\nsource=${data.data?.sources?.strategyAggressiveness || data.sources?.strategyAggressiveness}`);
+                          } else {
+                            console.log('[Settings] 일반 API TEST 전환 성공 ✓');
+                          }
                           await loadAgentStatus();
+                          await loadSettingsFromServer();
                         } catch (e) {
                           console.error('PAPER 테스트 모드 전환 실패:', e);
+                          alert('PAPER 테스트 모드 전환 실패: ' + (e instanceof Error ? e.message : '네트워크 오류'));
                         }
                       }}
                     >
@@ -2690,6 +2712,7 @@ export default function TradingDashboard() {
                             }),
                           });
                           await loadAgentStatus();
+                          await loadSettingsFromServer();
                         } catch (e) {
                           console.error('DRY_RUN 복귀 실패:', e);
                         }
@@ -2710,6 +2733,30 @@ export default function TradingDashboard() {
                       </p>
                     );
                   })()}
+                  {/* ── DB 진단 버튼 ── */}
+                  <button
+                    className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-500 hover:bg-gray-50 transition-colors mt-2"
+                    onClick={async () => {
+                      try {
+                        const res = await fetch('/api/settings/trading/test-mode');
+                        const data = await res.json();
+                        console.log('[TestMode 진단]', data);
+                        alert(
+                          `DB 진단 결과:\n` +
+                          `DB strategyAggressiveness: ${data.dbRaw?.strategyAggressiveness}\n` +
+                          `DB orderExecutionMode: ${data.dbRaw?.orderExecutionMode}\n` +
+                          `Effective strategyAggressiveness: ${data.effective?.strategyAggressiveness}\n` +
+                          `Effective signalThreshold: ${data.effective?.signalThreshold}\n` +
+                          `Source: ${data.source}\n` +
+                          `sources.strategyAggressiveness: ${data.sources?.strategyAggressiveness}`
+                        );
+                      } catch (e) {
+                        console.error('진단 조회 실패:', e);
+                      }
+                    }}
+                  >
+                    DB 진단 확인
+                  </button>
                 </div>
 
                 {/* ── 공격성 선택 (개별) ── */}

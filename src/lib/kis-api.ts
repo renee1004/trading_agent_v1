@@ -1641,6 +1641,13 @@ export class KisApiClient {
     await kisThrottler.acquire('placeOverseasOrder', 'HIGH');
     const url = `${this.baseUrl}/uapi/overseas-stock/v1/trading/order`;
 
+    // ── 해외 주문: 종목코드 정규화 (안전장치) ──
+    // NAS:NVDA → NVDA, NYS:AAPL → AAPL 등 접두사 제거
+    const normalizedStockCode = normalizeStockCode(order.stockCode);
+    if (normalizedStockCode !== order.stockCode) {
+      console.log(`[KIS API] placeOverseasOrder 코드 정규화: ${order.stockCode} → ${normalizedStockCode}`);
+    }
+
     const trId = order.orderType === 'BUY'
       ? (this.config.isDemo ? 'VTTT1002U' : 'TTTT1002U')
       : (this.config.isDemo ? 'VTTT1001U' : 'TTTT1001U');
@@ -1650,7 +1657,7 @@ export class KisApiClient {
       CANO: account.cano,
       ACNT_PRDT_CD: account.productCode,
       OVRS_EXCG_CD: order.exchangeCode || 'NAS',
-      PDNO: order.stockCode,
+      PDNO: normalizedStockCode,
       ORD_QTY: String(order.quantity),
       OVRS_ORD_UNPR: String(order.price || 0),
       ORD_SVR_DVSN_CD: '0',

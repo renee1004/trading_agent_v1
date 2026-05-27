@@ -290,6 +290,21 @@ export async function GET() {
             // ── testModeApplied: PAPER+TEST가 올바르게 적용되었는지 ──
             testModeApplied: effectiveSettings.orderExecutionMode === 'PAPER'
               && effectiveSettings.strategyAggressiveness === 'TEST',
+            // ── testModeApplied 상세 진단 ──
+            testModeDiagnostics: {
+              orderExecutionMode: effectiveSettings.orderExecutionMode,
+              strategyAggressiveness: effectiveSettings.strategyAggressiveness,
+              signalThreshold: effectiveSettings.signalThreshold,
+              weakSignalThreshold: effectiveSettings.weakSignalThreshold,
+              minConfidenceThreshold: effectiveSettings.minConfidenceThreshold,
+              aggressivenessSource: settingsSources.strategyAggressiveness,
+              isTestMode: effectiveSettings.strategyAggressiveness === 'TEST',
+              isPaperMode: effectiveSettings.orderExecutionMode === 'PAPER',
+              isDemoMode: effectiveSettings.tradingMode === 'DEMO',
+              expectedThresholds: effectiveSettings.strategyAggressiveness === 'TEST'
+                ? { signalThreshold: 30, weakSignalThreshold: 25, minConfidenceThreshold: 30 }
+                : null,
+            },
             // ── PAPER 모드인데 CONSERVATIVE인 경우 강한 경고 ──
             paperConservativeWarning: effectiveSettings.orderExecutionMode === 'PAPER'
               && effectiveSettings.strategyAggressiveness === 'CONSERVATIVE'
