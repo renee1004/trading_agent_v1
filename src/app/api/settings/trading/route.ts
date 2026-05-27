@@ -157,6 +157,14 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // ── 계산된 임계값은 DB에 저장하지 않음 ──
+    // signalThreshold, weakSignalThreshold, minConfidenceThreshold은
+    // strategyAggressiveness에 의해 getEffectiveTradingSettings()에서 자동 계산됨
+    // DB에 저장하면 strategyAggressiveness 변경 시 덮어쓰기가 안 됨
+    delete validated.signalThreshold;
+    delete validated.weakSignalThreshold;
+    delete validated.minConfidenceThreshold;
+
     // DB에 upsert
     try {
       await db.appSetting.upsert({
@@ -164,20 +172,21 @@ export async function POST(request: NextRequest) {
         update: { value: validated },
         create: { key: SETTINGS_DB_KEY, value: validated },
       });
-      console.log('[Settings] 설정 저장 성공 (DB upsert)');
+      console.log('[Settings] 설정 저장 성공 (DB upsert)', { keys: Object.keys(validated) });
     } catch (dbError) {
       console.error('[Settings] DB 저장 실패:', dbError instanceof Error ? dbError.message : 'Unknown');
       // DB 저장 실패해도 응답은 반환 (인메모리로 동작)
     }
 
     // 저장 후 getEffectiveTradingSettings()로 최종 결과 재계산
-    // (안전 오버라이드, isDemo 체크 등이 정확히 반영되도록)
-    const { settings: effectiveResult } = await getEffectiveTradingSettings();
+    // (안전 오버라이드, isDemo 체크, strategyAggressiveness 기반 임계값 계산 등이 정확히 반영되도록)
+    const { settings: effectiveResult, source: resultSource, sources: resultSources } = await getEffectiveTradingSettings();
 
     return NextResponse.json({
       success: true,
       data: effectiveResult,
-      source: 'db',
+      source: resultSource,
+      sources: resultSources,
       message: '설정이 저장되었습니다.',
     });
   } catch (error) {

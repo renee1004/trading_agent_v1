@@ -2578,62 +2578,183 @@ export default function TradingDashboard() {
               </Card>
             </div>
 
-            {/* ── 전략 공격성 & 신호 진단 ── */}
+            {/* ── 전략 공격성 & 주문 모드 & 신호 진단 ── */}
             <Card className="border-amber-200 bg-amber-50/30 dark:bg-amber-950/10 dark:border-amber-800">
               <CardHeader>
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <CardTitle className="text-base flex items-center gap-2">
                       <Target className="h-5 w-5" />
-                      전략 공격성 & 신호 진단
+                      전략 공격성 & 주문 모드
                     </CardTitle>
                     <CardDescription>
-                      신호 임계값과 신뢰도 기준을 조정하여 PAPER 모드에서 주문 파이프라인을 검증하세요
+                      모의투자 파이프라인 검증을 위해 PAPER + 테스트 모드로 전환하세요
                     </CardDescription>
                   </div>
+                  {/* 현재 모드 표시 */}
+                  {(() => {
+                    const es = (agentStatus as any)?.effectiveSettings;
+                    if (!es) return null;
+                    const mode = es.orderExecutionMode || 'DRY_RUN';
+                    const agg = es.strategyAggressiveness || 'CONSERVATIVE';
+                    const isPaperTest = mode === 'PAPER' && agg === 'TEST';
+                    return (
+                      <Badge className={isPaperTest ? 'bg-emerald-500 text-white' : 'bg-amber-500 text-white'}>
+                        {isPaperTest ? 'PAPER+TEST 활성' : `${mode} / ${agg}`}
+                      </Badge>
+                    );
+                  })()}
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
-                {/* 공격성 선택 */}
-                <div className="grid gap-3 grid-cols-1 sm:grid-cols-3">
-                  {([
-                    { value: 'CONSERVATIVE', label: '보수', desc: '신호 ≥60, 신뢰도 ≥50%', color: 'emerald', note: 'LIVE/REAL 강제' },
-                    { value: 'TEST', label: '테스트', desc: '신호 ≥30, 신뢰도 ≥30%', color: 'amber', note: 'PAPER 모의투자용' },
-                    { value: 'AGGRESSIVE', label: '공격', desc: '신호 ≥25, 신뢰도 ≥25%', color: 'rose', note: '위험도 높음' },
-                  ] as const).map((mode) => {
-                    const isActive = (agentStatus as any)?.effectiveSettings?.strategyAggressiveness === mode.value;
-                    return (
-                      <button
-                        key={mode.value}
-                        className={`rounded-lg border-2 p-3 text-left transition-all ${
-                          isActive
-                            ? mode.color === 'emerald' ? 'border-emerald-500 bg-emerald-50/50'
-                              : mode.color === 'amber' ? 'border-amber-500 bg-amber-50/50'
-                              : 'border-rose-500 bg-rose-50/50'
-                            : 'border-gray-200 hover:border-gray-300'
-                        }`}
-                        onClick={async () => {
-                          try {
-                            await fetch('/api/settings/trading', {
-                              method: 'POST',
-                              headers: { 'Content-Type': 'application/json' },
-                              body: JSON.stringify({ strategyAggressiveness: mode.value }),
-                            });
-                            loadAgentStatus();
-                          } catch (e) {
-                            console.error('전략 공격성 변경 실패:', e);
-                          }
-                        }}
-                      >
-                        <div className="font-semibold text-sm">{mode.label} 모드</div>
-                        <div className="text-xs text-muted-foreground mt-1">{mode.desc}</div>
-                        <div className="text-xs mt-1 opacity-60">{mode.note}</div>
-                      </button>
-                    );
-                  })}
+                {/* ── PAPER 테스트 통합 전환 버튼 ── */}
+                <div className="rounded-lg border-2 border-blue-200 bg-blue-50/50 p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Zap className="h-4 w-4 text-blue-600" />
+                    <span className="font-semibold text-sm">빠른 전환</span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors disabled:opacity-50"
+                      onClick={async () => {
+                        try {
+                          await fetch('/api/settings/trading', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              tradingMode: 'DEMO',
+                              orderExecutionMode: 'PAPER',
+                              strategyAggressiveness: 'TEST',
+                              autoDomesticOrderEnabled: true,
+                              killSwitchEnabled: false,
+                              // 실전 주문은 절대 켜지지 않게
+                              allowRealDomesticOrder: false,
+                              allowRealOverseasOrder: false,
+                            }),
+                          });
+                          await loadAgentStatus();
+                        } catch (e) {
+                          console.error('PAPER 테스트 모드 전환 실패:', e);
+                        }
+                      }}
+                    >
+                      PAPER + 테스트 모드로 전환
+                    </button>
+                    <button
+                      className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                      onClick={async () => {
+                        try {
+                          await fetch('/api/settings/trading', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              orderExecutionMode: 'DRY_RUN',
+                              strategyAggressiveness: 'CONSERVATIVE',
+                            }),
+                          });
+                          await loadAgentStatus();
+                        } catch (e) {
+                          console.error('DRY_RUN 복귀 실패:', e);
+                        }
+                      }}
+                    >
+                      DRY_RUN + 보수로 복귀
+                    </button>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    PAPER+테스트: DEMO 모의투자, 신호≥30, 신뢰도≥30% — 소액 주문 파이프라인 검증용 (실전 주문 불가)
+                  </p>
                 </div>
 
-                {/* 신호 진단 요약 */}
+                {/* ── 공격성 선택 (개별) ── */}
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground mb-2">전략 공격성 개별 선택</p>
+                  <div className="grid gap-3 grid-cols-1 sm:grid-cols-3">
+                    {([
+                      { value: 'CONSERVATIVE', label: '보수', desc: '신호 ≥60, 신뢰도 ≥50%', color: 'emerald', note: 'LIVE/REAL 강제' },
+                      { value: 'TEST', label: '테스트', desc: '신호 ≥30, 신뢰도 ≥30%', color: 'amber', note: 'PAPER 모의투자용' },
+                      { value: 'AGGRESSIVE', label: '공격', desc: '신호 ≥25, 신뢰도 ≥25%', color: 'rose', note: '위험도 높음' },
+                    ] as const).map((mode) => {
+                      const isActive = (agentStatus as any)?.effectiveSettings?.strategyAggressiveness === mode.value;
+                      return (
+                        <button
+                          key={mode.value}
+                          className={`rounded-lg border-2 p-3 text-left transition-all ${
+                            isActive
+                              ? mode.color === 'emerald' ? 'border-emerald-500 bg-emerald-50/50'
+                                : mode.color === 'amber' ? 'border-amber-500 bg-amber-50/50'
+                                : 'border-rose-500 bg-rose-50/50'
+                              : 'border-gray-200 hover:border-gray-300'
+                          }`}
+                          onClick={async () => {
+                            try {
+                              await fetch('/api/settings/trading', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ strategyAggressiveness: mode.value }),
+                              });
+                              await loadAgentStatus();
+                            } catch (e) {
+                              console.error('전략 공격성 변경 실패:', e);
+                            }
+                          }}
+                        >
+                          <div className="font-semibold text-sm">{mode.label} 모드 {isActive ? '✓' : ''}</div>
+                          <div className="text-xs text-muted-foreground mt-1">{mode.desc}</div>
+                          <div className="text-xs mt-1 opacity-60">{mode.note}</div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* ── 장외/시간외 안내 ── */}
+                {(() => {
+                  const blocking = (agentStatus as any)?.currentBlockingSummary;
+                  if (!blocking) return null;
+                  const isAfterHours = blocking.currentSession && blocking.currentSession !== 'REGULAR' && blocking.currentSession !== 'CLOSED';
+                  const isClosed = blocking.currentSession === 'CLOSED';
+                  return (isAfterHours || isClosed || !blocking.canSendOrder) ? (
+                    <div className="rounded-lg border border-blue-200 bg-blue-50/50 p-3">
+                      <p className="text-xs font-semibold text-blue-700 mb-1">
+                        {isClosed ? '장 마감' : isAfterHours ? '시간외 거래 시간' : '주문 제한'}
+                      </p>
+                      {isAfterHours && (
+                        <p className="text-xs text-blue-600">
+                          현재 {blocking.currentSessionLabel}입니다. 기본 설정에서는 자동 신규 매수를 하지 않습니다. 
+                          정규장 09:00~15:10에 테스트하세요.
+                        </p>
+                      )}
+                      {isClosed && (
+                        <p className="text-xs text-blue-600">
+                          현재 장이 닫혀 있습니다. 정규장 09:00~15:10에 자동 매수 주문이 가능합니다.
+                        </p>
+                      )}
+                      {!isAfterHours && !isClosed && !blocking.canSendOrder && (
+                        <p className="text-xs text-blue-600">주문이 현재 차단되어 있습니다.</p>
+                      )}
+                      <p className="text-xs text-muted-foreground mt-1">
+                        주문이 차단되더라도 분석은 계속 수행됩니다.
+                      </p>
+                    </div>
+                  ) : null;
+                })()}
+
+                {/* ── 차단 원인 요약 ── */}
+                {(() => {
+                  const blocking = (agentStatus as any)?.currentBlockingSummary;
+                  if (!blocking || blocking.reasons.length === 0) return null;
+                  return (
+                    <div className="rounded-lg border border-amber-200 bg-amber-50/50 p-3">
+                      <p className="text-xs font-semibold text-amber-700 mb-1">현재 차단 사유</p>
+                      {blocking.reasons.map((r: string, i: number) => (
+                        <p key={i} className="text-xs text-amber-600">{i + 1}. {r}</p>
+                      ))}
+                    </div>
+                  );
+                })()}
+
+                {/* ── 신호 진단 요약 ── */}
                 {(() => {
                   const diag = (agentStatus as any)?.signalDiagnostics;
                   const lastCycle = agentStatus?.lastCycleSummary as any;
@@ -2644,6 +2765,7 @@ export default function TradingDashboard() {
                   const candidates = diag?.topBuyCandidates ?? lastCycle?.topBuyCandidates ?? [];
                   const posFailed = diag?.positionQueryFailed ?? lastCycle?.positionQueryFailed ?? false;
                   const blockedReason = diag?.orderBlockedReason ?? null;
+                  const forceUsed = diag?.forceTestSignalUsed ?? lastCycle?.forceTestSignalUsed ?? false;
 
                   return (
                     <div className="space-y-3 mt-2">
@@ -2666,13 +2788,21 @@ export default function TradingDashboard() {
                         </div>
                       </div>
 
-                      {/* 차단 사유 */}
+                      {/* FORCE_TEST_SIGNAL 경고 */}
+                      {forceUsed && (
+                        <div className="rounded-lg border border-red-200 bg-red-50/50 p-3">
+                          <p className="text-xs font-semibold text-red-700">⚠️ FORCE_TEST_SIGNAL 사용됨</p>
+                          <p className="text-xs text-red-600">파이프라인 검증용 강제 BUY 신호가 주입되었습니다. PAPER+DEMO에서만 허용됩니다.</p>
+                        </div>
+                      )}
+
+                      {/* 신호 차단 사유 */}
                       {(blocked.length > 0 || blockedReason || posFailed) && (
                         <div className="rounded-lg border border-amber-200 bg-amber-50/50 p-3">
-                          <p className="text-xs font-semibold text-amber-700 mb-1">차단 사유</p>
+                          <p className="text-xs font-semibold text-amber-700 mb-1">신호 차단 사유</p>
                           {blockedReason && <p className="text-xs text-amber-600">{blockedReason}</p>}
-                          {posFailed && <p className="text-xs text-rose-600">포지션 조회 실패 — 주문 차단</p>}
-                          {blocked.slice(0, 3).map((r: string, i: number) => (
+                          {posFailed && <p className="text-xs text-rose-600">포지션 조회 실패 — PAPER+DEMO는 소액 주문 허용</p>}
+                          {blocked.slice(0, 5).map((r: string, i: number) => (
                             <p key={i} className="text-xs text-amber-600">{r}</p>
                           ))}
                         </div>

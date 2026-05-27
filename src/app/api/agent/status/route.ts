@@ -5,8 +5,9 @@
 import { NextResponse } from 'next/server';
 import { getAgentStatus, getAgentLogs } from '@/lib/trading-agent';
 import { getSchedulerStatus } from '@/lib/agent-scheduler';
-import { getEffectiveTradingSettings, computeRuntimeDecision } from '@/lib/effective-settings';
+import { getEffectiveTradingSettings, computeRuntimeDecision, AGGRESSIVENESS_THRESHOLDS, type StrategyAggressiveness } from '@/lib/effective-settings';
 import { getOverseasMarketInfo, isUSDST, getCurrentKSTString, getCurrentETString } from '@/lib/market-hours';
+import { getDomesticSession } from '@/lib/agent-scheduler';
 import { db } from '@/lib/db';
 
 export async function GET() {
@@ -230,6 +231,64 @@ export async function GET() {
           domesticOrderBlockedReason: runtimeDecision.domesticOrderBlockedReason,
           overseasOrderBlockedReason: runtimeDecision.overseasOrderBlockedReason,
         },
+
+        // ── 차단 원인 통합 요약 ──
+        currentBlockingSummary: (() => {
+          const domesticSession = getDomesticSession();
+          const canAnalyze = runtimeDecision.canRunAnalysisNow;
+          const canGenerateSignal = effectiveSettings.strategyAggressiveness !== 'CONSERVATIVE'
+            || (agentStatus.lastCycleResult?.uiSignalsCount ?? 0) > 0;
+          const canSendOrder = runtimeDecision.canPlaceDomesticOrderNow
+            && effectiveSettings.orderExecutionMode !== 'DRY_RUN'
+            && !effectiveSettings.killSwitchEnabled;
+          const reasons: string[] = [];
+
+          // 1. 장시간 차단
+          if (!runtimeDecision.canPlaceDomesticOrderNow) {
+            reasons.push(`현재 ${domesticSession.label} — 신규 매수 주문 차단 (정규장 09:00~15:10에만 가능)`);
+          }
+
+          // 2. 전략 공격성에 의한 신호 부재
+          if (effectiveSettings.strategyAggressiveness === 'CONSERVATIVE') {
+            const thresholds = AGGRESSIVENESS_THRESHOLDS.CONSERVATIVE;
+            reasons.push(`strategyAggressiveness=CONSERVATIVE → signalThreshold=${thresholds.signalThreshold}, minConfidence=${thresholds.minConfidence}% (TEST 모드 전환 권장)`);
+          }
+
+          // 3. 주문 모드 차단
+          if (effectiveSettings.orderExecutionMode === 'DRY_RUN') {
+            reasons.push('orderExecutionMode=DRY_RUN — 실제 주문 차단 (PAPER 모드로 전환 필요)');
+          }
+
+          // 4. 킬스위치
+          if (effectiveSettings.killSwitchEnabled) {
+            reasons.push('killSwitchEnabled=true — 모든 주문 차단');
+          }
+
+          // 5. 신호 0개
+          if ((agentStatus.lastCycleResult?.signalsGenerated ?? 0) === 0) {
+            reasons.push(`signalsGenerated=0 — 매수 신호 생성 없음`);
+          }
+
+          // 6. 포지션 조회 실패
+          if (agentStatus.lastCycleResult?.positionQueryFailed) {
+            reasons.push('포지션 조회 실패 — 주문 안전을 위해 차단 (PAPER+DEMO는 예외)');
+          }
+
+          return {
+            canAnalyze,
+            canGenerateSignal,
+            canSendOrder,
+            reasons,
+            currentSession: domesticSession.session,
+            currentSessionLabel: domesticSession.label,
+            strategyAggressiveness: effectiveSettings.strategyAggressiveness,
+            signalThreshold: effectiveSettings.signalThreshold,
+            minConfidenceThreshold: effectiveSettings.minConfidenceThreshold,
+            orderExecutionMode: effectiveSettings.orderExecutionMode,
+            signalsGenerated: agentStatus.lastCycleResult?.signalsGenerated ?? 0,
+            ordersPlaced: agentStatus.lastCycleResult?.ordersPlaced ?? 0,
+          };
+        })(),
 
         // 로그
         recentLogs: mergedLogs,
