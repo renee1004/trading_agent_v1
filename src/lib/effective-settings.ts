@@ -234,12 +234,47 @@ export async function getEffectiveTradingSettings(): Promise<EffectiveSettingsRe
         dbTradingMode: dbSettings.tradingMode,
         dbKeys: Object.keys(dbSettings),
       });
+
+      // ── strategyAggressiveness 폴백: 별도 오버라이드 키 확인 ──
+      // trading_settings에 strategyAggressiveness가 없으면
+      // strategy_aggressiveness_override 키에서 읽기
+      if (dbSettings.strategyAggressiveness === undefined) {
+        try {
+          const override = await db.appSetting.findUnique({
+            where: { key: 'strategy_aggressiveness_override' },
+          });
+          if (override?.value && typeof override.value === 'object') {
+            const overrideVal = override.value as Record<string, unknown>;
+            if (overrideVal.strategyAggressiveness) {
+              console.log('[EffectiveSettings] strategyAggressiveness를 오버라이드 키에서 복구:', overrideVal.strategyAggressiveness);
+              dbSettings.strategyAggressiveness = overrideVal.strategyAggressiveness as StrategyAggressiveness;
+            }
+          }
+        } catch (overrideErr) {
+          console.warn('[EffectiveSettings] 오버라이드 키 조회 실패:', overrideErr instanceof Error ? overrideErr.message : 'Unknown');
+        }
+      }
     } else {
       console.log('[EffectiveSettings] DB에 설정 없음 (빈 값 또는 레코드 없음)', {
         hasRecord: !!record,
         valueType: typeof record?.value,
         valueIsNull: record?.value === null,
       });
+
+      // 레코드가 아예 없어도 오버라이드 키는 확인
+      try {
+        const override = await db.appSetting.findUnique({
+          where: { key: 'strategy_aggressiveness_override' },
+        });
+        if (override?.value && typeof override.value === 'object') {
+          const overrideVal = override.value as Record<string, unknown>;
+          if (overrideVal.strategyAggressiveness) {
+            dbSettings = { strategyAggressiveness: overrideVal.strategyAggressiveness as StrategyAggressiveness };
+            hasDbSettings = true;
+            console.log('[EffectiveSettings] 메인 레코드 없음, 오버라이드 키에서 복구:', overrideVal.strategyAggressiveness);
+          }
+        }
+      } catch (_e) { /* ignore */ }
     }
   } catch (dbError) {
     console.warn('[EffectiveSettings] DB 조회 실패, 환경변수/기본값 사용:', dbError instanceof Error ? dbError.message : 'Unknown');
