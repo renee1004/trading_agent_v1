@@ -190,8 +190,11 @@ export async function POST(request: NextRequest) {
     // 핵심 수정: 이전에는 validated만 저장해서 기존 필드가 모두 지워졌음
     // 이제는 기존 DB 값에 validated를 덮어쓰는 방식으로 병합
     try {
-      // 1) 기존 DB 값 읽기
-      const existing = await db.appSetting.findUnique({ where: { key: SETTINGS_DB_KEY } });
+      // 1) 기존 DB 값 읽기 (findUnique → findFirst 폴백)
+      let existing = await db.appSetting.findUnique({ where: { key: SETTINGS_DB_KEY } });
+      if (!existing) {
+        try { existing = await db.appSetting.findFirst({ where: { key: SETTINGS_DB_KEY } }); } catch (_e) { /* ignore */ }
+      }
       const existingValue = (existing?.value && typeof existing.value === 'object')
         ? existing.value as Record<string, unknown>
         : {};
@@ -223,7 +226,10 @@ export async function POST(request: NextRequest) {
       });
 
       // ── Read-after-write 검증 ──
-      const savedRecord = await db.appSetting.findUnique({ where: { key: SETTINGS_DB_KEY } });
+      let savedRecord = await db.appSetting.findUnique({ where: { key: SETTINGS_DB_KEY } });
+      if (!savedRecord) {
+        try { savedRecord = await db.appSetting.findFirst({ where: { key: SETTINGS_DB_KEY } }); } catch (_e) { /* ignore */ }
+      }
       const savedValue = (savedRecord?.value && typeof savedRecord.value === 'object')
         ? savedRecord.value as Record<string, unknown>
         : {};

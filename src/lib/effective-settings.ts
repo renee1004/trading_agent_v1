@@ -219,10 +219,24 @@ export async function getEffectiveTradingSettings(): Promise<EffectiveSettingsRe
   let hasDbSettings = false;
 
   // 1순위: DB AppSetting에서 조회
+  // ── 핵심 수정: findUnique가 null이면 findFirst로 폴백 ──
+  // InMemory DB의 findUnique가 where.key를 지원하지 않는 구버전 호환
   try {
-    const record = await db.appSetting.findUnique({
+    let record = await db.appSetting.findUnique({
       where: { key: 'trading_settings' },
     });
+    // findUnique가 null을 반환하면 findFirst로 재시도
+    // (InMemory DB 구버전에서 where.key 미지원 시 폴백)
+    if (!record) {
+      try {
+        record = await db.appSetting.findFirst({
+          where: { key: 'trading_settings' },
+        });
+        if (record) {
+          console.log('[EffectiveSettings] findUnique null → findFirst로 복구 성공');
+        }
+      } catch (_e) { /* findFirst도 실패하면 무시 */ }
+    }
     if (record?.value && typeof record.value === 'object') {
       dbSettings = record.value as Record<string, unknown>;
       hasDbSettings = true;
@@ -240,9 +254,12 @@ export async function getEffectiveTradingSettings(): Promise<EffectiveSettingsRe
       // strategy_aggressiveness_override 키에서 읽기
       if (dbSettings.strategyAggressiveness === undefined) {
         try {
-          const override = await db.appSetting.findUnique({
+          let override = await db.appSetting.findUnique({
             where: { key: 'strategy_aggressiveness_override' },
           });
+          if (!override) {
+            try { override = await db.appSetting.findFirst({ where: { key: 'strategy_aggressiveness_override' } }); } catch (_e) { /* ignore */ }
+          }
           if (override?.value && typeof override.value === 'object') {
             const overrideVal = override.value as Record<string, unknown>;
             if (overrideVal.strategyAggressiveness) {
@@ -263,9 +280,12 @@ export async function getEffectiveTradingSettings(): Promise<EffectiveSettingsRe
 
       // 레코드가 아예 없어도 오버라이드 키는 확인
       try {
-        const override = await db.appSetting.findUnique({
+        let override = await db.appSetting.findUnique({
           where: { key: 'strategy_aggressiveness_override' },
         });
+        if (!override) {
+          try { override = await db.appSetting.findFirst({ where: { key: 'strategy_aggressiveness_override' } }); } catch (_e) { /* ignore */ }
+        }
         if (override?.value && typeof override.value === 'object') {
           const overrideVal = override.value as Record<string, unknown>;
           if (overrideVal.strategyAggressiveness) {

@@ -107,10 +107,23 @@ function createInMemoryDb() {
 
       findUnique: async (args?: any) => {
         const store = getStore(modelName);
-        if (!args?.where?.id) return null;
-        const result = store.get(args.where.id) || null;
-        if (result && args?.select) return applySelect(result, args.select);
-        return result;
+        // 1순위: where.id로 직접 조회 (빠른 경로)
+        if (args?.where?.id) {
+          const result = store.get(args.where.id) || null;
+          if (result && args?.select) return applySelect(result, args.select);
+          return result;
+        }
+        // 2순위: where에 다른 unique 필드가 있으면 순차 검색
+        // (AppSetting.key 등 @unique 필드 지원)
+        if (args?.where && Object.keys(args.where).length > 0) {
+          for (const [, record] of store.entries()) {
+            if (matchesWhere(record, args.where)) {
+              if (args?.select) return applySelect(record, args.select);
+              return { ...record };
+            }
+          }
+        }
+        return null;
       },
 
       create: async (args?: any) => {
@@ -237,8 +250,147 @@ function createInMemoryDb() {
     handlers[name] = createHandler(pascalName);
   }
 
+  // ── Raw SQL 호환 레이어 ──
+  // $queryRaw / $executeRaw 호출 시 InMemory DB에서도 동작하도록 구현
+  // Prisma의 $queryRaw는 SQL을 직접 실행하지만, InMemory에서는
+  // SQL 문자열을 파싱하여 대응하는 store 작업을 수행
+  const rawSqlHandler = {
+    $queryRaw: async (sqlTemplate: any, ...values: any[]) => {
+      // Tagged template literal: $queryRaw`SELECT ...` 형태
+      // sqlTemplate.strings와 values로 SQL 재구성
+      const sql = typeof sqlTemplate === 'string'
+        ? sqlTemplate
+        : Array.isArray(sqlTemplate?.strings)
+          ? sqlTemplate.strings.reduce((acc: string, str: string, i: number) => acc + str + (i < values.length ? String(values[i]) : ''), '')
+          : String(sqlTemplate);
+
+      // AppSetting 테이블 SELECT 쿼리 감지
+      if (/SELECT.*FROM.*"AppSetting"/i.test(sql)) {
+        const keyMatch = sql.match(/WHERE\s+"key"\s*=\s*['"]?(\$\d+|[^'"\s)]+)/i);
+        // 값이 $1 형태의 파라미터인 경우 values 배열에서 찾기
+        let searchKey: string | null = null;
+        if (keyMatch) {
+          const paramRef = keyMatch[1];
+          if (paramRef.startsWith('$')) {
+            const paramIdx = parseInt(paramRef.slice(1)) - 1;
+            searchKey = values[paramIdx] ?? null;
+          } else {
+            searchKey = paramRef;
+          }
+        }
+
+        const store = getStore('AppSetting');
+        if (searchKey) {
+          for (const [, record] of store.entries()) {
+            if (record.key === searchKey) {
+              return [{ key: record.key, value: record.value }];
+            }
+          }
+        }
+        return [];
+      }
+
+      // 다른 SELECT 쿼리 - 빈 결과 반환
+      console.warn('[InMemoryDB] $queryRaw: 지원하지 않는 SQL (빈 결과 반환):', sql.substring(0, 100));
+      return [];
+    },
+
+    $executeRaw: async (sqlTemplate: any, ...values: any[]) => {
+      const sql = typeof sqlTemplate === 'string'
+        ? sqlTemplate
+        : Array.isArray(sqlTemplate?.strings)
+          ? sqlTemplate.strings.reduce((acc: string, str: string, i: number) => acc + str + (i < values.length ? String(values[i]) : ''), '')
+          : String(sqlTemplate);
+
+      // AppSetting INSERT/UPDATE 감지
+      if (/INSERT\s+INTO\s+"AppSetting"/i.test(sql) || /UPDATE\s+"AppSetting"/i.test(sql)) {
+        // SQL에서 key와 value 추출 시도
+        // Prisma tagged template의 경우 values 배열에 순서대로 파라미터가 들어있음
+        // INSERT: VALUES (${crypto.randomUUID()}, ${SETTINGS_DB_KEY}, ${jsonStr}::jsonb, NOW(), NOW())
+        // values = [uuid, key, jsonStr]
+        const store = getStore('AppSetting');
+
+        if (/INSERT\s+INTO/i.test(sql) && values.length >= 3) {
+          const id = String(values[0]);
+          const key = String(values[1]);
+          let value = values[2];
+          // JSON 문자열이면 파싱
+          if (typeof value === 'string') {
+            try { value = JSON.parse(value); } catch { /* 객체 그대로 사용 */ }
+          }
+
+          // ON CONFLICT 처리 (upsert)
+          let existingId: string | null = null;
+          for (const [rid, record] of store.entries()) {
+            if (record.key === key) {
+              existingId = rid;
+              break;
+            }
+          }
+
+          if (existingId) {
+            // UPDATE
+            const existing = store.get(existingId);
+            store.set(existingId, { ...existing, value, updatedAt: new Date() });
+          } else {
+            // INSERT
+            store.set(id, { id, key, value, createdAt: new Date(), updatedAt: new Date() });
+          }
+          return 1; // 영향받은 행 수
+        }
+
+        if (/UPDATE\s+"AppSetting"/i.test(sql) && values.length >= 2) {
+          // UPDATE "AppSetting" SET "value" = ${jsonStr}::jsonb WHERE "key" = ${SETTINGS_DB_KEY}
+          // values 순서: jsonStr, key (또는 그 반대 - SQL 구조에 따라 다름)
+          let jsonValue = values[0];
+          let keyValue = values[1];
+          // JSON 문자열이면 파싱
+          if (typeof jsonValue === 'string') {
+            try { jsonValue = JSON.parse(jsonValue); } catch { /* 그대로 */ }
+          }
+
+          for (const [rid, record] of store.entries()) {
+            if (record.key === keyValue) {
+              store.set(rid, { ...record, value: jsonValue, updatedAt: new Date() });
+              return 1;
+            }
+          }
+          // key가 파라미터 반대 순서일 수도 있음
+          if (typeof values[1] === 'string') {
+            try { jsonValue = JSON.parse(values[1]); } catch { /* 그대로 */ }
+          }
+          for (const [rid, record] of store.entries()) {
+            if (record.key === values[0]) {
+              store.set(rid, { ...record, value: jsonValue, updatedAt: new Date() });
+              return 1;
+            }
+          }
+          return 0;
+        }
+      }
+
+      // 지원하지 않는 SQL - 경고만 로그
+      console.warn('[InMemoryDB] $executeRaw: 지원하지 않는 SQL (무시):', sql.substring(0, 100));
+      return 0;
+    },
+
+    $executeRawUnsafe: async (sql: string, ...values: any[]) => {
+      console.warn('[InMemoryDB] $executeRawUnsafe: 무시:', sql.substring(0, 100));
+      return 0;
+    },
+
+    $queryRawUnsafe: async (sql: string, ...values: any[]) => {
+      console.warn('[InMemoryDB] $queryRawUnsafe: 빈 결과 반환:', sql.substring(0, 100));
+      return [];
+    },
+  };
+
   return new Proxy(handlers as any, {
     get: (target, prop) => {
+      // $로 시작하는 Prisma 내장 메서드
+      if (typeof prop === 'string' && prop.startsWith('$')) {
+        return (rawSqlHandler as any)[prop];
+      }
       if (target[prop]) return target[prop];
       // 알 수 없는 모델도 동적으로 생성
       const pascalName = String(prop).charAt(0).toUpperCase() + String(prop).slice(1);
@@ -386,6 +538,13 @@ async function initPrisma(): Promise<boolean> {
             "name" TEXT NOT NULL, "description" TEXT, "type" TEXT NOT NULL, "parameters" TEXT NOT NULL,
             "isActive" BOOLEAN NOT NULL DEFAULT false, "profitRate" DOUBLE PRECISION, "winRate" DOUBLE PRECISION,
             "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+          )`,
+          `CREATE TABLE IF NOT EXISTS "AppSetting" (
+            "id" TEXT NOT NULL PRIMARY KEY,
+            "key" TEXT NOT NULL UNIQUE,
+            "value" JSONB,
+            "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
           )`,
         ];
 
