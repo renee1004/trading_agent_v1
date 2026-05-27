@@ -80,4 +80,5 @@ server.log
 /examples/
 
 # Caddy
-Caddyfile
+Caddyfile---
+.github/workflows/
