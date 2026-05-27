@@ -8,6 +8,7 @@
 //   allowRealDomesticOrder=false, allowRealOverseasOrder=false
 //
 // 응답: 저장 후 effectiveSettings (임계값 계산 포함)
+// 검증: DB read-after-write로 strategyAggressiveness=TEST 보장
 
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
@@ -41,6 +42,12 @@ export async function POST() {
     delete merged.weakSignalThreshold;
     delete merged.minConfidenceThreshold;
 
+    // strategyAggressiveness가 반드시 'TEST'인지 확인
+    if (merged.strategyAggressiveness !== 'TEST') {
+      console.warn('[TestMode] strategyAggressiveness가 TEST가 아님, 강제 설정:', merged.strategyAggressiveness);
+      merged.strategyAggressiveness = 'TEST';
+    }
+
     // 3) DB에 저장
     try {
       await db.appSetting.upsert({
@@ -48,7 +55,7 @@ export async function POST() {
         update: { value: merged },
         create: { key: SETTINGS_DB_KEY, value: merged },
       });
-      console.log('[TestMode] TEST 모드 강제 설정 저장 성공', {
+      console.log('[TestMode] TEST 모드 강제 설정 저장 성공 (1차)', {
         strategyAggressiveness: merged.strategyAggressiveness,
         orderExecutionMode: merged.orderExecutionMode,
         tradingMode: merged.tradingMode,
@@ -61,10 +68,52 @@ export async function POST() {
       );
     }
 
-    // 4) 저장 후 effectiveSettings 재계산
+    // 4) Read-after-write 검증: DB에서 다시 읽어서 strategyAggressiveness 확인
+    let savedAggressiveness: unknown = null;
+    let retryCount = 0;
+    const MAX_RETRIES = 3;
+
+    while (retryCount < MAX_RETRIES) {
+      const savedRecord = await db.appSetting.findUnique({ where: { key: SETTINGS_DB_KEY } });
+      const savedValue = (savedRecord?.value && typeof savedRecord.value === 'object')
+        ? savedRecord.value as Record<string, unknown>
+        : {};
+      savedAggressiveness = savedValue.strategyAggressiveness;
+
+      if (savedAggressiveness === 'TEST') {
+        // 저장 성공 확인
+        console.log('[TestMode] DB read-after-write 검증 성공', {
+          retryCount,
+          savedAggressiveness,
+          savedOrderExecutionMode: savedValue.orderExecutionMode,
+        });
+        break;
+      }
+
+      // 저장 실패 - 재시도
+      retryCount++;
+      console.error(`[TestMode] DB read-after-write 검증 실패 (시도 ${retryCount}/${MAX_RETRIES})`, {
+        expected: 'TEST',
+        actual: savedAggressiveness,
+        savedValueKeys: Object.keys(savedValue),
+        allValues: savedValue,
+      });
+
+      if (retryCount < MAX_RETRIES) {
+        // 강제 재저장
+        merged.strategyAggressiveness = 'TEST';
+        await db.appSetting.upsert({
+          where: { key: SETTINGS_DB_KEY },
+          update: { value: merged },
+          create: { key: SETTINGS_DB_KEY, value: merged },
+        });
+      }
+    }
+
+    // 5) 저장 후 effectiveSettings 재계산
     const { settings: effectiveResult, source: resultSource, sources: resultSources } = await getEffectiveTradingSettings();
 
-    // 5) 검증: strategyAggressiveness가 실제로 TEST인지 확인
+    // 6) 검증: strategyAggressiveness가 실제로 TEST인지 확인
     const verified = effectiveResult.strategyAggressiveness === 'TEST'
       && effectiveResult.orderExecutionMode === 'PAPER'
       && effectiveResult.signalThreshold === 30
@@ -78,6 +127,7 @@ export async function POST() {
         minConfidenceThreshold: effectiveResult.minConfidenceThreshold,
         source: resultSource,
         sourcesStrategyAgg: resultSources.strategyAggressiveness,
+        dbSavedAggressiveness: savedAggressiveness,
       });
     }
 
@@ -87,6 +137,10 @@ export async function POST() {
       source: resultSource,
       sources: resultSources,
       verified,
+      dbVerification: {
+        savedAggressiveness,
+        retryCount,
+      },
       message: verified
         ? 'TEST 모드 전환 완료: DEMO/PAPER/TEST, signalThreshold=30, minConfidence=30'
         : 'TEST 모드 전환 후 검증 실패 — 서버 로그를 확인하세요',

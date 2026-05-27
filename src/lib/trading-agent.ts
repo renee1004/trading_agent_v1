@@ -503,8 +503,13 @@ async function executeOrder(
   }
 
   const safeQuantity = Math.max(1, Math.floor(quantity));
+  // ── 주문용 종목코드 정규화 (안전장치) ──
+  const orderStockCode = normalizeStockCode(signal.stockCode);
+  if (orderStockCode !== signal.stockCode) {
+    addLog('INFO', market, `주문 종목코드 정규화: ${signal.stockCode} → ${orderStockCode}`);
+  }
   const orderRequest: OrderRequest = {
-    stockCode: signal.stockCode,
+    stockCode: orderStockCode,
     orderType: signal.signalType as 'BUY' | 'SELL',
     quantity: safeQuantity,
     price: signal.price,

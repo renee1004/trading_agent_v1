@@ -226,6 +226,20 @@ export async function getEffectiveTradingSettings(): Promise<EffectiveSettingsRe
     if (record?.value && typeof record.value === 'object') {
       dbSettings = record.value as Record<string, unknown>;
       hasDbSettings = true;
+      // strategyAggressiveness 추적 로깅
+      console.log('[EffectiveSettings] DB에서 로드:', {
+        hasDbSettings: true,
+        dbStrategyAggressiveness: dbSettings.strategyAggressiveness,
+        dbOrderExecutionMode: dbSettings.orderExecutionMode,
+        dbTradingMode: dbSettings.tradingMode,
+        dbKeys: Object.keys(dbSettings),
+      });
+    } else {
+      console.log('[EffectiveSettings] DB에 설정 없음 (빈 값 또는 레코드 없음)', {
+        hasRecord: !!record,
+        valueType: typeof record?.value,
+        valueIsNull: record?.value === null,
+      });
     }
   } catch (dbError) {
     console.warn('[EffectiveSettings] DB 조회 실패, 환경변수/기본값 사용:', dbError instanceof Error ? dbError.message : 'Unknown');
@@ -267,6 +281,14 @@ export async function getEffectiveTradingSettings(): Promise<EffectiveSettingsRe
     ...(dbSettings || {}),
     ...envValues,
   };
+
+  // strategyAggressiveness 병합 추적
+  console.log('[EffectiveSettings] 병합 후 strategyAggressiveness:', {
+    fromDefault: DEFAULT_SETTINGS.strategyAggressiveness,
+    fromDb: dbSettings?.strategyAggressiveness,
+    fromEnv: envValues.strategyAggressiveness,
+    result: settings.strategyAggressiveness,
+  });
 
   // =============================================
   // 위험 옵션 안전장치 (이중 게이트)

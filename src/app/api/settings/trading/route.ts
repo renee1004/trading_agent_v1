@@ -184,16 +184,51 @@ export async function POST(request: NextRequest) {
       delete merged.weakSignalThreshold;
       delete merged.minConfidenceThreshold;
 
+      // ── strategyAggressiveness 명시적 보존 검증 ──
+      // validated에 strategyAggressiveness가 있으면 merged에 반드시 있어야 함
+      if (validated.strategyAggressiveness && !merged.strategyAggressiveness) {
+        console.error('[Settings] BUG: strategyAggressiveness가 병합 후 사라짐!', {
+          validatedAggressiveness: validated.strategyAggressiveness,
+          mergedKeys: Object.keys(merged),
+          mergedStrategyAggressiveness: merged.strategyAggressiveness,
+        });
+        merged.strategyAggressiveness = validated.strategyAggressiveness;
+      }
+
       await db.appSetting.upsert({
         where: { key: SETTINGS_DB_KEY },
         update: { value: merged },
         create: { key: SETTINGS_DB_KEY, value: merged },
       });
+
+      // ── Read-after-write 검증 ──
+      const savedRecord = await db.appSetting.findUnique({ where: { key: SETTINGS_DB_KEY } });
+      const savedValue = (savedRecord?.value && typeof savedRecord.value === 'object')
+        ? savedRecord.value as Record<string, unknown>
+        : {};
+      const savedAggressiveness = savedValue.strategyAggressiveness;
+      if (validated.strategyAggressiveness && savedAggressiveness !== validated.strategyAggressiveness) {
+        console.error('[Settings] DB 저장 후 검증 실패: strategyAggressiveness 불일치', {
+          expected: validated.strategyAggressiveness,
+          actual: savedAggressiveness,
+          savedValueKeys: Object.keys(savedValue),
+        });
+        // 강제 재시도
+        merged.strategyAggressiveness = validated.strategyAggressiveness;
+        await db.appSetting.upsert({
+          where: { key: SETTINGS_DB_KEY },
+          update: { value: merged },
+          create: { key: SETTINGS_DB_KEY, value: merged },
+        });
+        console.log('[Settings] strategyAggressiveness 강제 재저장 완료');
+      }
+
       console.log('[Settings] 설정 저장 성공 (DB upsert, merge)', {
         existingKeys: Object.keys(existingValue),
         newKeys: Object.keys(validated),
         mergedKeys: Object.keys(merged),
         strategyAggressiveness: merged.strategyAggressiveness,
+        savedAggressiveness: (savedValue as Record<string, unknown>)?.strategyAggressiveness,
       });
     } catch (dbError) {
       console.error('[Settings] DB 저장 실패:', dbError instanceof Error ? dbError.message : 'Unknown');

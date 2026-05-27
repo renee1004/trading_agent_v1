@@ -19,6 +19,7 @@ import {
   normalizeOverseasDisplayCode,
   type OverseasExchangeCode,
 } from './kis-overseas-master';
+import { normalizeStockCode } from './stock-master';
 
 const DEMO_BASE_URL = 'https://openapivts.koreainvestment.com:29443';
 const REAL_BASE_URL = 'https://openapi.koreainvestment.com:9443';
@@ -437,6 +438,13 @@ export class KisApiClient {
   }
 
   async getStockPrice(stockCode: string): Promise<StockPrice> {
+    // ── KRX 코드 정규화 (안전장치) ──
+    // KIS API는 순수 6자리 종목코드만 허용
+    const normalizedCode = normalizeStockCode(stockCode);
+    if (normalizedCode !== stockCode) {
+      console.log(`[KIS API] getStockPrice 코드 정규화: ${stockCode} → ${normalizedCode}`);
+    }
+
     const token = await this.ensureToken();
     await kisThrottler.acquire('getStockPrice', 'NORMAL');
     const errors: string[] = [];
@@ -445,7 +453,7 @@ export class KisApiClient {
       const url = `${baseUrl}/uapi/domestic-stock/v1/quotations/inquire-price`;
       const params = new URLSearchParams({
         FID_COND_MRKT_DIV_CODE: 'J',
-        FID_INPUT_ISCD: stockCode,
+        FID_INPUT_ISCD: normalizedCode,
       });
 
       try {
@@ -499,6 +507,13 @@ export class KisApiClient {
     stockCode: string,
     period: string = '1M'
   ): Promise<StockCandle[]> {
+    // ── KRX 코드 정규화 (안전장치) ──
+    // KIS API는 순수 6자리 종목코드만 허용
+    const normalizedCode = normalizeStockCode(stockCode);
+    if (normalizedCode !== stockCode) {
+      console.log(`[KIS API] getStockDailyCandles 코드 정규화: ${stockCode} → ${normalizedCode}`);
+    }
+
     const token = await this.ensureToken();
     await kisThrottler.acquire('getStockDailyCandles', 'NORMAL');
     const { startDate, endDate } = getDateRangeByPeriod(period);
@@ -509,14 +524,14 @@ export class KisApiClient {
 
       const params = new URLSearchParams({
         FID_COND_MRKT_DIV_CODE: 'J',
-        FID_INPUT_ISCD: stockCode,
+        FID_INPUT_ISCD: normalizedCode,
         FID_INPUT_DATE_1: startDate,
         FID_INPUT_DATE_2: endDate,
         FID_PERIOD_DIV_CODE: 'D',
         FID_ORG_ADJ_PRC: '1',
       });
 
-      console.log(`[KIS API] Daily candles request: stockCode=${stockCode}, base=${baseUrl}, date=${startDate}~${endDate}`);
+      console.log(`[KIS API] Daily candles request: originalCode=${stockCode}, normalizedCode=${normalizedCode}, base=${baseUrl}, date=${startDate}~${endDate}`);
 
       try {
         const response = await fetch(`${url}?${params.toString()}`, {
@@ -537,7 +552,8 @@ export class KisApiClient {
         const result = await response.json();
         const output2 = Array.isArray(result.output2) ? result.output2 : [];
         console.log('[KIS API] Daily candles response', {
-          stockCode,
+          originalCode: stockCode,
+          normalizedCode,
           baseUrl,
           rt_cd: result.rt_cd,
           msg_cd: result.msg_cd,
@@ -553,7 +569,7 @@ export class KisApiClient {
           throw new Error(`일봉 조회 성공했으나 output2가 비어 있음 (rt_cd=${result.rt_cd}, msg_cd=${result.msg_cd || ''})`);
         }
 
-        console.log(`[KIS API] Daily candles 성공: stockCode=${stockCode}, candles=${output2.length}, base=${baseUrl}`);
+        console.log(`[KIS API] Daily candles 성공: originalCode=${stockCode}, normalizedCode=${normalizedCode}, candles=${output2.length}, base=${baseUrl}`);
         return output2.map((item: Record<string, string>) => ({
           date: item.stck_bsop_date || '',
           open: parseInt(item.stck_oprc) || 0,
@@ -565,7 +581,7 @@ export class KisApiClient {
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : String(error);
         errors.push(`[${baseUrl}] ${errorMsg}`);
-        console.warn(`[KIS API] Daily candles failed: stockCode=${stockCode}, baseUrl=${baseUrl}, error=${errorMsg}`);
+        console.warn(`[KIS API] Daily candles failed: originalCode=${stockCode}, normalizedCode=${normalizedCode}, baseUrl=${baseUrl}, error=${errorMsg}`);
       }
     }
 
@@ -587,6 +603,12 @@ export class KisApiClient {
   async placeOrder(order: OrderRequest): Promise<OrderResponse> {
     if (order.market === 'OVERSEAS' && order.exchangeCode) {
       return this.placeOverseasOrder(order);
+    }
+
+    // ── 국내 주문: 종목코드 정규화 (안전장치) ──
+    const normalizedStockCode = normalizeStockCode(order.stockCode);
+    if (normalizedStockCode !== order.stockCode) {
+      console.log(`[KIS API] placeOrder 코드 정규화: ${order.stockCode} → ${normalizedStockCode}`);
     }
 
     const token = await this.ensureToken();
@@ -614,7 +636,7 @@ export class KisApiClient {
     const orderData = {
       CANO: account.cano,
       ACNT_PRDT_CD: account.productCode,
-      PDNO: order.stockCode,
+      PDNO: normalizedStockCode,
       ORD_DVSN: orderKind,
       ORD_QTY: String(order.quantity),
       ORD_UNPR: String(order.price || 0),
