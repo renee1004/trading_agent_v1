@@ -2665,19 +2665,11 @@ export default function TradingDashboard() {
                       className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
                       onClick={async () => {
                         try {
-                          // DRY_RUN 복귀 + override 키도 삭제
-                          await fetch('/api/settings/trading', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                              orderExecutionMode: 'DRY_RUN',
-                              strategyAggressiveness: 'CONSERVATIVE',
-                            }),
-                          });
-                          // override 키도 CONSERVATIVE로 업데이트
+                          // TEST 모드 해제: DELETE 엔드포인트 호출
+                          // (override 키 삭제 + CONSERVATIVE 복원)
                           await fetch('/api/settings/trading/test-mode', {
-                            method: 'POST',
-                          }).catch(() => {}); // 실패해도 무시
+                            method: 'DELETE',
+                          });
                           await loadAgentStatus();
                           await loadSettingsFromServer();
                         } catch (e) {

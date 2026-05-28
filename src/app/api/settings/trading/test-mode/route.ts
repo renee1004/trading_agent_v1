@@ -1,79 +1,53 @@
 // POST /api/settings/trading/test-mode
 // PAPER + 테스트 모드 전용 엔드포인트
-// ── v4: Prisma upsert만 사용, override 키 최우선 저장 ──
-// 핵심 변경: strategyAggressiveness를 별도 AppSetting 키에 먼저 저장
-// 이후 메인 trading_settings에도 저장 (이중 보증)
-// effective-settings는 override 키를 항상 최우선으로 읽음
+// ── v5: db.ts Proxy 우회, 직접 PrismaClient 사용 ──
+// 핵심 변경: db.ts의 비동기 초기화 경쟁상태를 완전히 회피
+// findFirst + update/create 방식으로 upsert unique 제약 의존성 제거
 
 import { NextResponse } from 'next/server';
+import { prisma, getAppSetting, setAppSetting, isPrismaAvailable, ensurePrismaConnected, getAllAppSettings } from '@/lib/prisma';
 import { db } from '@/lib/db';
 import { getEffectiveTradingSettings } from '@/lib/effective-settings';
 
 const SETTINGS_DB_KEY = 'trading_settings';
 const OVERRIDE_KEY = 'strategy_aggressiveness_override';
 
-/**
- * AppSetting에서 findUnique → findFirst 폴백으로 레코드 조회
- */
-async function findAppSetting(key: string): Promise<{ value: unknown } | null> {
-  try {
-    let record = await db.appSetting.findUnique({ where: { key } });
-    if (!record) {
-      try { record = await db.appSetting.findFirst({ where: { key } }); } catch (_e) { /* ignore */ }
-    }
-    return record;
-  } catch (_e) {
-    return null;
-  }
-}
-
 export async function POST() {
   try {
-    console.log('[TestMode] ====== POST 시작 ======');
+    console.log('[TestMode] ====== POST v5 시작 (직접 Prisma) ======');
+    console.log('[TestMode] DATABASE_URL 설정됨:', !!process.env.DATABASE_URL);
+    console.log('[TestMode] Prisma 사용 가능:', isPrismaAvailable());
+
+    // Prisma 연결 보장
+    const connected = await ensurePrismaConnected();
+    console.log('[TestMode] Prisma 연결 상태:', connected);
 
     // ═══════════════════════════════════════════════════════
-    // STEP 1: override 키에 strategyAggressiveness='TEST' 저장 (최우선!)
-    // 이것이 가장 중요한 단계입니다.
-    // 메인 trading_settings의 Prisma Json 직렬화 버그와 무관하게
-    // 별도 키에 확실하게 저장합니다.
+    // STEP 1: override 키에 strategyAggressiveness='TEST' 저장
     // ═══════════════════════════════════════════════════════
-    let overrideSaved = false;
-    try {
-      await db.appSetting.upsert({
-        where: { key: OVERRIDE_KEY },
-        update: { value: { strategyAggressiveness: 'TEST' } },
-        create: { key: OVERRIDE_KEY, value: { strategyAggressiveness: 'TEST' } },
-      });
-      overrideSaved = true;
-      console.log('[TestMode] STEP 1 - override 키 저장 성공: strategyAggressiveness=TEST');
-    } catch (e) {
-      console.error('[TestMode] STEP 1 - override 키 저장 실패:', e instanceof Error ? e.message : 'Unknown');
+    const overrideSaved = await setAppSetting(OVERRIDE_KEY, { strategyAggressiveness: 'TEST' });
+    console.log('[TestMode] STEP 1 - override 키 저장:', overrideSaved ? '성공' : '실패');
+
+    // 검증
+    let overrideVerified = false;
+    const overrideRecord = await getAppSetting(OVERRIDE_KEY);
+    if (overrideRecord?.value && typeof overrideRecord.value === 'object') {
+      const val = (overrideRecord.value as Record<string, unknown>).strategyAggressiveness;
+      overrideVerified = val === 'TEST';
+      console.log('[TestMode] STEP 1 검증:', { val, overrideVerified });
     }
 
-    // 검증: 방금 저장한 override 키 읽기
-    let overrideVerified = false;
-    try {
-      const overrideRecord = await findAppSetting(OVERRIDE_KEY);
-      if (overrideRecord?.value && typeof overrideRecord.value === 'object') {
-        const val = (overrideRecord.value as Record<string, unknown>).strategyAggressiveness;
-        overrideVerified = val === 'TEST';
-        console.log('[TestMode] STEP 1 검증 - override 키 읽기:', { val, overrideVerified });
-      }
-    } catch (_e) { /* ignore */ }
-
     // ═══════════════════════════════════════════════════════
-    // STEP 2: 메인 trading_settings에도 저장 (이중 보증)
+    // STEP 2: 메인 trading_settings에 저장
     // ═══════════════════════════════════════════════════════
     // 기존 값 읽기
     let existingValue: Record<string, unknown> = {};
-    try {
-      const existing = await findAppSetting(SETTINGS_DB_KEY);
-      if (existing?.value && typeof existing.value === 'object') {
-        existingValue = existing.value as Record<string, unknown>;
-      }
-    } catch (_e) { /* ignore */ }
+    const existingRecord = await getAppSetting(SETTINGS_DB_KEY);
+    if (existingRecord?.value && typeof existingRecord.value === 'object') {
+      existingValue = existingRecord.value as Record<string, unknown>;
+    }
 
-    // 병합: 기존값 + TEST 모드 오버라이드
+    // 병합
     const mergedValue: Record<string, unknown> = {
       ...existingValue,
       tradingMode: 'DEMO',
@@ -85,59 +59,41 @@ export async function POST() {
       allowRealOverseasOrder: false,
     };
 
-    // 계산값 제거 (strategyAggressiveness에서 자동 계산)
+    // 계산값 제거
     delete mergedValue.signalThreshold;
     delete mergedValue.weakSignalThreshold;
     delete mergedValue.minConfidenceThreshold;
 
-    // 3중 보증: strategyAggressiveness가 반드시 TEST
+    // 최종 확인
     if (mergedValue.strategyAggressiveness !== 'TEST') {
       console.error('[TestMode] BUG: 병합 후 strategyAggressiveness가 TEST가 아님!', mergedValue.strategyAggressiveness);
       mergedValue.strategyAggressiveness = 'TEST';
     }
 
-    let mainSaved = false;
-    try {
-      await db.appSetting.upsert({
-        where: { key: SETTINGS_DB_KEY },
-        update: { value: mergedValue },
-        create: { key: SETTINGS_DB_KEY, value: mergedValue },
-      });
-      mainSaved = true;
-      console.log('[TestMode] STEP 2 - 메인 trading_settings 저장 성공');
-    } catch (e) {
-      console.error('[TestMode] STEP 2 - 메인 저장 실패:', e instanceof Error ? e.message : 'Unknown');
-    }
+    const mainSaved = await setAppSetting(SETTINGS_DB_KEY, mergedValue);
+    console.log('[TestMode] STEP 2 - 메인 trading_settings 저장:', mainSaved ? '성공' : '실패');
 
     // ═══════════════════════════════════════════════════════
     // STEP 3: 검증 (최대 3회 재시도)
     // ═══════════════════════════════════════════════════════
     let mainVerified = false;
     for (let attempt = 1; attempt <= 3; attempt++) {
-      try {
-        const record = await findAppSetting(SETTINGS_DB_KEY);
-        if (record?.value && typeof record.value === 'object') {
-          const val = (record.value as Record<string, unknown>).strategyAggressiveness;
-          mainVerified = val === 'TEST';
-          console.log(`[TestMode] STEP 3 - 검증 ${attempt}/3:`, { strategyAggressiveness: val, verified: mainVerified });
-        }
-        if (mainVerified) break;
+      const record = await getAppSetting(SETTINGS_DB_KEY);
+      if (record?.value && typeof record.value === 'object') {
+        const val = (record.value as Record<string, unknown>).strategyAggressiveness;
+        mainVerified = val === 'TEST';
+        console.log(`[TestMode] STEP 3 - 검증 ${attempt}/3:`, { strategyAggressiveness: val, verified: mainVerified });
+      }
+      if (mainVerified) break;
 
-        // 재시도: 다시 저장
-        if (attempt < 3) {
-          try {
-            await db.appSetting.upsert({
-              where: { key: SETTINGS_DB_KEY },
-              update: { value: { ...mergedValue, strategyAggressiveness: 'TEST' } },
-              create: { key: SETTINGS_DB_KEY, value: { ...mergedValue, strategyAggressiveness: 'TEST' } },
-            });
-          } catch (_e) { /* ignore */ }
-        }
-      } catch (_e) { /* ignore */ }
+      // 재시도
+      if (attempt < 3) {
+        await setAppSetting(SETTINGS_DB_KEY, { ...mergedValue, strategyAggressiveness: 'TEST' });
+      }
     }
 
     // ═══════════════════════════════════════════════════════
-    // STEP 4: effectiveSettings 재계산 (최종 검증)
+    // STEP 4: effectiveSettings 재계산
     // ═══════════════════════════════════════════════════════
     const { settings: effectiveResult, source: resultSource, sources: resultSources } = await getEffectiveTradingSettings();
 
@@ -169,6 +125,8 @@ export async function POST() {
       sources: resultSources,
       verified: effectiveVerified,
       debug: {
+        prismaConnected: connected,
+        prismaAvailable: isPrismaAvailable(),
         overrideSaved,
         overrideVerified,
         mainSaved,
@@ -191,54 +149,120 @@ export async function POST() {
   }
 }
 
-// GET: DB 진단
+// DELETE: TEST 모드 해제 — override 키 삭제 + CONSERVATIVE 복원
+export async function DELETE() {
+  try {
+    console.log('[TestMode] ====== DELETE: TEST 모드 해제 ======');
+
+    // 1) override 키 삭제
+    let overrideDeleted = false;
+    try {
+      await ensurePrismaConnected();
+      const existing = await prisma.appSetting.findFirst({ where: { key: OVERRIDE_KEY } });
+      if (existing) {
+        await prisma.appSetting.delete({ where: { id: existing.id } });
+        overrideDeleted = true;
+        console.log('[TestMode] override 키 삭제 성공');
+      } else {
+        overrideDeleted = true; // 이미 없음
+      }
+    } catch (e) {
+      console.error('[TestMode] override 키 삭제 실패:', e instanceof Error ? e.message : 'Unknown');
+    }
+
+    // 2) 메인 trading_settings에서 strategyAggressiveness를 CONSERVATIVE로 변경
+    let mainReset = false;
+    try {
+      const existingRecord = await getAppSetting(SETTINGS_DB_KEY);
+      if (existingRecord?.value && typeof existingRecord.value === 'object') {
+        const existingValue = { ...(existingRecord.value as Record<string, unknown>) };
+        existingValue.strategyAggressiveness = 'CONSERVATIVE';
+        existingValue.orderExecutionMode = 'DRY_RUN';
+        existingValue.tradingMode = 'DEMO';
+        delete existingValue.signalThreshold;
+        delete existingValue.weakSignalThreshold;
+        delete existingValue.minConfidenceThreshold;
+        mainReset = await setAppSetting(SETTINGS_DB_KEY, existingValue);
+      }
+    } catch (e) {
+      console.error('[TestMode] 메인 설정 CONSERVATIVE 복원 실패:', e instanceof Error ? e.message : 'Unknown');
+    }
+
+    // 3) effectiveSettings 재계산
+    const { settings: effectiveResult, source: resultSource, sources: resultSources } = await getEffectiveTradingSettings();
+
+    const resetVerified = effectiveResult.strategyAggressiveness === 'CONSERVATIVE'
+      && effectiveResult.orderExecutionMode === 'DRY_RUN';
+
+    return NextResponse.json({
+      success: true,
+      data: effectiveResult,
+      source: resultSource,
+      sources: resultSources,
+      verified: resetVerified,
+      debug: { overrideDeleted, mainReset },
+      message: resetVerified
+        ? 'DRY_RUN + 보수 모드 복원 완료'
+        : `복원 확인 필요: aggressiveness=${effectiveResult.strategyAggressiveness}, mode=${effectiveResult.orderExecutionMode}`,
+    });
+  } catch (error) {
+    return NextResponse.json(
+      { success: false, error: `TEST 모드 해제 실패: ${error instanceof Error ? error.message : 'Unknown'}` },
+      { status: 500 }
+    );
+  }
+}
+
+// GET: DB 진단 (직접 Prisma + db.ts 비교)
 export async function GET() {
   try {
-    // 1) override 키 조회
-    let overrideValue: unknown = null;
-    let overrideFound = false;
-    try {
-      const record = await findAppSetting(OVERRIDE_KEY);
-      if (record?.value) {
-        overrideValue = record.value;
-        overrideFound = true;
-      }
-    } catch (_e) { /* ignore */ }
+    const connected = await ensurePrismaConnected();
 
-    // 2) 메인 trading_settings 조회
-    let mainValue: unknown = null;
-    let mainFound = false;
-    try {
-      const record = await findAppSetting(SETTINGS_DB_KEY);
-      if (record?.value) {
-        mainValue = record.value;
-        mainFound = true;
-      }
-    } catch (_e) { /* ignore */ }
+    // 1) 직접 Prisma로 전체 AppSetting 조회
+    const allSettings = await getAllAppSettings();
+    const overrideSetting = allSettings.find(s => s.key === OVERRIDE_KEY);
+    const mainSetting = allSettings.find(s => s.key === SETTINGS_DB_KEY);
 
-    // 3) effectiveSettings
+    // 2) effectiveSettings
     const { settings, source, sources } = await getEffectiveTradingSettings();
 
-    // 4) DB 타입
-    let dbType = 'Unknown';
+    // 3) db.ts 경로로도 조회 (비교용)
+    let dbProxyType = 'Unknown';
+    let dbProxyMain: unknown = null;
+    let dbProxyOverride: unknown = null;
     try {
       const { getDbType } = await import('@/lib/db');
-      dbType = getDbType();
+      dbProxyType = getDbType();
+      const mainRec = await db.appSetting.findFirst({ where: { key: SETTINGS_DB_KEY } });
+      dbProxyMain = mainRec?.value;
+      const overrideRec = await db.appSetting.findFirst({ where: { key: OVERRIDE_KEY } });
+      dbProxyOverride = overrideRec?.value;
     } catch (_e) { /* ignore */ }
 
     return NextResponse.json({
       success: true,
-      dbType,
+      prisma: {
+        connected,
+        available: isPrismaAvailable(),
+        allKeys: allSettings.map(s => s.key),
+      },
       override: {
-        found: overrideFound,
-        strategyAggressiveness: (overrideValue as Record<string, unknown>)?.strategyAggressiveness ?? null,
-        fullValue: overrideValue,
+        found: !!overrideSetting,
+        strategyAggressiveness: (overrideSetting?.value as Record<string, unknown>)?.strategyAggressiveness ?? null,
+        fullValue: overrideSetting?.value,
       },
       main: {
-        found: mainFound,
-        strategyAggressiveness: (mainValue as Record<string, unknown>)?.strategyAggressiveness ?? null,
-        orderExecutionMode: (mainValue as Record<string, unknown>)?.orderExecutionMode ?? null,
-        allKeys: mainValue && typeof mainValue === 'object' ? Object.keys(mainValue as Record<string, unknown>) : [],
+        found: !!mainSetting,
+        strategyAggressiveness: (mainSetting?.value as Record<string, unknown>)?.strategyAggressiveness ?? null,
+        orderExecutionMode: (mainSetting?.value as Record<string, unknown>)?.orderExecutionMode ?? null,
+        allKeys: mainSetting?.value && typeof mainSetting.value === 'object'
+          ? Object.keys(mainSetting.value as Record<string, unknown>)
+          : [],
+      },
+      dbProxy: {
+        type: dbProxyType,
+        mainStrategyAggressiveness: (dbProxyMain as Record<string, unknown>)?.strategyAggressiveness ?? null,
+        overrideStrategyAggressiveness: (dbProxyOverride as Record<string, unknown>)?.strategyAggressiveness ?? null,
       },
       effective: {
         strategyAggressiveness: settings.strategyAggressiveness,
