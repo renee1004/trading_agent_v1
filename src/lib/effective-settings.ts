@@ -218,15 +218,38 @@ export async function getEffectiveTradingSettings(): Promise<EffectiveSettingsRe
   let dbSettings: Record<string, unknown> | null = null;
   let hasDbSettings = false;
 
-  // 1순위: DB AppSetting에서 조회
-  // ── 핵심 수정: findUnique가 null이면 findFirst로 폴백 ──
-  // InMemory DB의 findUnique가 where.key를 지원하지 않는 구버전 호환
+  // ═══════════════════════════════════════════════════════════
+  // 0순위: strategy_aggressiveness_override 키 항상 최우선 확인
+  // ═══════════════════════════════════════════════════════════
+  // 이 키는 test-mode 엔드포인트에서 strategyAggressiveness를
+  // 단독으로 저장하는 키입니다.
+  // 메인 trading_settings JSON에서 strategyAggressiveness가
+  // 누락되는 Prisma Json 직렬화 버그를 완벽히 우회합니다.
+  // ★ 핵심: undefined일 때만 확인하는 것이 아니라 항상 확인!
+  let overrideAggressiveness: StrategyAggressiveness | null = null;
+  let overrideSource: 'db' | 'default' = 'default';
+  try {
+    let override = await db.appSetting.findUnique({
+      where: { key: 'strategy_aggressiveness_override' },
+    });
+    if (!override) {
+      try { override = await db.appSetting.findFirst({ where: { key: 'strategy_aggressiveness_override' } }); } catch (_e) { /* ignore */ }
+    }
+    if (override?.value && typeof override.value === 'object') {
+      const val = (override.value as Record<string, unknown>).strategyAggressiveness;
+      if (val === 'CONSERVATIVE' || val === 'TEST' || val === 'AGGRESSIVE') {
+        overrideAggressiveness = val as StrategyAggressiveness;
+        overrideSource = 'db';
+        console.log('[EffectiveSettings] 0순위 override 키에서 strategyAggressiveness:', overrideAggressiveness);
+      }
+    }
+  } catch (_e) { /* override 키 조회 실패는 무시 */ }
+
+  // 1순위: DB AppSetting에서 메인 설정 조회
   try {
     let record = await db.appSetting.findUnique({
       where: { key: 'trading_settings' },
     });
-    // findUnique가 null을 반환하면 findFirst로 재시도
-    // (InMemory DB 구버전에서 where.key 미지원 시 폴백)
     if (!record) {
       try {
         record = await db.appSetting.findFirst({
@@ -240,64 +263,43 @@ export async function getEffectiveTradingSettings(): Promise<EffectiveSettingsRe
     if (record?.value && typeof record.value === 'object') {
       dbSettings = record.value as Record<string, unknown>;
       hasDbSettings = true;
-      // strategyAggressiveness 추적 로깅
-      console.log('[EffectiveSettings] DB에서 로드:', {
-        hasDbSettings: true,
+      console.log('[EffectiveSettings] 메인 DB에서 로드:', {
         dbStrategyAggressiveness: dbSettings.strategyAggressiveness,
         dbOrderExecutionMode: dbSettings.orderExecutionMode,
         dbTradingMode: dbSettings.tradingMode,
         dbKeys: Object.keys(dbSettings),
+        overrideAggressiveness,
       });
 
-      // ── strategyAggressiveness 폴백: 별도 오버라이드 키 확인 ──
-      // trading_settings에 strategyAggressiveness가 없으면
-      // strategy_aggressiveness_override 키에서 읽기
-      if (dbSettings.strategyAggressiveness === undefined) {
-        try {
-          let override = await db.appSetting.findUnique({
-            where: { key: 'strategy_aggressiveness_override' },
+      // ★ override 키가 있으면 메인 DB 값보다 우선 적용
+      // (Prisma Json 직렬화 버그로 메인 값에서 strategyAggressiveness가
+      //  누락되거나 CONSERVATIVE로 돌아가는 문제를 완벽히 해결)
+      if (overrideAggressiveness !== null) {
+        if (dbSettings.strategyAggressiveness !== overrideAggressiveness) {
+          console.log('[EffectiveSettings] override 키로 strategyAggressiveness 덮어쓰기:', {
+            from: dbSettings.strategyAggressiveness,
+            to: overrideAggressiveness,
           });
-          if (!override) {
-            try { override = await db.appSetting.findFirst({ where: { key: 'strategy_aggressiveness_override' } }); } catch (_e) { /* ignore */ }
-          }
-          if (override?.value && typeof override.value === 'object') {
-            const overrideVal = override.value as Record<string, unknown>;
-            if (overrideVal.strategyAggressiveness) {
-              console.log('[EffectiveSettings] strategyAggressiveness를 오버라이드 키에서 복구:', overrideVal.strategyAggressiveness);
-              dbSettings.strategyAggressiveness = overrideVal.strategyAggressiveness as StrategyAggressiveness;
-            }
-          }
-        } catch (overrideErr) {
-          console.warn('[EffectiveSettings] 오버라이드 키 조회 실패:', overrideErr instanceof Error ? overrideErr.message : 'Unknown');
         }
+        dbSettings.strategyAggressiveness = overrideAggressiveness;
       }
     } else {
-      console.log('[EffectiveSettings] DB에 설정 없음 (빈 값 또는 레코드 없음)', {
-        hasRecord: !!record,
-        valueType: typeof record?.value,
-        valueIsNull: record?.value === null,
-      });
+      console.log('[EffectiveSettings] 메인 DB에 설정 없음');
 
-      // 레코드가 아예 없어도 오버라이드 키는 확인
-      try {
-        let override = await db.appSetting.findUnique({
-          where: { key: 'strategy_aggressiveness_override' },
-        });
-        if (!override) {
-          try { override = await db.appSetting.findFirst({ where: { key: 'strategy_aggressiveness_override' } }); } catch (_e) { /* ignore */ }
-        }
-        if (override?.value && typeof override.value === 'object') {
-          const overrideVal = override.value as Record<string, unknown>;
-          if (overrideVal.strategyAggressiveness) {
-            dbSettings = { strategyAggressiveness: overrideVal.strategyAggressiveness as StrategyAggressiveness };
-            hasDbSettings = true;
-            console.log('[EffectiveSettings] 메인 레코드 없음, 오버라이드 키에서 복구:', overrideVal.strategyAggressiveness);
-          }
-        }
-      } catch (_e) { /* ignore */ }
+      // 메인 레코드가 없어도 override 키는 적용
+      if (overrideAggressiveness !== null) {
+        dbSettings = { strategyAggressiveness: overrideAggressiveness };
+        hasDbSettings = true;
+        console.log('[EffectiveSettings] 메인 레코드 없음, override 키만으로 복구:', overrideAggressiveness);
+      }
     }
   } catch (dbError) {
     console.warn('[EffectiveSettings] DB 조회 실패, 환경변수/기본값 사용:', dbError instanceof Error ? dbError.message : 'Unknown');
+    // DB 실패해도 override 키값은 적용
+    if (overrideAggressiveness !== null) {
+      dbSettings = { strategyAggressiveness: overrideAggressiveness };
+      hasDbSettings = true;
+    }
   }
 
   // 2순위: 환경변수에서 읽기
@@ -450,18 +452,18 @@ export async function getEffectiveTradingSettings(): Promise<EffectiveSettingsRe
 
   const sources: Record<string, 'db' | 'env' | 'default'> = {};
   for (const key of Object.keys(DEFAULT_SETTINGS)) {
-    // signalThreshold, weakSignalThreshold, minConfidenceThreshold은
-    // strategyAggressiveness로부터 계산되므로, DB에 있더라도 'computed'로 표시
-    // 하지만 sources 타입이 'db'|'env'|'default'이므로 'db'로 표시 (계산의 근원이 DB이므로)
     if (envValues[key as keyof EffectiveTradingSettings] !== undefined) {
       sources[key] = 'env';
+    } else if (key === 'strategyAggressiveness' && overrideAggressiveness !== null) {
+      // ★ override 키에서 온 strategyAggressiveness는 항상 'db'로 표시
+      sources[key] = 'db';
     } else if (dbSettings?.[key] !== undefined) {
       sources[key] = 'db';
     } else if (
       (key === 'signalThreshold' || key === 'weakSignalThreshold' || key === 'minConfidenceThreshold') &&
-      dbSettings?.strategyAggressiveness !== undefined
+      (dbSettings?.strategyAggressiveness !== undefined || overrideAggressiveness !== null)
     ) {
-      // 임계값 자체는 DB에 없어도, strategyAggressiveness가 DB에 있으면 'db'로 표시
+      // 임계값: strategyAggressiveness가 DB(또는 override)에서 왔으면 'db'
       sources[key] = 'db';
     } else {
       sources[key] = 'default';

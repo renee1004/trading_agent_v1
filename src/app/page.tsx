@@ -2645,14 +2645,10 @@ export default function TradingDashboard() {
                           const data = await res.json();
                           if (data.verified) {
                             console.log('[TestMode] 전환 성공 ✓', data.message);
+                            alert('TEST 모드 전환 성공! ✓\nsignalThreshold=30, minConfidence=30%');
                           } else {
-                            console.error('[TestMode] 전환 검증 실패!', {
-                              strategyAggressiveness: data.data?.strategyAggressiveness,
-                              signalThreshold: data.data?.signalThreshold,
-                              minConfidenceThreshold: data.data?.minConfidenceThreshold,
-                              dbVerification: data.dbVerification,
-                            });
-                            alert(`TEST 모드 전환 검증 실패!\nstrategyAggressiveness=${data.data?.strategyAggressiveness}\nsignalThreshold=${data.data?.signalThreshold}\n서버 로그를 확인하세요.`);
+                            console.error('[TestMode] 전환 검증 실패!', data);
+                            alert(`TEST 모드 전환 검증 실패!\nstrategyAggressiveness=${data.data?.strategyAggressiveness}\nsignalThreshold=${data.data?.signalThreshold}\nsource=${data.sources?.strategyAggressiveness}\n\n디버그: override=${data.debug?.overrideVerified}, main=${data.debug?.mainVerified}`);
                           }
                           // 반드시 상태 재조회
                           await loadAgentStatus();
@@ -2663,46 +2659,13 @@ export default function TradingDashboard() {
                         }
                       }}
                     >
-                      PAPER + 테스트 모드로 전환 (전용 API)
-                    </button>
-                    <button
-                      className="rounded-lg border border-blue-400 bg-blue-50 px-3 py-2 text-xs font-medium text-blue-700 hover:bg-blue-100 transition-colors"
-                      onClick={async () => {
-                        try {
-                          const res = await fetch('/api/settings/trading', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                              tradingMode: 'DEMO',
-                              orderExecutionMode: 'PAPER',
-                              strategyAggressiveness: 'TEST',
-                              autoDomesticOrderEnabled: true,
-                              killSwitchEnabled: false,
-                              allowRealDomesticOrder: false,
-                              allowRealOverseasOrder: false,
-                            }),
-                          });
-                          const data = await res.json();
-                          if (!data.success || data.data?.strategyAggressiveness !== 'TEST') {
-                            console.error('[Settings] 일반 API TEST 전환 실패:', data);
-                            alert(`TEST 모드 저장 실패!\n반환값: strategyAggressiveness=${data.data?.strategyAggressiveness}\nsource=${data.data?.sources?.strategyAggressiveness || data.sources?.strategyAggressiveness}`);
-                          } else {
-                            console.log('[Settings] 일반 API TEST 전환 성공 ✓');
-                          }
-                          await loadAgentStatus();
-                          await loadSettingsFromServer();
-                        } catch (e) {
-                          console.error('PAPER 테스트 모드 전환 실패:', e);
-                          alert('PAPER 테스트 모드 전환 실패: ' + (e instanceof Error ? e.message : '네트워크 오류'));
-                        }
-                      }}
-                    >
-                      PAPER + 테스트 (일반 API)
+                      PAPER + 테스트 모드로 전환
                     </button>
                     <button
                       className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
                       onClick={async () => {
                         try {
+                          // DRY_RUN 복귀 + override 키도 삭제
                           await fetch('/api/settings/trading', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
@@ -2711,6 +2674,10 @@ export default function TradingDashboard() {
                               strategyAggressiveness: 'CONSERVATIVE',
                             }),
                           });
+                          // override 키도 CONSERVATIVE로 업데이트
+                          await fetch('/api/settings/trading/test-mode', {
+                            method: 'POST',
+                          }).catch(() => {}); // 실패해도 무시
                           await loadAgentStatus();
                           await loadSettingsFromServer();
                         } catch (e) {
@@ -2733,6 +2700,44 @@ export default function TradingDashboard() {
                       </p>
                     );
                   })()}
+                  {/* ── 에이전트 미실행 시 시작 안내 ── */}
+                  {(() => {
+                    const es = (agentStatus as any)?.effectiveSettings;
+                    const isTestMode = es?.strategyAggressiveness === 'TEST' && es?.orderExecutionMode === 'PAPER';
+                    const scheduler = (agentStatus as any)?.scheduler;
+                    const isNotRunning = !scheduler?.isSchedulerRunning;
+                    if (isTestMode && isNotRunning) {
+                      return (
+                        <div className="mt-2 rounded-lg border border-amber-300 bg-amber-50 p-3">
+                          <p className="text-xs font-semibold text-amber-800 mb-2">⚠ TEST 모드는 활성화되었지만 에이전트가 실행 중이 아닙니다.</p>
+                          <button
+                            className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-700 transition-colors"
+                            onClick={async () => {
+                              try {
+                                const res = await fetch('/api/agent/start', {
+                                  method: 'POST',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({ mode: 'SERVER' }),
+                                });
+                                const data = await res.json();
+                                if (data.success) {
+                                  setTradingStatus('RUNNING');
+                                  await loadAgentStatus();
+                                } else {
+                                  alert('에이전트 시작 실패: ' + (data.error || '알 수 없는 오류'));
+                                }
+                              } catch (e) {
+                                alert('에이전트 시작 실패: ' + (e instanceof Error ? e.message : '네트워크 오류'));
+                              }
+                            }}
+                          >
+                            에이전트 시작
+                          </button>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
                   {/* ── DB 진단 버튼 ── */}
                   <button
                     className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-500 hover:bg-gray-50 transition-colors mt-2"
@@ -2743,10 +2748,10 @@ export default function TradingDashboard() {
                         console.log('[TestMode 진단]', data);
                         alert(
                           `DB 진단 결과:\n` +
-                          `DB strategyAggressiveness: ${data.dbRaw?.strategyAggressiveness}\n` +
-                          `DB orderExecutionMode: ${data.dbRaw?.orderExecutionMode}\n` +
-                          `Effective strategyAggressiveness: ${data.effective?.strategyAggressiveness}\n` +
-                          `Effective signalThreshold: ${data.effective?.signalThreshold}\n` +
+                          `DB 타입: ${data.dbType}\n` +
+                          `Override 키: ${data.override?.found ? '있음' : '없음'} — strategyAggressiveness=${data.override?.strategyAggressiveness}\n` +
+                          `메인 키: ${data.main?.found ? '있음' : '없음'} — strategyAggressiveness=${data.main?.strategyAggressiveness}, orderExecutionMode=${data.main?.orderExecutionMode}\n` +
+                          `Effective: strategyAggressiveness=${data.effective?.strategyAggressiveness}, signalThreshold=${data.effective?.signalThreshold}\n` +
                           `Source: ${data.source}\n` +
                           `sources.strategyAggressiveness: ${data.sources?.strategyAggressiveness}`
                         );
