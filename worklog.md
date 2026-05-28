@@ -61,3 +61,31 @@ Stage Summary:
 - Raw SQL bypass completely avoids Prisma's Json serialization
 - Override key provides a guaranteed fallback even if main record fails
 - getEffectiveTradingSettings() now has 2-tier strategyAggressiveness resolution
+
+---
+Task ID: 4
+Agent: Main Agent
+Task: TEST 모드 직접 Prisma 연결로 db.ts Proxy 경쟁상태 해결 (v5)
+
+Work Log:
+- 분석: db.ts의 Proxy 기반 비동기 초기화(_usePrisma 플래그)가 요청 시점에 따라 InMemory DB와 PostgreSQL 혼용
+- 분석: upsert where { key }가 key unique 제약조건에 의존하여 실패 가능
+- 분석: UI "DRY_RUN+보수" 버튼이 test-mode POST 호출하여 CONSERVATIVE→TEST로 덮어쓰는 버그
+- 생성: src/lib/prisma.ts — 싱글톤 PrismaClient 직접 연결, getAppSetting/setAppSetting 유틸리티
+  - findFirst + update/create 방식 (upsert unique 의존성 제거)
+  - Raw SQL 폴백 (Prisma ORM 실패 시 직접 SQL 실행)
+  - ensurePrismaConnected/isPrismaAvailable 상태 관리
+- 재작성: test-mode/route.ts — 직접 Prisma 사용, v5
+  - POST: getAppSetting/setAppSetting으로 저장 + 검증
+  - DELETE: override 키 삭제 + CONSERVATIVE 복원 (새 엔드포인트)
+  - GET: 직접 Prisma vs db.ts Proxy 비교 진단
+- 수정: effective-settings.ts — DATABASE_URL 있으면 직접 Prisma 사용
+- 수정: UI DRY_RUN+보수 버튼 — POST → DELETE로 변경
+- 빌드 테스트 성공
+- GitHub 푸시: 8bf3994
+
+Stage Summary:
+- 근본 원인: db.ts Proxy 비동기 초기화 경쟁상태 + upsert unique 제약 의존성
+- 해결: 직접 PrismaClient 싱글톤으로 db.ts Proxy 완전 우회
+- 추가: DELETE /api/settings/trading/test-mode 엔드포인트
+- UI 버그 수정: DRY_RUN+보수 버튼이 TEST로 덮어쓰는 문제 해결
