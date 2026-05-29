@@ -70,6 +70,9 @@ export async function setAppSetting(key: string, value: Record<string, unknown>)
   try {
     await ensurePrismaConnected();
 
+    // Prisma JsonValue 타입 호환을 위해 JSON으로 직렬화 후 파싱
+    const jsonValue = JSON.parse(JSON.stringify(value));
+
     // 1) 기존 레코드 찾기
     const existing = await prisma.appSetting.findFirst({
       where: { key },
@@ -79,12 +82,12 @@ export async function setAppSetting(key: string, value: Record<string, unknown>)
       // 2a) 업데이트
       await prisma.appSetting.update({
         where: { id: existing.id },
-        data: { value },
+        data: { value: jsonValue },
       });
     } else {
       // 2b) 새로 생성
       await prisma.appSetting.create({
-        data: { key, value },
+        data: { key, value: jsonValue },
       });
     }
 
@@ -134,5 +137,43 @@ export async function getAllAppSettings(): Promise<Array<{ key: string; value: u
   } catch (e) {
     console.error('[Prisma] getAllAppSettings 실패:', e instanceof Error ? e.message : 'Unknown');
     return [];
+  }
+}
+
+/**
+ * KisConfig 조회 — db.ts Proxy 우회
+ * effective-settings.ts에서 isDemo 판별용
+ */
+export async function getKisConfig(): Promise<{ isDemo: boolean } | null> {
+  try {
+    await ensurePrismaConnected();
+    const record = await prisma.kisConfig.findFirst();
+    if (record) {
+      return { isDemo: record.isDemo };
+    }
+    return null;
+  } catch (e) {
+    console.error('[Prisma] getKisConfig 실패:', e instanceof Error ? e.message : 'Unknown');
+    return null;
+  }
+}
+
+/**
+ * AgentLog 저장 — db.ts Proxy 우회
+ */
+export async function createAgentLog(log: {
+  type: string;
+  market: string;
+  message: string;
+  details?: string;
+  sessionId?: string;
+}): Promise<boolean> {
+  try {
+    await ensurePrismaConnected();
+    await prisma.agentLog.create({ data: log });
+    return true;
+  } catch (e) {
+    console.error('[Prisma] createAgentLog 실패:', e instanceof Error ? e.message : 'Unknown');
+    return false;
   }
 }

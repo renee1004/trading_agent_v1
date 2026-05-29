@@ -6,7 +6,6 @@
 
 import { NextResponse } from 'next/server';
 import { prisma, getAppSetting, setAppSetting, isPrismaAvailable, ensurePrismaConnected, getAllAppSettings } from '@/lib/prisma';
-import { db } from '@/lib/db';
 import { getEffectiveTradingSettings } from '@/lib/effective-settings';
 
 const SETTINGS_DB_KEY = 'trading_settings';
@@ -226,17 +225,17 @@ export async function GET() {
     // 2) effectiveSettings
     const { settings, source, sources } = await getEffectiveTradingSettings();
 
-    // 3) db.ts 경로로도 조회 (비교용)
+    // 3) db.ts 경로로도 조회 (비교용 — 더 이상 db.ts 사용 안 함, 진단만)
     let dbProxyType = 'Unknown';
     let dbProxyMain: unknown = null;
     let dbProxyOverride: unknown = null;
     try {
       const { getDbType } = await import('@/lib/db');
       dbProxyType = getDbType();
-      const mainRec = await db.appSetting.findFirst({ where: { key: SETTINGS_DB_KEY } });
-      dbProxyMain = mainRec?.value;
-      const overrideRec = await db.appSetting.findFirst({ where: { key: OVERRIDE_KEY } });
-      dbProxyOverride = overrideRec?.value;
+      // db.ts Proxy가 아닌 직접 Prisma 결과만 사용
+      // dbProxyMain/Override는 'N/A (직접 Prisma 사용)'로 표시
+      dbProxyMain = 'N/A (직접 Prisma 사용)';
+      dbProxyOverride = 'N/A (직접 Prisma 사용)';
     } catch (_e) { /* ignore */ }
 
     return NextResponse.json({

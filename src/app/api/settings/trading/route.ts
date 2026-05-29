@@ -8,7 +8,7 @@
 // 실제 에이전트 실행 설정과 100% 일치 보장
 
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/db';
+import { getAppSetting, setAppSetting } from '@/lib/prisma';
 import { getEffectiveTradingSettings, EffectiveTradingSettings } from '@/lib/effective-settings';
 
 // 안전 기본값 (effective-settings.ts와 동일)
@@ -186,17 +186,14 @@ export async function POST(request: NextRequest) {
     delete validated.weakSignalThreshold;
     delete validated.minConfidenceThreshold;
 
-    // ── 기존 DB 값과 병합 (merge) 후 upsert ──
+    // ── 기존 DB 값과 병합 (merge) 후 저장 ──
     // 핵심 수정: 이전에는 validated만 저장해서 기존 필드가 모두 지워졌음
     // 이제는 기존 DB 값에 validated를 덮어쓰는 방식으로 병합
     try {
-      // 1) 기존 DB 값 읽기 (findUnique → findFirst 폴백)
-      let existing = await db.appSetting.findUnique({ where: { key: SETTINGS_DB_KEY } });
-      if (!existing) {
-        try { existing = await db.appSetting.findFirst({ where: { key: SETTINGS_DB_KEY } }); } catch (_e) { /* ignore */ }
-      }
-      const existingValue = (existing?.value && typeof existing.value === 'object')
-        ? existing.value as Record<string, unknown>
+      // 1) 기존 DB 값 읽기 (직접 Prisma)
+      const existingRecord = await getAppSetting(SETTINGS_DB_KEY);
+      const existingValue = (existingRecord?.value && typeof existingRecord.value === 'object')
+        ? existingRecord.value as Record<string, unknown>
         : {};
 
       // 2) 기존 값에 validated 덮어쓰기 (새 값이 우선)
@@ -219,17 +216,14 @@ export async function POST(request: NextRequest) {
         merged.strategyAggressiveness = validated.strategyAggressiveness;
       }
 
-      await db.appSetting.upsert({
-        where: { key: SETTINGS_DB_KEY },
-        update: { value: merged },
-        create: { key: SETTINGS_DB_KEY, value: merged },
-      });
-
-      // ── Read-after-write 검증 ──
-      let savedRecord = await db.appSetting.findUnique({ where: { key: SETTINGS_DB_KEY } });
-      if (!savedRecord) {
-        try { savedRecord = await db.appSetting.findFirst({ where: { key: SETTINGS_DB_KEY } }); } catch (_e) { /* ignore */ }
+      // 4) 직접 Prisma로 저장 (db.ts Proxy 우회)
+      const saveOk = await setAppSetting(SETTINGS_DB_KEY, merged);
+      if (!saveOk) {
+        console.error('[Settings] setAppSetting 반환 false — 저장 실패');
       }
+
+      // 5) Read-after-write 검증
+      const savedRecord = await getAppSetting(SETTINGS_DB_KEY);
       const savedValue = (savedRecord?.value && typeof savedRecord.value === 'object')
         ? savedRecord.value as Record<string, unknown>
         : {};
@@ -242,21 +236,16 @@ export async function POST(request: NextRequest) {
         });
         // 강제 재시도
         merged.strategyAggressiveness = validated.strategyAggressiveness;
-        await db.appSetting.upsert({
-          where: { key: SETTINGS_DB_KEY },
-          update: { value: merged },
-          create: { key: SETTINGS_DB_KEY, value: merged },
-        });
+        await setAppSetting(SETTINGS_DB_KEY, merged);
         console.log('[Settings] strategyAggressiveness 강제 재저장 완료');
       }
 
-      console.log('[Settings] 설정 저장 성공 (DB upsert, merge)', {
+      console.log('[Settings] 설정 저장 성공 (직접 Prisma, merge)', {
         existingKeys: Object.keys(existingValue),
         newKeys: Object.keys(validated),
         mergedKeys: Object.keys(merged),
         strategyAggressiveness: merged.strategyAggressiveness,
         savedAggressiveness: (savedValue as Record<string, unknown>)?.strategyAggressiveness,
-        // 전체 merged 값 로그 (디버깅용)
         mergedPreview: {
           orderExecutionMode: merged.orderExecutionMode,
           tradingMode: merged.tradingMode,
@@ -267,7 +256,6 @@ export async function POST(request: NextRequest) {
       });
     } catch (dbError) {
       console.error('[Settings] DB 저장 실패:', dbError instanceof Error ? dbError.message : 'Unknown');
-      // DB 저장 실패해도 응답은 반환 (인메모리로 동작)
     }
 
     // 저장 후 getEffectiveTradingSettings()로 최종 결과 재계산

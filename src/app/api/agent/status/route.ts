@@ -8,7 +8,7 @@ import { getSchedulerStatus } from '@/lib/agent-scheduler';
 import { getEffectiveTradingSettings, computeRuntimeDecision, AGGRESSIVENESS_THRESHOLDS, type StrategyAggressiveness } from '@/lib/effective-settings';
 import { getOverseasMarketInfo, isUSDST, getCurrentKSTString, getCurrentETString } from '@/lib/market-hours';
 import { getDomesticSession } from '@/lib/agent-scheduler';
-import { db } from '@/lib/db';
+import { getAllAppSettings } from '@/lib/prisma';
 
 export async function GET() {
   try {
@@ -33,7 +33,7 @@ export async function GET() {
     const { settings: effectiveSettings, source: settingsSource, sources: settingsSources } = await getEffectiveTradingSettings();
     const runtimeDecision = computeRuntimeDecision(effectiveSettings);
 
-    // DB에서 영속 로그 조회 (최근 30개)
+    // DB에서 영속 로그 조회 (최근 30개) — 직접 Prisma 사용
     let dbLogs: Array<{
       id: string;
       type: string;
@@ -43,7 +43,9 @@ export async function GET() {
       createdAt: string;
     }> = [];
     try {
-      const logs = await db.agentLog.findMany({
+      const { prisma, ensurePrismaConnected } = await import('@/lib/prisma');
+      await ensurePrismaConnected();
+      const logs = await prisma.agentLog.findMany({
         orderBy: { createdAt: 'desc' },
         take: 30,
       });
