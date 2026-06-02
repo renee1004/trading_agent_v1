@@ -89,3 +89,26 @@ Stage Summary:
 - 해결: 직접 PrismaClient 싱글톤으로 db.ts Proxy 완전 우회
 - 추가: DELETE /api/settings/trading/test-mode 엔드포인트
 - UI 버그 수정: DRY_RUN+보수 버튼이 TEST로 덮어쓰는 문제 해결
+
+---
+Task ID: 1
+Agent: Main Agent
+Task: 한국투자증권 국내 종목 리스트 적용 (KOSPI/KOSDAQ .mst 파일 파싱)
+
+Work Log:
+- 업로드된 5개 .mst 파일 포맷 분석 (EUC-KR 고정폭 포맷)
+- scripts/build-korean-stocks.mjs 파서 스크립트 작성
+- kospi_code.mst (2,523종목), kosdaq_code.mst (1,823종목) 파싱
+- nxt_kospi_code.mst (357종목), nxt_kosdaq_code.mst (273종목) 파싱
+- 중복 제거 후 총 4,346종목 korean-stocks.json 재생성
+- theme_code.mst 파싱 → korean-themes.json 생성 (7개 테마그룹, 422개 매핑)
+- EUC-KR 인코딩 자동 처리 (Node.js TextDecoder)
+- 유형별: EQUITY 3,255 + ETF 1,091
+- 빌드 성공 확인, Railway 배포 완료
+
+Stage Summary:
+- data/korean-stocks.json: 4,346종목 (KOSPI 2,523 + KOSDAQ 1,823)
+- data/korean-themes.json: 테마 데이터 (신규상장주 등 7개 그룹)
+- scripts/build-korean-stocks.mjs: .mst→JSON 변환 스크립트
+- 주요 종목 검색 확인: 삼성전자, SK하이닉스, 현대차, 카카오, LG에너지솔루션 등
+- Commits: 77b2d2e, 74b28f0 (pushed to main)
