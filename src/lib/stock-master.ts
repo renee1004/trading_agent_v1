@@ -3,7 +3,7 @@
 //
 // 데이터 소스:
 // 해외: data/overseas-symbols.json (12,161종목 - KIS COD 파일에서 생성)
-// 국내: data/korean-stocks.json (4,456종목 - KRX 마스터 파일에서 생성)
+// 국내: data/korean-stocks.json (4,346종목 - KIS 마스터 파일에서 생성)
 //
 // 원본: renee1004/Trading_Agent → trading_agent_v1 포팅
 // 해외 COD → JSON 변환: scripts/build-overseas-symbols.mjs
