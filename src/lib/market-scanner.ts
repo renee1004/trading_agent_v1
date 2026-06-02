@@ -6,7 +6,7 @@
 // 스코어링: 보유종목 > 관심종목 > 우량주 순으로 우선순위 부여
 // Top-N: API 호출 한도 보호를 위해 국내/해외 각각 최대 종목 수 제한
 
-import { db } from './db';
+import { prisma } from './prisma';
 import { KisApiClient } from './kis-api';
 import { normalizeStockCode } from './stock-master';
 
@@ -158,7 +158,7 @@ export async function scanTargetStocks(
 
   // 2. 관심종목 (사용자가 명시적으로 추가한 종목)
   try {
-    const watchlist = await db.watchlistItem.findMany({
+    const watchlist = await prisma.watchlistItem.findMany({
       where: { isActive: true },
     });
 

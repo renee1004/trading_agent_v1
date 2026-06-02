@@ -2,7 +2,7 @@
 // 브라우저 없이 서버에서 24/7 자동매매 실행
 // DB 기반 상태 영속화 - 서버 재시작해도 자동 복구
 
-import { db } from './db';
+import { prisma } from './prisma';
 import { runAgentCycle, startAgent, stopAgent, getAgentStatus, addLog as addAgentLog } from './trading-agent';
 import { getEffectiveTradingSettings } from './effective-settings';
 import { isOverseasMarketOpen, getOverseasMarketInfo, OverseasMarketInfo } from './market-hours';
@@ -317,7 +317,7 @@ export function isMarketHours(market: 'DOMESTIC' | 'OVERSEAS' | 'ALL'): boolean 
  */
 export async function loadSchedulerConfig(): Promise<SchedulerConfig> {
   try {
-    const config = await db.agentConfig.findFirst();
+    const config = await prisma.agentConfig.findFirst();
     if (config) {
       schedulerState.config = {
         cycleIntervalMs: config.cycleIntervalMs,
@@ -359,9 +359,9 @@ export async function loadSchedulerConfig(): Promise<SchedulerConfig> {
  */
 export async function saveSchedulerConfig(config: Partial<SchedulerConfig>): Promise<void> {
   try {
-    const existing = await db.agentConfig.findFirst();
+    const existing = await prisma.agentConfig.findFirst();
     if (existing) {
-      await db.agentConfig.update({
+      await prisma.agentConfig.update({
         where: { id: existing.id },
         data: {
           ...(config.cycleIntervalMs !== undefined && { cycleIntervalMs: config.cycleIntervalMs }),
@@ -373,7 +373,7 @@ export async function saveSchedulerConfig(config: Partial<SchedulerConfig>): Pro
         },
       });
     } else {
-      await db.agentConfig.create({
+      await prisma.agentConfig.create({
         data: {
           cycleIntervalMs: config.cycleIntervalMs ?? 60000,
           tradeOnlyMarketHours: config.tradeOnlyMarketHours ?? true,
@@ -476,9 +476,9 @@ async function saveCycleResult(result: {
   errors: string[];
 }): Promise<void> {
   try {
-    const existing = await db.agentConfig.findFirst();
+    const existing = await prisma.agentConfig.findFirst();
     if (existing) {
-      await db.agentConfig.update({
+      await prisma.agentConfig.update({
         where: { id: existing.id },
         data: {
           lastCycleAt: new Date(),
@@ -512,9 +512,9 @@ export async function startScheduler(): Promise<{ success: boolean; message: str
     }
 
     // DB에 실행 상태 저장
-    const existing = await db.agentConfig.findFirst();
+    const existing = await prisma.agentConfig.findFirst();
     if (existing) {
-      await db.agentConfig.update({
+      await prisma.agentConfig.update({
         where: { id: existing.id },
         data: {
           isRunning: true,
@@ -523,7 +523,7 @@ export async function startScheduler(): Promise<{ success: boolean; message: str
         },
       });
     } else {
-      await db.agentConfig.create({
+      await prisma.agentConfig.create({
         data: {
           isRunning: true,
           currentSessionId: agentResult.sessionId,
@@ -575,9 +575,9 @@ export async function stopScheduler(): Promise<{ success: boolean; message: stri
     await stopAgent();
 
     // DB에 중지 상태 저장
-    const existing = await db.agentConfig.findFirst();
+    const existing = await prisma.agentConfig.findFirst();
     if (existing) {
-      await db.agentConfig.update({
+      await prisma.agentConfig.update({
         where: { id: existing.id },
         data: {
           isRunning: false,
@@ -617,7 +617,7 @@ export async function getSchedulerStatus(): Promise<{
   overseasMarketInfo: OverseasMarketInfo;
 }> {
   // DB에서 최신 설정 로드
-  const dbConfig = await db.agentConfig.findFirst();
+  const dbConfig = await prisma.agentConfig.findFirst();
 
   const lastCycleAt = dbConfig?.lastCycleAt ?? schedulerState.lastCycleStartTime;
   const nextCycleAt = schedulerState.isSchedulerRunning && lastCycleAt
@@ -662,7 +662,7 @@ export async function getSchedulerStatus(): Promise<{
  */
 export async function autoRecoverScheduler(): Promise<void> {
   try {
-    const config = await db.agentConfig.findFirst();
+    const config = await prisma.agentConfig.findFirst();
     if (config?.isRunning && config.schedulerMode === 'SERVER') {
       console.log('[Scheduler] 이전 실행 세션 발견, 자동 복구 시도...');
       const result = await startScheduler();
@@ -671,7 +671,7 @@ export async function autoRecoverScheduler(): Promise<void> {
       } else {
         console.error('[Scheduler] 자동 복구 실패:', result.message);
         // 복구 실패 시 DB 상태 리셋
-        await db.agentConfig.update({
+        await prisma.agentConfig.update({
           where: { id: config.id },
           data: { isRunning: false, currentSessionId: null },
         });

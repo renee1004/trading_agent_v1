@@ -422,10 +422,12 @@ export async function getEffectiveTradingSettings(): Promise<EffectiveSettingsRe
     settings.strategyAggressiveness = 'CONSERVATIVE';
   }
 
-  // LIVE/REAL 모드에서는 항상 CONSERVATIVE 강제 (안전장치)
-  const isLiveReal = settings.orderExecutionMode === 'LIVE' || settings.tradingMode === 'REAL';
-  if (isLiveReal && settings.strategyAggressiveness !== 'CONSERVATIVE') {
-    console.warn(`[EffectiveSettings] LIVE/REAL 모드에서는 CONSERVATIVE 강제 (원래=${settings.strategyAggressiveness})`);
+  // LIVE 주문 실행 모드에서는 항상 CONSERVATIVE 강제 (안전장치)
+  // PAPER + DEMO에서는 TEST/AGGRESSIVE 허용 (모의투자 파이프라인 검증 목적)
+  // 핵심: orderExecutionMode가 LIVE일 때만 강제, tradingMode=REAL만으로는 강제하지 않음
+  // 이유: PAPER 모드에서 tradingMode=REAL일 수 있음 (실전계좌 + 모의주문)
+  if (settings.orderExecutionMode === 'LIVE' && settings.strategyAggressiveness !== 'CONSERVATIVE') {
+    console.warn(`[EffectiveSettings] LIVE 주문 실행 모드에서는 CONSERVATIVE 강제 (원래=${settings.strategyAggressiveness})`);
     settings.strategyAggressiveness = 'CONSERVATIVE';
   }
 

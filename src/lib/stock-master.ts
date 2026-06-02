@@ -55,20 +55,65 @@ type KoreanStockEntry = {
 // ─── 국내 마스터 인덱스 구축 ───
 const KOREAN_STOCK_ITEMS: KoreanStockEntry[] = koreanStocksData as KoreanStockEntry[];
 
-/** 6자리 종목코드 추출 (code에서 순수 6자리 부분) */
-function extractSixDigitCode(code: string): string | null {
-  const match = code.match(/^(\d{6})/);
-  return match ? match[1] : null;
+/**
+ * 국내 종목코드 추출
+ *
+ * KRX 종목코드 포맷:
+ * - 일반주식: 순수 6자리 숫자 ("005930" = 삼성전자)
+ * - ETF/ETN: 6자리 영숫자 ("0000D0" = TIGER 엔비디아미국채커버드콜)
+ * - 우선주: 6자리 숫자+K/L 접미사 ("00088K" = 한화3우B)
+ * - 신주인수권증서: J 접두사 ("J0036221D")
+ * - 특수상품(F-code): F 접두사 ("F70100026")
+ *
+ * KIS 국내주식 API (FHKST01010100)는 6자리 영숫자 코드를 지원하므로
+ * 일반주식과 ETF/ETN 모두 검색 가능하도록 인덱스에 포함
+ * 우선주(K/L), J-code, F-code는 KIS API 호환성이 불확실하므로
+ * 별도 인덱스로 분리하여 검색에서는 노출하되 API 호출 시 주의 필요
+ */
+
+/**
+ * 일반 국내 종목코드 추출 (6자리 숫자 또는 6자리 영숫자)
+ * KIS API 호환: 일반주식 + ETF/ETN
+ */
+function extractDomesticCode(code: string): string | null {
+  // 6자리 숫자 (일반주식): "005930"
+  const pureNumeric = code.match(/^(\d{6})$/);
+  if (pureNumeric) return pureNumeric[1];
+
+  // 6자리 영숫자 (ETF/ETN): "0000D0", "0000H0", "0005A0"
+  // 패턴: 숫자 4자리 + 영숫자 2자리
+  const alphaNumeric = code.match(/^(\d{4}[A-Z0-9]{2})$/);
+  if (alphaNumeric) return alphaNumeric[1];
+
+  return null;
 }
 
-/** 검색/정규화에 사용할 국내 종목 인덱스 (6자리 코드 기준) */
+/**
+ * 특수 국내 종목코드 추출 (우선주 K/L 접미사)
+ * 예: "00088K" → { base: "000880", suffix: "K" }
+ * KIS API에서는 보통주(6자리 숫자) 코드로 조회 가능
+ */
+function extractPreferredStockCode(code: string): { base: string; suffix: string; displayCode: string } | null {
+  const match = code.match(/^(\d{5})([KL])$/);
+  if (!match) return null;
+  return {
+    base: match[1] + '0', // 보통주 코드 (5자리 + '0')
+    suffix: match[2],
+    displayCode: code, // 우선주 고유 코드 유지
+  };
+}
+
+/** 검색/정규화에 사용할 국내 종목 인덱스 */
 interface DomesticIndexEntry {
-  symbol: string;       // 6자리 종목코드 "005930"
-  displayCode: string;  // "KRX:005930"
+  symbol: string;       // 종목코드 "005930" 또는 "0000D0"
+  displayCode: string;  // "KRX:005930" 또는 "KRX:0000D0"
   stockName: string;    // "삼성전자"
   market: string;       // "KOSPI" | "KOSDAQ" | "KONEX"
   exchangeCode: string; // "KRX"
   currency: string;     // "KRW"
+  codeType: 'STANDARD' | 'ETF_ALPHANUMERIC' | 'PREFERRED' | 'SPECIAL';
+  /** 우선주인 경우 보통주 symbol (API 조회용) */
+  baseSymbol?: string;
 }
 
 const DOMESTIC_MASTER_ITEMS: DomesticIndexEntry[] = [];
@@ -76,24 +121,67 @@ const DOMESTIC_MASTER_BY_SYMBOL = new Map<string, DomesticIndexEntry>();
 const DOMESTIC_MASTER_BY_NAME = new Map<string, DomesticIndexEntry>();
 
 for (const entry of KOREAN_STOCK_ITEMS) {
-  const sixDigit = extractSixDigitCode(entry.code);
-  if (!sixDigit) continue; // 6자리 코드 추출 불가한 항목(ETF F코드 등)은 건너뜀
+  let indexEntry: DomesticIndexEntry | null = null;
 
-  const displayCode = `KRX:${sixDigit}`;
-  // 동일 6자리 코드가 이미 있으면 건너뜀 (첫 번째 항목 우선 - 보통 보통주)
-  if (DOMESTIC_MASTER_BY_SYMBOL.has(sixDigit)) continue;
+  // 1) 일반 종목코드 (6자리 숫자) — 보통주, 일반 ETF
+  const domesticCode = extractDomesticCode(entry.code);
+  if (domesticCode) {
+    const displayCode = `KRX:${domesticCode}`;
+    // 동일 코드가 이미 있으면 건너뜀 (첫 번째 항목 우선 - 보통 보통주)
+    if (DOMESTIC_MASTER_BY_SYMBOL.has(domesticCode)) continue;
 
-  const indexEntry: DomesticIndexEntry = {
-    symbol: sixDigit,
-    displayCode,
-    stockName: entry.name,
-    market: entry.market,
-    exchangeCode: 'KRX',
-    currency: 'KRW',
-  };
+    const isAlphanumeric = /[A-Z]/.test(domesticCode);
+    indexEntry = {
+      symbol: domesticCode,
+      displayCode,
+      stockName: entry.name,
+      market: entry.market,
+      exchangeCode: 'KRX',
+      currency: 'KRW',
+      codeType: isAlphanumeric ? 'ETF_ALPHANUMERIC' : 'STANDARD',
+    };
+  }
+
+  // 2) 우선주 (5자리 숫자 + K/L 접미사)
+  if (!indexEntry) {
+    const preferredCode = extractPreferredStockCode(entry.code);
+    if (preferredCode) {
+      const displayCode = `KRX:${preferredCode.displayCode}`;
+      if (DOMESTIC_MASTER_BY_SYMBOL.has(preferredCode.displayCode)) continue;
+
+      indexEntry = {
+        symbol: preferredCode.displayCode,
+        displayCode,
+        stockName: entry.name,
+        market: entry.market,
+        exchangeCode: 'KRX',
+        currency: 'KRW',
+        codeType: 'PREFERRED',
+        baseSymbol: preferredCode.base,
+      };
+    }
+  }
+
+  // 3) 특수 코드 (F-code, J-code 등) — 검색은 가능하나 API 호환성 제한
+  if (!indexEntry && (entry.code.startsWith('F') || entry.code.startsWith('J'))) {
+    const displayCode = `KRX:${entry.code}`;
+    if (DOMESTIC_MASTER_BY_SYMBOL.has(entry.code)) continue;
+
+    indexEntry = {
+      symbol: entry.code,
+      displayCode,
+      stockName: entry.name,
+      market: entry.market,
+      exchangeCode: 'KRX',
+      currency: 'KRW',
+      codeType: 'SPECIAL',
+    };
+  }
+
+  if (!indexEntry) continue;
 
   DOMESTIC_MASTER_ITEMS.push(indexEntry);
-  DOMESTIC_MASTER_BY_SYMBOL.set(sixDigit, indexEntry);
+  DOMESTIC_MASTER_BY_SYMBOL.set(indexEntry.symbol, indexEntry);
   if (!DOMESTIC_MASTER_BY_NAME.has(entry.name)) {
     DOMESTIC_MASTER_BY_NAME.set(entry.name, indexEntry);
   }
@@ -103,9 +191,25 @@ function normalizeCode(value: string): string {
   return value.trim().toUpperCase();
 }
 
+/**
+ * 국내 종목코드 판별
+ * 지원 포맷:
+ * - 순수 6자리 숫자: "005930" (보통주)
+ * - 6자리 영숫자: "0000D0" (ETF/ETN)
+ * - 5자리+K/L: "00088K" (우선주)
+ * - F/J 접두사: "F70100026", "J0036221D" (특수상품)
+ */
 export function isDomesticStockCode(code: string): boolean {
   const normalized = normalizeCode(code).replace(/^KRX:/, '').replace(/\.(KS|KQ)$/, '');
-  return /^\d{6}$/.test(normalized);
+  // 순수 6자리 숫자 (보통주)
+  if (/^\d{6}$/.test(normalized)) return true;
+  // 6자리 영숫자 (ETF/ETN): 숫자 4자리 + 영숫자 2자리
+  if (/^\d{4}[A-Z0-9]{2}$/.test(normalized)) return true;
+  // 우선주: 5자리 숫자 + K/L
+  if (/^\d{5}[KL]$/.test(normalized)) return true;
+  // 특수상품: F 또는 J 접두사
+  if (/^[FJ]/.test(normalized)) return true;
+  return false;
 }
 
 /**
@@ -155,7 +259,8 @@ export function normalizeOverseasStockCode(
 
 /**
  * 국내/해외 자동 판별 정규화
- * 6자리 숫자 → 국내, 그 외 → 해외
+ * 국내 코드 (6자리 숫자, 6자리 영숫자, 우선주, F/J-code) → 국내
+ * 그 외 → 해외
  */
 export function normalizeDashboardStockCode(
   code: string,
@@ -340,7 +445,7 @@ const FALLBACK_EXCD_SEQUENCE: OverseasExchangeCode[] = ['NAS', 'NYS', 'AMS'];
  * 국내/해외 자동 판별
  * 원본: isKorean (app/api/kis/price/route.ts)
  *
- * 국내: 6자리 숫자, .KS, .KQ, KRX: 접두사
+ * 국내: 6자리 숫자, 6자리 영숫자(ETF), .KS, .KQ, KRX: 접두사
  * 해외: 그 외 모든 심볼
  */
 export function isKoreanSymbol(symbol: string): boolean {

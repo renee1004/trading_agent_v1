@@ -2,7 +2,7 @@
 // 환경변수 fallback 우선순위, 계좌번호 정규화, DB 자동 저장을 통합 관리
 // trading-agent.ts, /api/kis/config, /api/kis/token, /api/kis/balance에서 공동 사용
 
-import { db } from './db';
+import { prisma } from './prisma';
 import { KisConfig } from './types';
 
 /**
@@ -123,7 +123,7 @@ export function readKisConfigFromEnv(): {
 export async function getOrCreateKisConfigFromEnv(): Promise<KisConfig | null> {
   // 1. DB에서 설정 조회
   try {
-    const dbConfig = await db.kisConfig.findFirst();
+    const dbConfig = await prisma.kisConfig.findFirst();
     if (dbConfig) {
       console.log('[KIS Config Loader] DB에서 KIS 설정 로드 성공');
       return {
@@ -159,7 +159,7 @@ export async function getOrCreateKisConfigFromEnv(): Promise<KisConfig | null> {
 
   // 3. DB에 자동 저장 (다음 조회부터 DB에서 바로 로드)
   try {
-    await db.kisConfig.create({
+    await prisma.kisConfig.create({
       data: {
         appKey: envConfig.appKey,
         appSecret: envConfig.appSecret,
