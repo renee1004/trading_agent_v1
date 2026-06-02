@@ -112,3 +112,27 @@ Stage Summary:
 - scripts/build-korean-stocks.mjs: .mst→JSON 변환 스크립트
 - 주요 종목 검색 확인: 삼성전자, SK하이닉스, 현대차, 카카오, LG에너지솔루션 등
 - Commits: 77b2d2e, 74b28f0 (pushed to main)
+---
+Task ID: 1
+Agent: main
+Task: Apply KIS domestic and overseas stock lists from uploaded .mst and .COD files
+
+Work Log:
+- Read uploaded overseas stock list files: AMSMST.COD, NASMST.COD, NYSMST.COD
+- Explored current stock system architecture (stock-master.ts, kis-overseas-master.ts, build scripts)
+- Rebuilt domestic Korean stock list from .mst files: 4,346 stocks (KOSPI: 2,523, KOSDAQ: 1,823)
+- Copied new .COD files to data/kis-overseas/ directory
+- Fixed build-overseas-symbols.mjs: replaced iconv-lite dependency with Node.js built-in TextDecoder (CP949→EUC-KR fallback)
+- Rebuilt overseas stock list: 12,161 stocks (NASDAQ: 5,110, AMEX: 4,204, NYSE: 2,847)
+- Rebuilt Next.js app with new stock data
+- Verified all search scenarios work correctly:
+  - 국내 종목 검색: 삼성전자 ✅, 005930 ✅
+  - 해외 영문 검색: NVIDIA ✅, IBM ✅, SPY ✅
+  - 해외 한글 검색: 엔비디아 ✅ (NVDA 정상 검색)
+  - displayCode 포맷: KRX:005930, NAS:NVDA, NYS:IBM, AMS:SPY 모두 정상
+
+Stage Summary:
+- 국내 종목 리스트 적용 완료: 4,346종목 (KOSPI + KOSDAQ + NXT)
+- 해외 종목 리스트 적용 완료: 12,161종목 (NASDAQ + AMEX + NYSE)
+- build-overseas-symbols.mjs 아이콘v-lite 의존성 제거 (Node.js 내장 TextDecoder 사용)
+- ETF 이름에 일부 trailing data 포함된 이슈 있으나 검색 기능에는 영향 없음
