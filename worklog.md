@@ -136,3 +136,24 @@ Stage Summary:
 - 해외 종목 리스트 적용 완료: 12,161종목 (NASDAQ + AMEX + NYSE)
 - build-overseas-symbols.mjs 아이콘v-lite 의존성 제거 (Node.js 내장 TextDecoder 사용)
 - ETF 이름에 일부 trailing data 포함된 이슈 있으나 검색 기능에는 영향 없음
+---
+Task ID: 2
+Agent: main
+Task: Fix stock search accuracy issues
+
+Work Log:
+- Identified 6 major search issues: 현대차→현대차증권, 카카오→BNK카카오그룹포커스, V→해외결과없음, 구글→해외결과없음, SQ→SQQQ우선, BRK.B→잘못된종목
+- Root cause: searchAllStocks used simple symbol-only sorting with no relevance scoring
+- Implemented calcSearchScore: 7-tier scoring (symbol exact → name exact → prefix → contains)
+- Added KOREAN_ALIAS_MAP: 40+ Korean name → symbol mappings (구글→GOOGL, 비자→V, etc.)
+- Fixed short query (1-2 chars) over-matching: limited domestic results to 15 for short queries
+- Fixed overseas result starvation: guaranteed minimum 10 overseas results (40% of limit)
+- Added BRK.B/BRK/B/BRKB normalized symbol comparison in searchOverseasMaster
+- Added symbol change history mapping: SQ→XYZ (Block, Inc. rebranded 2025)
+- Verified all previously failing searches now work correctly
+
+Stage Summary:
+- All 6 search issues fixed and verified
+- Search ranking dramatically improved with relevance scoring
+- Korean alias mapping enables natural language search for overseas stocks
+- Committed as d2127d7
