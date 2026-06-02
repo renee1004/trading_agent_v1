@@ -266,8 +266,18 @@ export function getFallbackMasterSize() {
 }
 
 /**
+ * 심볼 정규화 (검색 비교용)
+ * BRK.B → BRKB, BRK/B → BRKB 처럼 구분자 제거하여 비교
+ */
+function normalizeForSearch(symbol: string): string {
+  return symbol.toUpperCase().replace(/[.\/\s\-]/g, '');
+}
+
+/**
  * 키워드로 해외 종목 검색 (로컬 마스터만 사용, KIS API 호출 없음)
  * symbol, englishName, koreanName 대상 부분 일치 검색
+ * 
+ * 개선: BRK.B / BRK/B / BRKB 모두 동일하게 매칭되도록 정규화 비교
  */
 export function searchOverseasMaster(
   query: string,
@@ -277,14 +287,17 @@ export function searchOverseasMaster(
 
   const upperQuery = query.toUpperCase();
   const lowerQuery = query.toLowerCase();
+  const normalizedQuery = normalizeForSearch(query);
   const results: OverseasMasterItem[] = [];
   const seen = new Set<string>();
 
   for (const item of Object.values(OVERSEAS_MASTER_INDEX)) {
     if (seen.has(item.symbol)) continue;
 
+    const normalizedSymbol = normalizeForSearch(item.symbol);
     const matches =
       item.symbol.toUpperCase().includes(upperQuery) ||
+      normalizedSymbol.includes(normalizedQuery) ||
       (item.koreanName && item.koreanName.includes(query)) ||
       (item.englishName && item.englishName.toLowerCase().includes(lowerQuery)) ||
       (item.name && item.name.toLowerCase().includes(lowerQuery));
@@ -295,10 +308,12 @@ export function searchOverseasMaster(
     }
   }
 
-  // 정렬: 정확히 일치(symbol === query) 먼저, 그 다음 symbol 접두사 일치, 나머지
+  // 정렬: 정확히 일치 먼저 (원본 심볼 또는 정규화된 심볼 기준), 그 다음 접두사 일치, 나머지
   results.sort((a, b) => {
-    const aExact = a.symbol.toUpperCase() === upperQuery ? 0 : a.symbol.toUpperCase().startsWith(upperQuery) ? 1 : 2;
-    const bExact = b.symbol.toUpperCase() === upperQuery ? 0 : b.symbol.toUpperCase().startsWith(upperQuery) ? 1 : 2;
+    const aNorm = normalizeForSearch(a.symbol);
+    const bNorm = normalizeForSearch(b.symbol);
+    const aExact = aNorm === normalizedQuery ? 0 : aNorm.startsWith(normalizedQuery) ? 1 : 2;
+    const bExact = bNorm === normalizedQuery ? 0 : bNorm.startsWith(normalizedQuery) ? 1 : 2;
     return aExact - bExact;
   });
 

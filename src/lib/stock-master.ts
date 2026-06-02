@@ -313,15 +313,103 @@ export type StockSearchResult = {
   englishName?: string;
   currency: 'KRW' | 'USD';
   source: 'DOMESTIC_MASTER' | 'KIS_OVERSEAS_MASTER' | 'OVERSEAS_FALLBACK';
+  /** 검색 관련도 점수 (낮을수록 상위) */
+  _score?: number;
 };
+
+// ─── 한글 별명 매핑 (사용자가 자주 검색하는 한글명 → 실제 심볼) ───
+const KOREAN_ALIAS_MAP: Record<string, string> = {
+  '구글': 'GOOGL',
+  '구글A': 'GOOGL',
+  '구글C': 'GOOG',
+  '애플': 'AAPL',
+  '마이크로소프트': 'MSFT',
+  '아마존': 'AMZN',
+  '테슬라': 'TSLA',
+  '엔비디아': 'NVDA',
+  '메타': 'META',
+  '페이스북': 'META',
+  '넷플릭스': 'NFLX',
+  '인텔': 'INTC',
+  '비자': 'V',
+  '마스터카드': 'MA',
+  '버크셔': 'BRK/B',
+  '버크셔햄서웨이': 'BRK/B',
+  '스타벅스': 'SBUX',
+  '나이키': 'NKE',
+  '코카콜라': 'KO',
+  '맥도날드': 'MCD',
+  '디즈니': 'DIS',
+  '홈디포': 'HD',
+  '보잉': 'BA',
+  '페이팔': 'PYPL',
+  '세일즈포스': 'CRM',
+  '코인베이스': 'COIN',
+  '쇼피파이': 'SHOP',
+  '우버': 'UBER',
+  '에어비앤비': 'ABNB',
+  '팔란티어': 'PLTR',
+  '소파이': 'SOFI',
+  '리비안': 'RIVN',
+  '롤스로이스': 'RYCEY',
+  'TSMC': 'TSM',
+  '티에스엠씨': 'TSM',
+  '알리바바': 'BABA',
+  '바이두': 'BIDU',
+  '닌텐도': 'NTDOY',
+  '소니': 'SONY',
+  '토요타': 'TM',
+  '삼성전자ADR': 'SSNLF',
+  // 심볼 변경 이력 매핑
+  'SQ': 'XYZ',           // Block, Inc. (2025년 SQ → XYZ 변경)
+  '스퀘어': 'XYZ',       // Block, Inc. 구명
+  '블록': 'XYZ',         // Block, Inc. 현재명
+};
+
+/**
+ * 검색 관련도 점수 계산 (낮을수록 상위 노출)
+ *
+ * 점수 체계:
+ *   0  = symbol 정확 일치 (최우선)
+ *   1  = 종목명 정확 일치
+ *   2  = symbol 접두사 일치
+ *   3  = 종목명 접두사 일치
+ *   4  = 한글명 포함
+ *   5  = 영문명 포함
+ *   6  = 기타 포함
+ */
+function calcSearchScore(
+  item: { symbol: string; stockName: string; koreanName?: string; englishName?: string },
+  query: string,
+  upperQuery: string,
+): number {
+  // 정규화된 심볼 비교 (BRK.B === BRK/B === BRKB)
+  const normSymbol = item.symbol.toUpperCase().replace(/[.\/\s\-]/g, '');
+  const normQuery = upperQuery.replace(/[.\/\s\-]/g, '');
+  // 1. symbol 정확 일치 (원본 또는 정규화)
+  if (item.symbol === upperQuery || item.symbol === query || normSymbol === normQuery) return 0;
+  // 2. 종목명 정확 일치
+  if (item.stockName === query || item.koreanName === query) return 1;
+  // 3. symbol 접두사 일치 (원본 또는 정규화)
+  if (item.symbol.startsWith(upperQuery) || item.symbol.startsWith(query) || normSymbol.startsWith(normQuery)) return 2;
+  // 4. 종목명 접두사 일치 ("현대차"가 "현대차증권"보다 먼저)
+  if (item.stockName.startsWith(query) || item.koreanName?.startsWith(query)) return 3;
+  // 5. 한글명 포함
+  if (item.stockName.includes(query) || item.koreanName?.includes(query)) return 4;
+  // 6. 영문명 포함
+  if (item.englishName?.toUpperCase().includes(upperQuery)) return 5;
+  // 7. 기타 포함 (symbol contains 등)
+  return 6;
+}
 
 /**
  * 국내+해외 통합 종목 검색 (로컬 마스터만 사용, KIS API 호출 없음)
  *
- * 검색 대상:
- * - 국내: 종목코드(6자리), 종목명(name), 마켓명(market)
- * - 해외: 티커(symbol), 한글명(koreanName), 영문명(englishName)
- * - displayCode, 거래소 코드
+ * 개선 사항:
+ * - 정확도 기반 정렬 (symbol 정확일치 → 종목명 정확일치 → 접두사 → 포함)
+ * - 국내/해외 병렬 수집 후 통합 정렬 (limit 공유 문제 해결)
+ * - 짧은 쿼리(1~2글자)에서 국내 과다 매칭 시 해외 결과 보장
+ * - 한글 별명 매핑 ("구글" → GOOGL 등)
  */
 export function searchAllStocks(
   query: string,
@@ -329,26 +417,45 @@ export function searchAllStocks(
 ): StockSearchResult[] {
   if (!query || query.length < 1) return [];
 
-  const results: StockSearchResult[] = [];
-  const seenDisplayCodes = new Set<string>();
   const upperQuery = query.toUpperCase();
-  const lowerQuery = query.toLowerCase();
+
+  // ─── 별명 확장 (한글명 → 해외 심볼) ───
+  const aliasQueries: string[] = [query];
+  const aliasSymbol = KOREAN_ALIAS_MAP[query];
+  if (aliasSymbol) {
+    aliasQueries.push(aliasSymbol);
+  }
+  // BRK.B → BRK/B 매핑 (KIS에서 BRK/B를 사용)
+  if (upperQuery === 'BRK.B' || upperQuery === 'BRKB') {
+    if (!aliasQueries.some(q => q.toUpperCase() === 'BRK/B')) {
+      aliasQueries.push('BRK/B');
+    }
+    if (!aliasQueries.some(q => q.toUpperCase() === 'BRK/A')) {
+      aliasQueries.push('BRK/A');
+    }
+  }
 
   // ─── 국내 검색 ───
+  const domesticResults: StockSearchResult[] = [];
+  const domesticSeen = new Set<string>();
+
   for (const entry of DOMESTIC_MASTER_ITEMS) {
-    if (seenDisplayCodes.has(entry.displayCode)) continue;
+    if (domesticSeen.has(entry.displayCode)) continue;
 
     const matches =
       entry.symbol.includes(query) ||
       entry.symbol.includes(upperQuery) ||
       entry.stockName.includes(query) ||
-      entry.displayCode.toUpperCase().includes(upperQuery) ||
-      entry.market.toUpperCase().includes(upperQuery) ||
-      entry.exchangeCode.toUpperCase().includes(upperQuery);
+      entry.displayCode.toUpperCase().includes(upperQuery);
 
     if (matches) {
-      seenDisplayCodes.add(entry.displayCode);
-      results.push({
+      domesticSeen.add(entry.displayCode);
+      const score = calcSearchScore(
+        { symbol: entry.symbol, stockName: entry.stockName },
+        query,
+        upperQuery,
+      );
+      domesticResults.push({
         market: 'DOMESTIC',
         exchangeCode: 'KRX',
         symbol: entry.symbol,
@@ -357,28 +464,39 @@ export function searchAllStocks(
         koreanName: entry.stockName,
         currency: 'KRW',
         source: 'DOMESTIC_MASTER',
+        _score: score,
       });
     }
   }
 
-  // 국내 정렬: 정확히 일치 → 접두사 일치 → 나머지
-  results.sort((a, b) => {
-    const aExact = a.symbol === query || a.symbol === upperQuery ? 0 : a.symbol.startsWith(query) || a.symbol.startsWith(upperQuery) ? 1 : 2;
-    const bExact = b.symbol === query || b.symbol === upperQuery ? 0 : b.symbol.startsWith(query) || b.symbol.startsWith(upperQuery) ? 1 : 2;
-    return aExact - bExact;
-  });
+  // 국내 결과를 점수순 정렬 후 상한 적용
+  domesticResults.sort((a, b) => (a._score ?? 9) - (b._score ?? 9));
 
-  // ─── 해외 검색 (kis-overseas-master의 searchOverseasMaster 사용) ───
-  if (results.length < limit) {
-    const overseasResults = searchOverseasMaster(query, limit - results.length);
-    for (const item of overseasResults) {
-      if (results.length >= limit) break;
+  // 짧은 쿼리(≤2글자)에서 국내 과다 매칭 방지: 상위 15개까지만
+  const maxDomestic = query.length <= 2 ? 15 : 20;
+  const trimmedDomestic = domesticResults.slice(0, maxDomestic);
 
+  // ─── 해외 검색 ───
+  const overseasResults: StockSearchResult[] = [];
+  const overseasSeen = new Set<string>();
+
+  // 별명 쿼리 포함하여 해외 검색
+  for (const q of aliasQueries) {
+    const upperQ = q.toUpperCase();
+    const overseasItems = searchOverseasMaster(q, 50); // 여유 있게 검색
+    for (const item of overseasItems) {
       const displayCode = `${item.exchange}:${item.symbol}`;
-      if (seenDisplayCodes.has(displayCode)) continue;
+      if (overseasSeen.has(displayCode)) continue;
 
-      seenDisplayCodes.add(displayCode);
-      results.push({
+      overseasSeen.add(displayCode);
+      const score = calcSearchScore(
+        { symbol: item.symbol, stockName: item.koreanName || item.englishName || item.name || item.symbol, koreanName: item.koreanName, englishName: item.englishName || item.name },
+        query,
+        upperQuery,
+      );
+      // 별명 매핑으로 찾은 결과는 score 가산 (한글명 포함 결과보다 한 단계 우선)
+      const adjustedScore = (q === aliasSymbol && score > 2) ? score - 3 : score;
+      overseasResults.push({
         market: 'OVERSEAS',
         exchangeCode: item.exchange,
         symbol: item.symbol,
@@ -388,19 +506,43 @@ export function searchAllStocks(
         englishName: item.englishName || item.name,
         currency: 'USD',
         source: 'KIS_OVERSEAS_MASTER',
+        _score: adjustedScore,
       });
     }
   }
 
+  // 해외 결과도 점수순 정렬
+  overseasResults.sort((a, b) => (a._score ?? 9) - (b._score ?? 9));
+
+  // ─── 통합 병합 ───
+  // 해외 결과 최소 보장: 짧은 쿼리에서도 해외 결과가 최소 10개 나올 수 있도록
+  const minOverseas = 10;
+  const maxOverseas = Math.max(minOverseas, Math.floor(limit * 0.4));
+  const trimmedOverseas = overseasResults.slice(0, maxOverseas);
+
+  // 병합: 국내와 해외를 점수 기준으로 교차 배치
+  const allResults: StockSearchResult[] = [];
+  const seenDisplayCodes = new Set<string>();
+
+  // 점수순으로 전체 정렬
+  const merged = [...trimmedDomestic, ...trimmedOverseas]
+    .sort((a, b) => (a._score ?? 9) - (b._score ?? 9));
+
+  for (const item of merged) {
+    if (seenDisplayCodes.has(item.displayCode)) continue;
+    if (allResults.length >= limit) break;
+    seenDisplayCodes.add(item.displayCode);
+    allResults.push(item);
+  }
+
   // ─── displayCode로도 검색 (예: "NAS:NVDA", "KRX:005930") ───
-  if (results.length < limit && upperQuery.includes(':')) {
+  if (upperQuery.includes(':')) {
     const [prefix, sym] = upperQuery.split(':');
     if (prefix && sym) {
-      // 이미 위에서 검색되었을 가능성이 높지만, 누락 시 보완
       const normalized = normalizeDashboardStockCode(query);
       if (normalized.displayCode && !seenDisplayCodes.has(normalized.displayCode)) {
         seenDisplayCodes.add(normalized.displayCode);
-        results.push({
+        allResults.unshift({
           market: normalized.market,
           exchangeCode: normalized.exchangeCode,
           symbol: normalized.symbol,
@@ -410,12 +552,13 @@ export function searchAllStocks(
           englishName: normalized.englishName,
           currency: normalized.currency as 'KRW' | 'USD',
           source: normalized.source as StockSearchResult['source'],
+          _score: 0,
         });
       }
     }
   }
 
-  return results;
+  return allResults;
 }
 
 // ─── 마스터 사이즈 조회 ───
