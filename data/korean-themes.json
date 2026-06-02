@@ -1,0 +1,2126 @@
+{
+  "generatedAt": "2026-06-02T04:53:10.482Z",
+  "themeCount": 7,
+  "mappingCount": 422,
+  "themes": {
+    "1262021": "신규 상장주",
+    "1272022": "신규 상장주",
+    "2022023": "신규 상장주",
+    "3232024": "신규 상장주",
+    "3422020": "신규 상장주",
+    "0272018": "신규 상장주",
+    "0322019": "신규 상장주"
+  },
+  "mappings": [
+    {
+      "themeCode": "0272018",
+      "themeName": "신규 상장주",
+      "stockCode": "027360"
+    },
+    {
+      "themeCode": "0272018",
+      "themeName": "신규 상장주",
+      "stockCode": "110790"
+    },
+    {
+      "themeCode": "0272018",
+      "themeName": "신규 상장주",
+      "stockCode": "108490"
+    },
+    {
+      "themeCode": "0272018",
+      "themeName": "신규 상장주",
+      "stockCode": "089970"
+    },
+    {
+      "themeCode": "0272018",
+      "themeName": "신규 상장주",
+      "stockCode": "290650"
+    },
+    {
+      "themeCode": "0272018",
+      "themeName": "신규 상장주",
+      "stockCode": "042000"
+    },
+    {
+      "themeCode": "0272018",
+      "themeName": "신규 상장주",
+      "stockCode": "290670"
+    },
+    {
+      "themeCode": "0272018",
+      "themeName": "신규 상장주",
+      "stockCode": "037030"
+    },
+    {
+      "themeCode": "0272018",
+      "themeName": "신규 상장주",
+      "stockCode": "263700"
+    },
+    {
+      "themeCode": "0272018",
+      "themeName": "신규 상장주",
+      "stockCode": "194700"
+    },
+    {
+      "themeCode": "0272018",
+      "themeName": "신규 상장주",
+      "stockCode": "285490"
+    },
+    {
+      "themeCode": "0272018",
+      "themeName": "신규 상장주",
+      "stockCode": "219420"
+    },
+    {
+      "themeCode": "0272018",
+      "themeName": "신규 상장주",
+      "stockCode": "268600"
+    },
+    {
+      "themeCode": "0272018",
+      "themeName": "신규 상장주",
+      "stockCode": "290550"
+    },
+    {
+      "themeCode": "0272018",
+      "themeName": "신규 상장주",
+      "stockCode": "267790"
+    },
+    {
+      "themeCode": "0272018",
+      "themeName": "신규 상장주",
+      "stockCode": "016790"
+    },
+    {
+      "themeCode": "0272018",
+      "themeName": "신규 상장주",
+      "stockCode": "227100"
+    },
+    {
+      "themeCode": "0272018",
+      "themeName": "신규 상장주",
+      "stockCode": "290380"
+    },
+    {
+      "themeCode": "0272018",
+      "themeName": "신규 상장주",
+      "stockCode": "258830"
+    },
+    {
+      "themeCode": "0272018",
+      "themeName": "신규 상장주",
+      "stockCode": "290120"
+    },
+    {
+      "themeCode": "0272018",
+      "themeName": "신규 상장주",
+      "stockCode": "122310"
+    },
+    {
+      "themeCode": "0272018",
+      "themeName": "신규 상장주",
+      "stockCode": "293940"
+    },
+    {
+      "themeCode": "0272018",
+      "themeName": "신규 상장주",
+      "stockCode": "299900"
+    },
+    {
+      "themeCode": "0272018",
+      "themeName": "신규 상장주",
+      "stockCode": "264660"
+    },
+    {
+      "themeCode": "0272018",
+      "themeName": "신규 상장주",
+      "stockCode": "275630"
+    },
+    {
+      "themeCode": "0272018",
+      "themeName": "신규 상장주",
+      "stockCode": "263690"
+    },
+    {
+      "themeCode": "0272018",
+      "themeName": "신규 상장주",
+      "stockCode": "270870"
+    },
+    {
+      "themeCode": "0272018",
+      "themeName": "신규 상장주",
+      "stockCode": "117730"
+    },
+    {
+      "themeCode": "0272018",
+      "themeName": "신규 상장주",
+      "stockCode": "263050"
+    },
+    {
+      "themeCode": "0272018",
+      "themeName": "신규 상장주",
+      "stockCode": "219750"
+    },
+    {
+      "themeCode": "0272018",
+      "themeName": "신규 상장주",
+      "stockCode": "277070"
+    },
+    {
+      "themeCode": "0272018",
+      "themeName": "신규 상장주",
+      "stockCode": "064510"
+    },
+    {
+      "themeCode": "0272018",
+      "themeName": "신규 상장주",
+      "stockCode": "257370"
+    },
+    {
+      "themeCode": "0272018",
+      "themeName": "신규 상장주",
+      "stockCode": "018250"
+    },
+    {
+      "themeCode": "0272018",
+      "themeName": "신규 상장주",
+      "stockCode": "267850"
+    },
+    {
+      "themeCode": "0272018",
+      "themeName": "신규 상장주",
+      "stockCode": "298690"
+    },
+    {
+      "themeCode": "0272018",
+      "themeName": "신규 상장주",
+      "stockCode": "246710"
+    },
+    {
+      "themeCode": "0272018",
+      "themeName": "신규 상장주",
+      "stockCode": "260660"
+    },
+    {
+      "themeCode": "0272018",
+      "themeName": "신규 상장주",
+      "stockCode": "290660"
+    },
+    {
+      "themeCode": "0272018",
+      "themeName": "신규 상장주",
+      "stockCode": "263020"
+    },
+    {
+      "themeCode": "0272018",
+      "themeName": "신규 상장주",
+      "stockCode": "208340"
+    },
+    {
+      "themeCode": "0272018",
+      "themeName": "신규 상장주",
+      "stockCode": "183490"
+    },
+    {
+      "themeCode": "0272018",
+      "themeName": "신규 상장주",
+      "stockCode": "226400"
+    },
+    {
+      "themeCode": "0272018",
+      "themeName": "신규 상장주",
+      "stockCode": "173130"
+    },
+    {
+      "themeCode": "0272018",
+      "themeName": "신규 상장주",
+      "stockCode": "293580"
+    },
+    {
+      "themeCode": "0272018",
+      "themeName": "신규 상장주",
+      "stockCode": "900340"
+    },
+    {
+      "themeCode": "0272018",
+      "themeName": "신규 상장주",
+      "stockCode": "088260"
+    },
+    {
+      "themeCode": "0272018",
+      "themeName": "신규 상장주",
+      "stockCode": "288620"
+    },
+    {
+      "themeCode": "0272018",
+      "themeName": "신규 상장주",
+      "stockCode": "299910"
+    },
+    {
+      "themeCode": "0272018",
+      "themeName": "신규 상장주",
+      "stockCode": "110020"
+    },
+    {
+      "themeCode": "0272018",
+      "themeName": "신규 상장주",
+      "stockCode": "175250"
+    },
+    {
+      "themeCode": "0272018",
+      "themeName": "신규 상장주",
+      "stockCode": "298380"
+    },
+    {
+      "themeCode": "0272018",
+      "themeName": "신규 상장주",
+      "stockCode": "302430"
+    },
+    {
+      "themeCode": "0272018",
+      "themeName": "신규 상장주",
+      "stockCode": "290740"
+    },
+    {
+      "themeCode": "0272018",
+      "themeName": "신규 상장주",
+      "stockCode": "290720"
+    },
+    {
+      "themeCode": "0272018",
+      "themeName": "신규 상장주",
+      "stockCode": "950170"
+    },
+    {
+      "themeCode": "0272018",
+      "themeName": "신규 상장주",
+      "stockCode": "226950"
+    },
+    {
+      "themeCode": "0272018",
+      "themeName": "신규 상장주",
+      "stockCode": "100590"
+    },
+    {
+      "themeCode": "0272018",
+      "themeName": "신규 상장주",
+      "stockCode": "289080"
+    },
+    {
+      "themeCode": "0272018",
+      "themeName": "신규 상장주",
+      "stockCode": "128540"
+    },
+    {
+      "themeCode": "0272018",
+      "themeName": "신규 상장주",
+      "stockCode": "179290"
+    },
+    {
+      "themeCode": "0272018",
+      "themeName": "신규 상장주",
+      "stockCode": "010400"
+    },
+    {
+      "themeCode": "0272018",
+      "themeName": "신규 상장주",
+      "stockCode": "154030"
+    },
+    {
+      "themeCode": "0272018",
+      "themeName": "신규 상장주",
+      "stockCode": "245620"
+    },
+    {
+      "themeCode": "0272018",
+      "themeName": "신규 상장주",
+      "stockCode": "006620"
+    },
+    {
+      "themeCode": "0272018",
+      "themeName": "신규 상장주",
+      "stockCode": "293480"
+    },
+    {
+      "themeCode": "0272018",
+      "themeName": "신규 상장주",
+      "stockCode": "197140"
+    },
+    {
+      "themeCode": "0272018",
+      "themeName": "신규 상장주",
+      "stockCode": "304100"
+    },
+    {
+      "themeCode": "0272018",
+      "themeName": "신규 상장주",
+      "stockCode": "153710"
+    },
+    {
+      "themeCode": "0322019",
+      "themeName": "신규 상장주",
+      "stockCode": "317770"
+    },
+    {
+      "themeCode": "0322019",
+      "themeName": "신규 상장주",
+      "stockCode": "318000"
+    },
+    {
+      "themeCode": "0322019",
+      "themeName": "신규 상장주",
+      "stockCode": "308100"
+    },
+    {
+      "themeCode": "0322019",
+      "themeName": "신규 상장주",
+      "stockCode": "330590"
+    },
+    {
+      "themeCode": "0322019",
+      "themeName": "신규 상장주",
+      "stockCode": "338100"
+    },
+    {
+      "themeCode": "0322019",
+      "themeName": "신규 상장주",
+      "stockCode": "317400"
+    },
+    {
+      "themeCode": "0322019",
+      "themeName": "신규 상장주",
+      "stockCode": "317530"
+    },
+    {
+      "themeCode": "0322019",
+      "themeName": "신규 상장주",
+      "stockCode": "084850"
+    },
+    {
+      "themeCode": "0322019",
+      "themeName": "신규 상장주",
+      "stockCode": "125210"
+    },
+    {
+      "themeCode": "0322019",
+      "themeName": "신규 상장주",
+      "stockCode": "282880"
+    },
+    {
+      "themeCode": "0322019",
+      "themeName": "신규 상장주",
+      "stockCode": "302550"
+    },
+    {
+      "themeCode": "0322019",
+      "themeName": "신규 상장주",
+      "stockCode": "313760"
+    },
+    {
+      "themeCode": "0322019",
+      "themeName": "신규 상장주",
+      "stockCode": "228760"
+    },
+    {
+      "themeCode": "0322019",
+      "themeName": "신규 상장주",
+      "stockCode": "103840"
+    },
+    {
+      "themeCode": "0322019",
+      "themeName": "신규 상장주",
+      "stockCode": "278650"
+    },
+    {
+      "themeCode": "0322019",
+      "themeName": "신규 상장주",
+      "stockCode": "053580"
+    },
+    {
+      "themeCode": "0322019",
+      "themeName": "신규 상장주",
+      "stockCode": "293780"
+    },
+    {
+      "themeCode": "0322019",
+      "themeName": "신규 상장주",
+      "stockCode": "307930"
+    },
+    {
+      "themeCode": "0322019",
+      "themeName": "신규 상장주",
+      "stockCode": "104620"
+    },
+    {
+      "themeCode": "0322019",
+      "themeName": "신규 상장주",
+      "stockCode": "307950"
+    },
+    {
+      "themeCode": "0322019",
+      "themeName": "신규 상장주",
+      "stockCode": "246960"
+    },
+    {
+      "themeCode": "0322019",
+      "themeName": "신규 상장주",
+      "stockCode": "950180"
+    },
+    {
+      "themeCode": "0322019",
+      "themeName": "신규 상장주",
+      "stockCode": "299660"
+    },
+    {
+      "themeCode": "0322019",
+      "themeName": "신규 상장주",
+      "stockCode": "251970"
+    },
+    {
+      "themeCode": "0322019",
+      "themeName": "신규 상장주",
+      "stockCode": "297090"
+    },
+    {
+      "themeCode": "0322019",
+      "themeName": "신규 상장주",
+      "stockCode": "289010"
+    },
+    {
+      "themeCode": "0322019",
+      "themeName": "신규 상장주",
+      "stockCode": "234340"
+    },
+    {
+      "themeCode": "0322019",
+      "themeName": "신규 상장주",
+      "stockCode": "300080"
+    },
+    {
+      "themeCode": "0322019",
+      "themeName": "신규 상장주",
+      "stockCode": "241840"
+    },
+    {
+      "themeCode": "0322019",
+      "themeName": "신규 상장주",
+      "stockCode": "305090"
+    },
+    {
+      "themeCode": "0322019",
+      "themeName": "신규 상장주",
+      "stockCode": "317850"
+    },
+    {
+      "themeCode": "0322019",
+      "themeName": "신규 상장주",
+      "stockCode": "317330"
+    },
+    {
+      "themeCode": "0322019",
+      "themeName": "신규 상장주",
+      "stockCode": "148150"
+    },
+    {
+      "themeCode": "0322019",
+      "themeName": "신규 상장주",
+      "stockCode": "253840"
+    },
+    {
+      "themeCode": "0322019",
+      "themeName": "신규 상장주",
+      "stockCode": "272110"
+    },
+    {
+      "themeCode": "0322019",
+      "themeName": "신규 상장주",
+      "stockCode": "195500"
+    },
+    {
+      "themeCode": "0322019",
+      "themeName": "신규 상장주",
+      "stockCode": "235980"
+    },
+    {
+      "themeCode": "0322019",
+      "themeName": "신규 상장주",
+      "stockCode": "278280"
+    },
+    {
+      "themeCode": "0322019",
+      "themeName": "신규 상장주",
+      "stockCode": "321550"
+    },
+    {
+      "themeCode": "0322019",
+      "themeName": "신규 상장주",
+      "stockCode": "306040"
+    },
+    {
+      "themeCode": "0322019",
+      "themeName": "신규 상장주",
+      "stockCode": "317870"
+    },
+    {
+      "themeCode": "0322019",
+      "themeName": "신규 상장주",
+      "stockCode": "311390"
+    },
+    {
+      "themeCode": "0322019",
+      "themeName": "신규 상장주",
+      "stockCode": "216080"
+    },
+    {
+      "themeCode": "0322019",
+      "themeName": "신규 상장주",
+      "stockCode": "272210"
+    },
+    {
+      "themeCode": "0322019",
+      "themeName": "신규 상장주",
+      "stockCode": "300120"
+    },
+    {
+      "themeCode": "0322019",
+      "themeName": "신규 상장주",
+      "stockCode": "286750"
+    },
+    {
+      "themeCode": "0322019",
+      "themeName": "신규 상장주",
+      "stockCode": "318010"
+    },
+    {
+      "themeCode": "0322019",
+      "themeName": "신규 상장주",
+      "stockCode": "256150"
+    },
+    {
+      "themeCode": "0322019",
+      "themeName": "신규 상장주",
+      "stockCode": "322000"
+    },
+    {
+      "themeCode": "0322019",
+      "themeName": "신규 상장주",
+      "stockCode": "158430"
+    },
+    {
+      "themeCode": "0322019",
+      "themeName": "신규 상장주",
+      "stockCode": "192650"
+    },
+    {
+      "themeCode": "0322019",
+      "themeName": "신규 상장주",
+      "stockCode": "317120"
+    },
+    {
+      "themeCode": "0322019",
+      "themeName": "신규 상장주",
+      "stockCode": "244460"
+    },
+    {
+      "themeCode": "0322019",
+      "themeName": "신규 상장주",
+      "stockCode": "317830"
+    },
+    {
+      "themeCode": "0322019",
+      "themeName": "신규 상장주",
+      "stockCode": "124560"
+    },
+    {
+      "themeCode": "0322019",
+      "themeName": "신규 상장주",
+      "stockCode": "013890"
+    },
+    {
+      "themeCode": "0322019",
+      "themeName": "신규 상장주",
+      "stockCode": "234690"
+    },
+    {
+      "themeCode": "0322019",
+      "themeName": "신규 상장주",
+      "stockCode": "308170"
+    },
+    {
+      "themeCode": "0322019",
+      "themeName": "신규 상장주",
+      "stockCode": "327260"
+    },
+    {
+      "themeCode": "0322019",
+      "themeName": "신규 상장주",
+      "stockCode": "258790"
+    },
+    {
+      "themeCode": "0322019",
+      "themeName": "신규 상장주",
+      "stockCode": "322510"
+    },
+    {
+      "themeCode": "0322019",
+      "themeName": "신규 상장주",
+      "stockCode": "322180"
+    },
+    {
+      "themeCode": "0322019",
+      "themeName": "신규 상장주",
+      "stockCode": "186230"
+    },
+    {
+      "themeCode": "0322019",
+      "themeName": "신규 상장주",
+      "stockCode": "247540"
+    },
+    {
+      "themeCode": "0322019",
+      "themeName": "신규 상장주",
+      "stockCode": "312610"
+    },
+    {
+      "themeCode": "0322019",
+      "themeName": "신규 상장주",
+      "stockCode": "099750"
+    },
+    {
+      "themeCode": "0322019",
+      "themeName": "신규 상장주",
+      "stockCode": "228670"
+    },
+    {
+      "themeCode": "0322019",
+      "themeName": "신규 상장주",
+      "stockCode": "288330"
+    },
+    {
+      "themeCode": "0322019",
+      "themeName": "신규 상장주",
+      "stockCode": "100790"
+    },
+    {
+      "themeCode": "0322019",
+      "themeName": "신규 상장주",
+      "stockCode": "226330"
+    },
+    {
+      "themeCode": "0322019",
+      "themeName": "신규 상장주",
+      "stockCode": "190650"
+    },
+    {
+      "themeCode": "3422020",
+      "themeName": "신규 상장주",
+      "stockCode": "352820"
+    },
+    {
+      "themeCode": "3422020",
+      "themeName": "신규 상장주",
+      "stockCode": "298540"
+    },
+    {
+      "themeCode": "3422020",
+      "themeName": "신규 상장주",
+      "stockCode": "347890"
+    },
+    {
+      "themeCode": "3422020",
+      "themeName": "신규 상장주",
+      "stockCode": "277880"
+    },
+    {
+      "themeCode": "3422020",
+      "themeName": "신규 상장주",
+      "stockCode": "330350"
+    },
+    {
+      "themeCode": "3422020",
+      "themeName": "신규 상장주",
+      "stockCode": "101360"
+    },
+    {
+      "themeCode": "3422020",
+      "themeName": "신규 상장주",
+      "stockCode": "301300"
+    },
+    {
+      "themeCode": "3422020",
+      "themeName": "신규 상장주",
+      "stockCode": "092190"
+    },
+    {
+      "themeCode": "3422020",
+      "themeName": "신규 상장주",
+      "stockCode": "348150"
+    },
+    {
+      "themeCode": "3422020",
+      "themeName": "신규 상장주",
+      "stockCode": "299030"
+    },
+    {
+      "themeCode": "3422020",
+      "themeName": "신규 상장주",
+      "stockCode": "950200"
+    },
+    {
+      "themeCode": "3422020",
+      "themeName": "신규 상장주",
+      "stockCode": "199820"
+    },
+    {
+      "themeCode": "3422020",
+      "themeName": "신규 상장주",
+      "stockCode": "318020"
+    },
+    {
+      "themeCode": "3422020",
+      "themeName": "신규 상장주",
+      "stockCode": "314130"
+    },
+    {
+      "themeCode": "3422020",
+      "themeName": "신규 상장주",
+      "stockCode": "169330"
+    },
+    {
+      "themeCode": "3422020",
+      "themeName": "신규 상장주",
+      "stockCode": "225220"
+    },
+    {
+      "themeCode": "3422020",
+      "themeName": "신규 상장주",
+      "stockCode": "274090"
+    },
+    {
+      "themeCode": "3422020",
+      "themeName": "신규 상장주",
+      "stockCode": "294140"
+    },
+    {
+      "themeCode": "3422020",
+      "themeName": "신규 상장주",
+      "stockCode": "204270"
+    },
+    {
+      "themeCode": "3422020",
+      "themeName": "신규 상장주",
+      "stockCode": "318410"
+    },
+    {
+      "themeCode": "3422020",
+      "themeName": "신규 상장주",
+      "stockCode": "332370"
+    },
+    {
+      "themeCode": "3422020",
+      "themeName": "신규 상장주",
+      "stockCode": "294090"
+    },
+    {
+      "themeCode": "3422020",
+      "themeName": "신규 상장주",
+      "stockCode": "065370"
+    },
+    {
+      "themeCode": "3422020",
+      "themeName": "신규 상장주",
+      "stockCode": "294630"
+    },
+    {
+      "themeCode": "3422020",
+      "themeName": "신규 상장주",
+      "stockCode": "237820"
+    },
+    {
+      "themeCode": "3422020",
+      "themeName": "신규 상장주",
+      "stockCode": "297890"
+    },
+    {
+      "themeCode": "3422020",
+      "themeName": "신규 상장주",
+      "stockCode": "198080"
+    },
+    {
+      "themeCode": "3422020",
+      "themeName": "신규 상장주",
+      "stockCode": "326030"
+    },
+    {
+      "themeCode": "3422020",
+      "themeName": "신규 상장주",
+      "stockCode": "293490"
+    },
+    {
+      "themeCode": "3422020",
+      "themeName": "신규 상장주",
+      "stockCode": "223250"
+    },
+    {
+      "themeCode": "3422020",
+      "themeName": "신규 상장주",
+      "stockCode": "164060"
+    },
+    {
+      "themeCode": "3422020",
+      "themeName": "신규 상장주",
+      "stockCode": "337930"
+    },
+    {
+      "themeCode": "3422020",
+      "themeName": "신규 상장주",
+      "stockCode": "331920"
+    },
+    {
+      "themeCode": "3422020",
+      "themeName": "신규 상장주",
+      "stockCode": "060850"
+    },
+    {
+      "themeCode": "3422020",
+      "themeName": "신규 상장주",
+      "stockCode": "304840"
+    },
+    {
+      "themeCode": "3422020",
+      "themeName": "신규 상장주",
+      "stockCode": "347860"
+    },
+    {
+      "themeCode": "3422020",
+      "themeName": "신규 상장주",
+      "stockCode": "357550"
+    },
+    {
+      "themeCode": "3422020",
+      "themeName": "신규 상장주",
+      "stockCode": "262260"
+    },
+    {
+      "themeCode": "3422020",
+      "themeName": "신규 상장주",
+      "stockCode": "950190"
+    },
+    {
+      "themeCode": "3422020",
+      "themeName": "신규 상장주",
+      "stockCode": "298060"
+    },
+    {
+      "themeCode": "3422020",
+      "themeName": "신규 상장주",
+      "stockCode": "335810"
+    },
+    {
+      "themeCode": "3422020",
+      "themeName": "신규 상장주",
+      "stockCode": "032300"
+    },
+    {
+      "themeCode": "3422020",
+      "themeName": "신규 상장주",
+      "stockCode": "348210"
+    },
+    {
+      "themeCode": "3422020",
+      "themeName": "신규 상장주",
+      "stockCode": "229000"
+    },
+    {
+      "themeCode": "3422020",
+      "themeName": "신규 상장주",
+      "stockCode": "323990"
+    },
+    {
+      "themeCode": "3422020",
+      "themeName": "신규 상장주",
+      "stockCode": "339770"
+    },
+    {
+      "themeCode": "3422020",
+      "themeName": "신규 상장주",
+      "stockCode": "053080"
+    },
+    {
+      "themeCode": "3422020",
+      "themeName": "신규 상장주",
+      "stockCode": "347000"
+    },
+    {
+      "themeCode": "3422020",
+      "themeName": "신규 상장주",
+      "stockCode": "290520"
+    },
+    {
+      "themeCode": "3422020",
+      "themeName": "신규 상장주",
+      "stockCode": "330860"
+    },
+    {
+      "themeCode": "3422020",
+      "themeName": "신규 상장주",
+      "stockCode": "348350"
+    },
+    {
+      "themeCode": "3422020",
+      "themeName": "신규 상장주",
+      "stockCode": "332570"
+    },
+    {
+      "themeCode": "3422020",
+      "themeName": "신규 상장주",
+      "stockCode": "064850"
+    },
+    {
+      "themeCode": "3422020",
+      "themeName": "신규 상장주",
+      "stockCode": "290690"
+    },
+    {
+      "themeCode": "1262021",
+      "themeName": "신규 상장주",
+      "stockCode": "259960"
+    },
+    {
+      "themeCode": "1262021",
+      "themeName": "신규 상장주",
+      "stockCode": "356890"
+    },
+    {
+      "themeCode": "1262021",
+      "themeName": "신규 상장주",
+      "stockCode": "367000"
+    },
+    {
+      "themeCode": "1262021",
+      "themeName": "신규 상장주",
+      "stockCode": "372910"
+    },
+    {
+      "themeCode": "1262021",
+      "themeName": "신규 상장주",
+      "stockCode": "315640"
+    },
+    {
+      "themeCode": "1262021",
+      "themeName": "신규 상장주",
+      "stockCode": "377030"
+    },
+    {
+      "themeCode": "1262021",
+      "themeName": "신규 상장주",
+      "stockCode": "089860"
+    },
+    {
+      "themeCode": "1262021",
+      "themeName": "신규 상장주",
+      "stockCode": "200350"
+    },
+    {
+      "themeCode": "1262021",
+      "themeName": "신규 상장주",
+      "stockCode": "137310"
+    },
+    {
+      "themeCode": "1262021",
+      "themeName": "신규 상장주",
+      "stockCode": "195940"
+    },
+    {
+      "themeCode": "1262021",
+      "themeName": "신규 상장주",
+      "stockCode": "303530"
+    },
+    {
+      "themeCode": "1262021",
+      "themeName": "신규 상장주",
+      "stockCode": "352910"
+    },
+    {
+      "themeCode": "1262021",
+      "themeName": "신규 상장주",
+      "stockCode": "187660"
+    },
+    {
+      "themeCode": "1262021",
+      "themeName": "신규 상장주",
+      "stockCode": "357580"
+    },
+    {
+      "themeCode": "1262021",
+      "themeName": "신규 상장주",
+      "stockCode": "323410"
+    },
+    {
+      "themeCode": "1262021",
+      "themeName": "신규 상장주",
+      "stockCode": "351330"
+    },
+    {
+      "themeCode": "1262021",
+      "themeName": "신규 상장주",
+      "stockCode": "365270"
+    },
+    {
+      "themeCode": "1262021",
+      "themeName": "신규 상장주",
+      "stockCode": "270660"
+    },
+    {
+      "themeCode": "1262021",
+      "themeName": "신규 상장주",
+      "stockCode": "357880"
+    },
+    {
+      "themeCode": "1262021",
+      "themeName": "신규 상장주",
+      "stockCode": "236810"
+    },
+    {
+      "themeCode": "1262021",
+      "themeName": "신규 상장주",
+      "stockCode": "377300"
+    },
+    {
+      "themeCode": "1262021",
+      "themeName": "신규 상장주",
+      "stockCode": "348370"
+    },
+    {
+      "themeCode": "1262021",
+      "themeName": "신규 상장주",
+      "stockCode": "363250"
+    },
+    {
+      "themeCode": "1262021",
+      "themeName": "신규 상장주",
+      "stockCode": "276730"
+    },
+    {
+      "themeCode": "1262021",
+      "themeName": "신규 상장주",
+      "stockCode": "376300"
+    },
+    {
+      "themeCode": "1262021",
+      "themeName": "신규 상장주",
+      "stockCode": "311320"
+    },
+    {
+      "themeCode": "1262021",
+      "themeName": "신규 상장주",
+      "stockCode": "372800"
+    },
+    {
+      "themeCode": "1262021",
+      "themeName": "신규 상장주",
+      "stockCode": "361670"
+    },
+    {
+      "themeCode": "1262021",
+      "themeName": "신규 상장주",
+      "stockCode": "361570"
+    },
+    {
+      "themeCode": "1262021",
+      "themeName": "신규 상장주",
+      "stockCode": "377480"
+    },
+    {
+      "themeCode": "1262021",
+      "themeName": "신규 상장주",
+      "stockCode": "950220"
+    },
+    {
+      "themeCode": "1262021",
+      "themeName": "신규 상장주",
+      "stockCode": "338220"
+    },
+    {
+      "themeCode": "1262021",
+      "themeName": "신규 상장주",
+      "stockCode": "252990"
+    },
+    {
+      "themeCode": "1262021",
+      "themeName": "신규 상장주",
+      "stockCode": "199800"
+    },
+    {
+      "themeCode": "1262021",
+      "themeName": "신규 상장주",
+      "stockCode": "322310"
+    },
+    {
+      "themeCode": "1262021",
+      "themeName": "신규 상장주",
+      "stockCode": "086710"
+    },
+    {
+      "themeCode": "1262021",
+      "themeName": "신규 상장주",
+      "stockCode": "262840"
+    },
+    {
+      "themeCode": "1262021",
+      "themeName": "신규 상장주",
+      "stockCode": "352480"
+    },
+    {
+      "themeCode": "1262021",
+      "themeName": "신규 상장주",
+      "stockCode": "395400"
+    },
+    {
+      "themeCode": "1262021",
+      "themeName": "신규 상장주",
+      "stockCode": "357230"
+    },
+    {
+      "themeCode": "1262021",
+      "themeName": "신규 상장주",
+      "stockCode": "294570"
+    },
+    {
+      "themeCode": "1262021",
+      "themeName": "신규 상장주",
+      "stockCode": "347700"
+    },
+    {
+      "themeCode": "1262021",
+      "themeName": "신규 상장주",
+      "stockCode": "247660"
+    },
+    {
+      "themeCode": "1262021",
+      "themeName": "신규 상장주",
+      "stockCode": "361610"
+    },
+    {
+      "themeCode": "1262021",
+      "themeName": "신규 상장주",
+      "stockCode": "289220"
+    },
+    {
+      "themeCode": "1262021",
+      "themeName": "신규 상장주",
+      "stockCode": "189330"
+    },
+    {
+      "themeCode": "1262021",
+      "themeName": "신규 상장주",
+      "stockCode": "059270"
+    },
+    {
+      "themeCode": "1262021",
+      "themeName": "신규 상장주",
+      "stockCode": "361390"
+    },
+    {
+      "themeCode": "1262021",
+      "themeName": "신규 상장주",
+      "stockCode": "340930"
+    },
+    {
+      "themeCode": "1262021",
+      "themeName": "신규 상장주",
+      "stockCode": "334970"
+    },
+    {
+      "themeCode": "1262021",
+      "themeName": "신규 상장주",
+      "stockCode": "203400"
+    },
+    {
+      "themeCode": "1262021",
+      "themeName": "신규 상장주",
+      "stockCode": "232680"
+    },
+    {
+      "themeCode": "1262021",
+      "themeName": "신규 상장주",
+      "stockCode": "058970"
+    },
+    {
+      "themeCode": "1262021",
+      "themeName": "신규 상장주",
+      "stockCode": "139990"
+    },
+    {
+      "themeCode": "1262021",
+      "themeName": "신규 상장주",
+      "stockCode": "308080"
+    },
+    {
+      "themeCode": "1262021",
+      "themeName": "신규 상장주",
+      "stockCode": "376980"
+    },
+    {
+      "themeCode": "1262021",
+      "themeName": "신규 상장주",
+      "stockCode": "273640"
+    },
+    {
+      "themeCode": "1262021",
+      "themeName": "신규 상장주",
+      "stockCode": "329180"
+    },
+    {
+      "themeCode": "1262021",
+      "themeName": "신규 상장주",
+      "stockCode": "099430"
+    },
+    {
+      "themeCode": "1262021",
+      "themeName": "신규 상장주",
+      "stockCode": "377220"
+    },
+    {
+      "themeCode": "1262021",
+      "themeName": "신규 상장주",
+      "stockCode": "348030"
+    },
+    {
+      "themeCode": "1262021",
+      "themeName": "신규 상장주",
+      "stockCode": "352700"
+    },
+    {
+      "themeCode": "1262021",
+      "themeName": "신규 상장주",
+      "stockCode": "163730"
+    },
+    {
+      "themeCode": "1262021",
+      "themeName": "신규 상장주",
+      "stockCode": "271940"
+    },
+    {
+      "themeCode": "1262021",
+      "themeName": "신규 상장주",
+      "stockCode": "248070"
+    },
+    {
+      "themeCode": "1262021",
+      "themeName": "신규 상장주",
+      "stockCode": "277810"
+    },
+    {
+      "themeCode": "1262021",
+      "themeName": "신규 상장주",
+      "stockCode": "321820"
+    },
+    {
+      "themeCode": "1262021",
+      "themeName": "신규 상장주",
+      "stockCode": "260970"
+    },
+    {
+      "themeCode": "1262021",
+      "themeName": "신규 상장주",
+      "stockCode": "382800"
+    },
+    {
+      "themeCode": "1262021",
+      "themeName": "신규 상장주",
+      "stockCode": "382840"
+    },
+    {
+      "themeCode": "1262021",
+      "themeName": "신규 상장주",
+      "stockCode": "298870"
+    },
+    {
+      "themeCode": "1262021",
+      "themeName": "신규 상장주",
+      "stockCode": "376180"
+    },
+    {
+      "themeCode": "1262021",
+      "themeName": "신규 상장주",
+      "stockCode": "314930"
+    },
+    {
+      "themeCode": "1262021",
+      "themeName": "신규 상장주",
+      "stockCode": "302440"
+    },
+    {
+      "themeCode": "1262021",
+      "themeName": "신규 상장주",
+      "stockCode": "377450"
+    },
+    {
+      "themeCode": "1262021",
+      "themeName": "신규 상장주",
+      "stockCode": "261780"
+    },
+    {
+      "themeCode": "1262021",
+      "themeName": "신규 상장주",
+      "stockCode": "950210"
+    },
+    {
+      "themeCode": "1262021",
+      "themeName": "신규 상장주",
+      "stockCode": "382480"
+    },
+    {
+      "themeCode": "1262021",
+      "themeName": "신규 상장주",
+      "stockCode": "381970"
+    },
+    {
+      "themeCode": "1262021",
+      "themeName": "신규 상장주",
+      "stockCode": "257720"
+    },
+    {
+      "themeCode": "1272022",
+      "themeName": "신규 상장주",
+      "stockCode": "388720"
+    },
+    {
+      "themeCode": "1272022",
+      "themeName": "신규 상장주",
+      "stockCode": "383930"
+    },
+    {
+      "themeCode": "1272022",
+      "themeName": "신규 상장주",
+      "stockCode": "417500"
+    },
+    {
+      "themeCode": "1272022",
+      "themeName": "신규 상장주",
+      "stockCode": "417180"
+    },
+    {
+      "themeCode": "1272022",
+      "themeName": "신규 상장주",
+      "stockCode": "405100"
+    },
+    {
+      "themeCode": "1272022",
+      "themeName": "신규 상장주",
+      "stockCode": "399720"
+    },
+    {
+      "themeCode": "1272022",
+      "themeName": "신규 상장주",
+      "stockCode": "377740"
+    },
+    {
+      "themeCode": "1272022",
+      "themeName": "신규 상장주",
+      "stockCode": "348340"
+    },
+    {
+      "themeCode": "1272022",
+      "themeName": "신규 상장주",
+      "stockCode": "368970"
+    },
+    {
+      "themeCode": "1272022",
+      "themeName": "신규 상장주",
+      "stockCode": "129920"
+    },
+    {
+      "themeCode": "1272022",
+      "themeName": "신규 상장주",
+      "stockCode": "362320"
+    },
+    {
+      "themeCode": "1272022",
+      "themeName": "신규 상장주",
+      "stockCode": "126720"
+    },
+    {
+      "themeCode": "1272022",
+      "themeName": "신규 상장주",
+      "stockCode": "112290"
+    },
+    {
+      "themeCode": "1272022",
+      "themeName": "신규 상장주",
+      "stockCode": "394280"
+    },
+    {
+      "themeCode": "1272022",
+      "themeName": "신규 상장주",
+      "stockCode": "148780"
+    },
+    {
+      "themeCode": "1272022",
+      "themeName": "신규 상장주",
+      "stockCode": "412350"
+    },
+    {
+      "themeCode": "1272022",
+      "themeName": "신규 상장주",
+      "stockCode": "419530"
+    },
+    {
+      "themeCode": "1272022",
+      "themeName": "신규 상장주",
+      "stockCode": "378800"
+    },
+    {
+      "themeCode": "1272022",
+      "themeName": "신규 상장주",
+      "stockCode": "382900"
+    },
+    {
+      "themeCode": "1272022",
+      "themeName": "신규 상장주",
+      "stockCode": "107600"
+    },
+    {
+      "themeCode": "1272022",
+      "themeName": "신규 상장주",
+      "stockCode": "314140"
+    },
+    {
+      "themeCode": "1272022",
+      "themeName": "신규 상장주",
+      "stockCode": "397030"
+    },
+    {
+      "themeCode": "1272022",
+      "themeName": "신규 상장주",
+      "stockCode": "288980"
+    },
+    {
+      "themeCode": "1272022",
+      "themeName": "신규 상장주",
+      "stockCode": "372170"
+    },
+    {
+      "themeCode": "1272022",
+      "themeName": "신규 상장주",
+      "stockCode": "368600"
+    },
+    {
+      "themeCode": "1272022",
+      "themeName": "신규 상장주",
+      "stockCode": "353590"
+    },
+    {
+      "themeCode": "1272022",
+      "themeName": "신규 상장주",
+      "stockCode": "328130"
+    },
+    {
+      "themeCode": "1272022",
+      "themeName": "신규 상장주",
+      "stockCode": "417310"
+    },
+    {
+      "themeCode": "1272022",
+      "themeName": "신규 상장주",
+      "stockCode": "376930"
+    },
+    {
+      "themeCode": "1272022",
+      "themeName": "신규 상장주",
+      "stockCode": "291810"
+    },
+    {
+      "themeCode": "1272022",
+      "themeName": "신규 상장주",
+      "stockCode": "365340"
+    },
+    {
+      "themeCode": "1272022",
+      "themeName": "신규 상장주",
+      "stockCode": "371950"
+    },
+    {
+      "themeCode": "1272022",
+      "themeName": "신규 상장주",
+      "stockCode": "330730"
+    },
+    {
+      "themeCode": "1272022",
+      "themeName": "신규 상장주",
+      "stockCode": "396270"
+    },
+    {
+      "themeCode": "1272022",
+      "themeName": "신규 상장주",
+      "stockCode": "388050"
+    },
+    {
+      "themeCode": "1272022",
+      "themeName": "신규 상장주",
+      "stockCode": "402030"
+    },
+    {
+      "themeCode": "1272022",
+      "themeName": "신규 상장주",
+      "stockCode": "179530"
+    },
+    {
+      "themeCode": "1272022",
+      "themeName": "신규 상장주",
+      "stockCode": "102370"
+    },
+    {
+      "themeCode": "1272022",
+      "themeName": "신규 상장주",
+      "stockCode": "417970"
+    },
+    {
+      "themeCode": "1272022",
+      "themeName": "신규 상장주",
+      "stockCode": "365900"
+    },
+    {
+      "themeCode": "1272022",
+      "themeName": "신규 상장주",
+      "stockCode": "403550"
+    },
+    {
+      "themeCode": "1272022",
+      "themeName": "신규 상장주",
+      "stockCode": "419120"
+    },
+    {
+      "themeCode": "1272022",
+      "themeName": "신규 상장주",
+      "stockCode": "405000"
+    },
+    {
+      "themeCode": "1272022",
+      "themeName": "신규 상장주",
+      "stockCode": "417840"
+    },
+    {
+      "themeCode": "1272022",
+      "themeName": "신규 상장주",
+      "stockCode": "370090"
+    },
+    {
+      "themeCode": "1272022",
+      "themeName": "신규 상장주",
+      "stockCode": "211050"
+    },
+    {
+      "themeCode": "1272022",
+      "themeName": "신규 상장주",
+      "stockCode": "251120"
+    },
+    {
+      "themeCode": "1272022",
+      "themeName": "신규 상장주",
+      "stockCode": "377330"
+    },
+    {
+      "themeCode": "1272022",
+      "themeName": "신규 상장주",
+      "stockCode": "357430"
+    },
+    {
+      "themeCode": "1272022",
+      "themeName": "신규 상장주",
+      "stockCode": "276040"
+    },
+    {
+      "themeCode": "1272022",
+      "themeName": "신규 상장주",
+      "stockCode": "137080"
+    },
+    {
+      "themeCode": "1272022",
+      "themeName": "신규 상장주",
+      "stockCode": "136410"
+    },
+    {
+      "themeCode": "1272022",
+      "themeName": "신규 상장주",
+      "stockCode": "373220"
+    },
+    {
+      "themeCode": "1272022",
+      "themeName": "신규 상장주",
+      "stockCode": "360070"
+    },
+    {
+      "themeCode": "1272022",
+      "themeName": "신규 상장주",
+      "stockCode": "377460"
+    },
+    {
+      "themeCode": "1272022",
+      "themeName": "신규 상장주",
+      "stockCode": "146320"
+    },
+    {
+      "themeCode": "1272022",
+      "themeName": "신규 상장주",
+      "stockCode": "389140"
+    },
+    {
+      "themeCode": "1272022",
+      "themeName": "신규 상장주",
+      "stockCode": "403870"
+    },
+    {
+      "themeCode": "1272022",
+      "themeName": "신규 상장주",
+      "stockCode": "296640"
+    },
+    {
+      "themeCode": "1272022",
+      "themeName": "신규 상장주",
+      "stockCode": "393890"
+    },
+    {
+      "themeCode": "1272022",
+      "themeName": "신규 상장주",
+      "stockCode": "389500"
+    },
+    {
+      "themeCode": "1272022",
+      "themeName": "신규 상장주",
+      "stockCode": "396300"
+    },
+    {
+      "themeCode": "1272022",
+      "themeName": "신규 상장주",
+      "stockCode": "366030"
+    },
+    {
+      "themeCode": "1272022",
+      "themeName": "신규 상장주",
+      "stockCode": "389260"
+    },
+    {
+      "themeCode": "1272022",
+      "themeName": "신규 상장주",
+      "stockCode": "310210"
+    },
+    {
+      "themeCode": "1272022",
+      "themeName": "신규 상장주",
+      "stockCode": "067370"
+    },
+    {
+      "themeCode": "2022023",
+      "themeName": "신규 상장주",
+      "stockCode": "199730"
+    },
+    {
+      "themeCode": "2022023",
+      "themeName": "신규 상장주",
+      "stockCode": "417010"
+    },
+    {
+      "themeCode": "2022023",
+      "themeName": "신규 상장주",
+      "stockCode": "439090"
+    },
+    {
+      "themeCode": "2022023",
+      "themeName": "신규 상장주",
+      "stockCode": "358570"
+    },
+    {
+      "themeCode": "2022023",
+      "themeName": "신규 상장주",
+      "stockCode": "388870"
+    },
+    {
+      "themeCode": "2022023",
+      "themeName": "신규 상장주",
+      "stockCode": "348080"
+    },
+    {
+      "themeCode": "2022023",
+      "themeName": "신규 상장주",
+      "stockCode": "440320"
+    },
+    {
+      "themeCode": "2022023",
+      "themeName": "신규 상장주",
+      "stockCode": "408900"
+    },
+    {
+      "themeCode": "2022023",
+      "themeName": "신규 상장주",
+      "stockCode": "354320"
+    },
+    {
+      "themeCode": "2022023",
+      "themeName": "신규 상장주",
+      "stockCode": "274400"
+    },
+    {
+      "themeCode": "2022023",
+      "themeName": "신규 상장주",
+      "stockCode": "378340"
+    },
+    {
+      "themeCode": "2022023",
+      "themeName": "신규 상장주",
+      "stockCode": "321370"
+    },
+    {
+      "themeCode": "2022023",
+      "themeName": "신규 상장주",
+      "stockCode": "407400"
+    },
+    {
+      "themeCode": "2022023",
+      "themeName": "신규 상장주",
+      "stockCode": "432430"
+    },
+    {
+      "themeCode": "2022023",
+      "themeName": "신규 상장주",
+      "stockCode": "406820"
+    },
+    {
+      "themeCode": "2022023",
+      "themeName": "신규 상장주",
+      "stockCode": "438700"
+    },
+    {
+      "themeCode": "2022023",
+      "themeName": "신규 상장주",
+      "stockCode": "424960"
+    },
+    {
+      "themeCode": "2022023",
+      "themeName": "신규 상장주",
+      "stockCode": "172670"
+    },
+    {
+      "themeCode": "2022023",
+      "themeName": "신규 상장주",
+      "stockCode": "429270"
+    },
+    {
+      "themeCode": "2022023",
+      "themeName": "신규 상장주",
+      "stockCode": "450520"
+    },
+    {
+      "themeCode": "2022023",
+      "themeName": "신규 상장주",
+      "stockCode": "373170"
+    },
+    {
+      "themeCode": "2022023",
+      "themeName": "신규 상장주",
+      "stockCode": "411080"
+    },
+    {
+      "themeCode": "2022023",
+      "themeName": "신규 상장주",
+      "stockCode": "440110"
+    },
+    {
+      "themeCode": "2022023",
+      "themeName": "신규 상장주",
+      "stockCode": "418250"
+    },
+    {
+      "themeCode": "2022023",
+      "themeName": "신규 상장주",
+      "stockCode": "448710"
+    },
+    {
+      "themeCode": "2022023",
+      "themeName": "신규 상장주",
+      "stockCode": "445680"
+    },
+    {
+      "themeCode": "2022023",
+      "themeName": "신규 상장주",
+      "stockCode": "254490"
+    },
+    {
+      "themeCode": "2022023",
+      "themeName": "신규 상장주",
+      "stockCode": "210120"
+    },
+    {
+      "themeCode": "2022023",
+      "themeName": "신규 상장주",
+      "stockCode": "405920"
+    },
+    {
+      "themeCode": "2022023",
+      "themeName": "신규 상장주",
+      "stockCode": "282720"
+    },
+    {
+      "themeCode": "2022023",
+      "themeName": "신규 상장주",
+      "stockCode": "417790"
+    },
+    {
+      "themeCode": "2022023",
+      "themeName": "신규 상장주",
+      "stockCode": "389020"
+    },
+    {
+      "themeCode": "2022023",
+      "themeName": "신규 상장주",
+      "stockCode": "092790"
+    },
+    {
+      "themeCode": "2022023",
+      "themeName": "신규 상장주",
+      "stockCode": "451800"
+    },
+    {
+      "themeCode": "2022023",
+      "themeName": "신규 상장주",
+      "stockCode": "309960"
+    },
+    {
+      "themeCode": "2022023",
+      "themeName": "신규 상장주",
+      "stockCode": "417860"
+    },
+    {
+      "themeCode": "2022023",
+      "themeName": "신규 상장주",
+      "stockCode": "419050"
+    },
+    {
+      "themeCode": "2022023",
+      "themeName": "신규 상장주",
+      "stockCode": "448730"
+    },
+    {
+      "themeCode": "2022023",
+      "themeName": "신규 상장주",
+      "stockCode": "424980"
+    },
+    {
+      "themeCode": "2022023",
+      "themeName": "신규 상장주",
+      "stockCode": "304360"
+    },
+    {
+      "themeCode": "2022023",
+      "themeName": "신규 상장주",
+      "stockCode": "285800"
+    },
+    {
+      "themeCode": "2022023",
+      "themeName": "신규 상장주",
+      "stockCode": "198940"
+    },
+    {
+      "themeCode": "2022023",
+      "themeName": "신규 상장주",
+      "stockCode": "418550"
+    },
+    {
+      "themeCode": "2022023",
+      "themeName": "신규 상장주",
+      "stockCode": "344860"
+    },
+    {
+      "themeCode": "2022023",
+      "themeName": "신규 상장주",
+      "stockCode": "425040"
+    },
+    {
+      "themeCode": "2022023",
+      "themeName": "신규 상장주",
+      "stockCode": "420770"
+    },
+    {
+      "themeCode": "2022023",
+      "themeName": "신규 상장주",
+      "stockCode": "340810"
+    },
+    {
+      "themeCode": "2022023",
+      "themeName": "신규 상장주",
+      "stockCode": "434480"
+    },
+    {
+      "themeCode": "3232024",
+      "themeName": "신규 상장주",
+      "stockCode": "462870"
+    },
+    {
+      "themeCode": "3232024",
+      "themeName": "신규 상장주",
+      "stockCode": "126730"
+    },
+    {
+      "themeCode": "3232024",
+      "themeName": "신규 상장주",
+      "stockCode": "462510"
+    },
+    {
+      "themeCode": "3232024",
+      "themeName": "신규 상장주",
+      "stockCode": "440290"
+    },
+    {
+      "themeCode": "3232024",
+      "themeName": "신규 상장주",
+      "stockCode": "462350"
+    },
+    {
+      "themeCode": "3232024",
+      "themeName": "신규 상장주",
+      "stockCode": "295310"
+    },
+    {
+      "themeCode": "3232024",
+      "themeName": "신규 상장주",
+      "stockCode": "457550"
+    },
+    {
+      "themeCode": "3232024",
+      "themeName": "신규 상장주",
+      "stockCode": "145170"
+    },
+    {
+      "themeCode": "3232024",
+      "themeName": "신규 상장주",
+      "stockCode": "443060"
+    },
+    {
+      "themeCode": "3232024",
+      "themeName": "신규 상장주",
+      "stockCode": "105760"
+    },
+    {
+      "themeCode": "3232024",
+      "themeName": "신규 상장주",
+      "stockCode": "460930"
+    },
+    {
+      "themeCode": "3232024",
+      "themeName": "신규 상장주",
+      "stockCode": "452400"
+    },
+    {
+      "themeCode": "3232024",
+      "themeName": "신규 상장주",
+      "stockCode": "415380"
+    },
+    {
+      "themeCode": "3232024",
+      "themeName": "신규 상장주",
+      "stockCode": "456010"
+    },
+    {
+      "themeCode": "3232024",
+      "themeName": "신규 상장주",
+      "stockCode": "453450"
+    },
+    {
+      "themeCode": "3232024",
+      "themeName": "신규 상장주",
+      "stockCode": "464080"
+    },
+    {
+      "themeCode": "3232024",
+      "themeName": "신규 상장주",
+      "stockCode": "450330"
+    },
+    {
+      "themeCode": "3232024",
+      "themeName": "신규 상장주",
+      "stockCode": "107640"
+    },
+    {
+      "themeCode": "3232024",
+      "themeName": "신규 상장주",
+      "stockCode": "062040"
+    },
+    {
+      "themeCode": "3232024",
+      "themeName": "신규 상장주",
+      "stockCode": "373110"
+    },
+    {
+      "themeCode": "3232024",
+      "themeName": "신규 상장주",
+      "stockCode": "199430"
+    },
+    {
+      "themeCode": "3232024",
+      "themeName": "신규 상장주",
+      "stockCode": "278470"
+    },
+    {
+      "themeCode": "3232024",
+      "themeName": "신규 상장주",
+      "stockCode": "036220"
+    },
+    {
+      "themeCode": "3232024",
+      "themeName": "신규 상장주",
+      "stockCode": "437730"
+    },
+    {
+      "themeCode": "3232024",
+      "themeName": "신규 상장주",
+      "stockCode": "455900"
+    },
+    {
+      "themeCode": "3232024",
+      "themeName": "신규 상장주",
+      "stockCode": "418620"
+    },
+    {
+      "themeCode": "3232024",
+      "themeName": "신규 상장주",
+      "stockCode": "461030"
+    },
+    {
+      "themeCode": "3232024",
+      "themeName": "신규 상장주",
+      "stockCode": "452200"
+    },
+    {
+      "themeCode": "3232024",
+      "themeName": "신규 상장주",
+      "stockCode": "360350"
+    },
+    {
+      "themeCode": "3232024",
+      "themeName": "신규 상장주",
+      "stockCode": "458870"
+    },
+    {
+      "themeCode": "3232024",
+      "themeName": "신규 상장주",
+      "stockCode": "347850"
+    },
+    {
+      "themeCode": "3232024",
+      "themeName": "신규 상장주",
+      "stockCode": "160190"
+    },
+    {
+      "themeCode": "3232024",
+      "themeName": "신규 상장주",
+      "stockCode": "412540"
+    },
+    {
+      "themeCode": "3232024",
+      "themeName": "신규 상장주",
+      "stockCode": "068100"
+    }
+  ]
+}
