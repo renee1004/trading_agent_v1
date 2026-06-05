@@ -178,3 +178,28 @@ Stage Summary:
 - Fixed: 397 Q-code ETN entries now searchable (was completely missing before)
 - Total indexed: 4,346 / 4,346 (100% coverage, was 3,949 / 4,346 = 90.9%)
 - Type breakdown: STANDARD 3,577 + ETF_ALPHANUMERIC 296 + ETN 397 + SPECIAL 76 = 4,346
+
+---
+Task ID: 2
+Agent: main
+Task: Fix domestic stock Korean name search - English-only names can't be searched in Korean
+
+Work Log:
+- Discovered 137 domestic stocks have English-only names in .mst file (e.g., NAVER, HMM, KT, LG, S-Oil)
+- Users searching "네이버" couldn't find NAVER (035420), "현대상선" couldn't find HMM (011200), etc.
+- Added 70+ Korean alias mappings to KOREAN_ALIAS_MAP in stock-master.ts for domestic stocks
+- Modified searchAllStocks() to support domestic alias matching:
+  - Direct alias match: if aliasSymbol is a domestic code, look up in DOMESTIC_MASTER_BY_SYMBOL
+  - Expanded search: include alias symbol in normal search loop
+- Previously KOREAN_ALIAS_MAP only supported overseas stocks (한글→해외 심볼)
+- Now supports both domestic (한글→종목코드) and overseas (한글→심볼) mappings
+
+Stage Summary:
+- "네이버" → NAVER (035420) ✅
+- "현대상선" → HMM (011200) ✅
+- "에스오일" → S-Oil (010950) ✅
+- "케이티" → KT (030200) ✅
+- "엘지" → LG (003550) ✅
+- "아프리카tv" → SOOP (067160) ✅
+- 70+ domestic Korean alias mappings added
+- searchAllStocks() now supports domestic alias lookup via DOMESTIC_MASTER_BY_SYMBOL

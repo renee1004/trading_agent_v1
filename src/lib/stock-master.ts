@@ -342,8 +342,11 @@ export type StockSearchResult = {
   _score?: number;
 };
 
-// ─── 한글 별명 매핑 (사용자가 자주 검색하는 한글명 → 실제 심볼) ───
+// ─── 한글 별명 매핑 (사용자가 자주 검색하는 한글명 → 실제 심볼/코드) ───
+// 해외 종목: 한글명 → 심볼 (GOOGL 등)
+// 국내 종목: 한글명 → 종목코드 (035420 등), 영어명 종목을 한글로 검색 가능하게
 const KOREAN_ALIAS_MAP: Record<string, string> = {
+  // ─── 해외 종목 한글 별명 ───
   '구글': 'GOOGL',
   '구글A': 'GOOGL',
   '구글C': 'GOOG',
@@ -389,6 +392,84 @@ const KOREAN_ALIAS_MAP: Record<string, string> = {
   'SQ': 'XYZ',           // Block, Inc. (2025년 SQ → XYZ 변경)
   '스퀘어': 'XYZ',       // Block, Inc. 구명
   '블록': 'XYZ',         // Block, Inc. 현재명
+
+  // ─── 국내 종목 한글 별명 (영어명→한글명 매핑) ───
+  // .mst 파일에 영어 이름만 있는 종목을 한글로 검색 가능하게
+  '네이버': '035420',
+  '엔씨': '036570',
+  '엔씨소프트': '036570',
+  '케이티': '030200',
+  '케이티앤지': '033780',
+  '에스케이': '034730',
+  '에스케이텔레콤': '017670',
+  '에스케이하이닉스': '000660',
+  '에스케이씨': '011790',
+  '엘지': '003550',
+  '엘지전자': '066570',
+  '엘지화학': '051910',
+  '엘지에너지솔루션': '373220',
+  '에스비에스': '034120',
+  '나이스': '034310',
+  '지에스': '078930',
+  '지에스칼텍스': '078930',
+  '씨제이': '001040',
+  '씨제이ENM': '035760',
+  '씨제이씨지브이': '079160',
+  '에이치엠엠': '011200',
+  '현대상선': '011200',
+  '에스오일': '010950',
+  '디엘': '000210',
+  '디비': '012030',
+  '케이씨씨': '002380',
+  '엘에스': '006260',
+  '엘에스일렉트릭': '010120',
+  '케이티씨에스': '058850',
+  '케이티아이에스': '058860',
+  '에이치디씨': '012630',
+  '이원': '030200',
+  '피케이씨': '001340',
+  '에스티엑스': '011810',
+  '에스케이바이오팜': '326030',
+  '에스케이바이오': '326030',
+  '에프앤에프': '383220',
+  '엔에이치엔': '181710',
+  '엔에이치엔케이씨피': '060250',
+  '에이치엘비': '028300',
+  '지피클럽': '114090',
+  '디와이피': '092780',
+  '엘에프': '093050',
+  '이에스알': '155660',
+  '오시아이': '456040',
+  '에이치알에스': '036640',
+  '이지': '037370',
+  '와이티엔': '040300',
+  '에스지씨': '016250',
+  '쓰리에스': '060310',
+  '에스지': '255220',
+  '케이엑스': '122450',
+  '에스디엔': '099220',
+  '에이피에스': '054620',
+  '이엠비씨': '052220',
+  '에스엠라이프디자인': '063440',
+  '에스엠씨앤씨': '048550',
+  '케이디': '044180',
+  '케이엔엔': '058400',
+  '씨에스': '065770',
+  '수프': '067160',
+  '아프리카tv': '067160',
+  '와이더블유': '051390',
+  '케이비지': '318000',
+  '에스지앤지': '040610',
+  '아이에스씨': '095340',
+  '디지아이': '099520',
+  '디엠에스': '068790',
+  '지에스티': '083450',
+  '이에스알': '155660',
+  '제이와이피': '035900',
+  '엔피엑스': '222160',
+  '에이치피에스피': '403870',
+  '엠에팔십삼': '476080',
+  '이팔': '418620',
 };
 
 /**
@@ -444,7 +525,7 @@ export function searchAllStocks(
 
   const upperQuery = query.toUpperCase();
 
-  // ─── 별명 확장 (한글명 → 해외 심볼) ───
+  // ─── 별명 확장 (한글명 → 심볼/코드) ───
   const aliasQueries: string[] = [query];
   const aliasSymbol = KOREAN_ALIAS_MAP[query];
   if (aliasSymbol) {
@@ -464,14 +545,38 @@ export function searchAllStocks(
   const domesticResults: StockSearchResult[] = [];
   const domesticSeen = new Set<string>();
 
+  // 별명 매핑으로 국내 종목코드를 찾은 경우 직접 추가
+  if (aliasSymbol && isDomesticStockCode(aliasSymbol)) {
+    const masterEntry = DOMESTIC_MASTER_BY_SYMBOL.get(aliasSymbol);
+    if (masterEntry && !domesticSeen.has(masterEntry.displayCode)) {
+      domesticSeen.add(masterEntry.displayCode);
+      domesticResults.push({
+        market: 'DOMESTIC',
+        exchangeCode: 'KRX',
+        symbol: masterEntry.symbol,
+        displayCode: masterEntry.displayCode,
+        stockName: masterEntry.stockName,
+        koreanName: masterEntry.stockName,
+        currency: 'KRW',
+        source: 'DOMESTIC_MASTER',
+        _score: 1, // 별명 정확 매칭 = 종목명 정확 일치와 동급
+      });
+    }
+  }
+
   for (const entry of DOMESTIC_MASTER_ITEMS) {
     if (domesticSeen.has(entry.displayCode)) continue;
 
+    // 별명 쿼리로 확장된 검색어도 포함 (예: "네이버" → "035420" 포함 검색)
     const matches =
       entry.symbol.includes(query) ||
       entry.symbol.includes(upperQuery) ||
       entry.stockName.includes(query) ||
-      entry.displayCode.toUpperCase().includes(upperQuery);
+      entry.displayCode.toUpperCase().includes(upperQuery) ||
+      (aliasSymbol && (
+        entry.symbol.includes(aliasSymbol) ||
+        entry.symbol.includes(aliasSymbol.toUpperCase())
+      ));
 
     if (matches) {
       domesticSeen.add(entry.displayCode);
