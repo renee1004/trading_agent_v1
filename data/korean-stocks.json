@@ -733,10 +733,10 @@
     "code": "0000D0",
     "symbol": "0000D0.KS",
     "standardCode": "KR70000D0009",
-    "name": "TIGER 엔비디아미국채커버드콜밸런스(합성)EF 000000000000NN 0NNN2NN",
+    "name": "TIGER 엔비디아미국채커버드콜밸런스(합성)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETF",
     "source": "kospi_code.mst"
   },
   {
@@ -1363,10 +1363,10 @@
     "code": "0008S0",
     "symbol": "0008S0.KS",
     "standardCode": "KR70008S0004",
-    "name": "TIGER 미국배당다우존스타겟데일리커버드콜EF 000000000000NN 0NNN2NN",
+    "name": "TIGER 미국배당다우존스타겟데일리커버드콜",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETF",
     "source": "kospi_code.mst"
   },
   {
@@ -1853,20 +1853,20 @@
     "code": "0015E0",
     "symbol": "0015E0.KS",
     "standardCode": "KR70015E0001",
-    "name": "KIWOOM 엔비디아미국30년국채혼합액티브(H)EF 000000000000NN 0NNN2NN",
+    "name": "KIWOOM 엔비디아미국30년국채혼합액티브(H)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETF",
     "source": "kospi_code.mst"
   },
   {
     "code": "0015F0",
     "symbol": "0015F0.KS",
     "standardCode": "KR70015F0000",
-    "name": "KIWOOM 팔란티어미국30년국채혼합액티브(H)EF 000000000000NN 0NNN2NN",
+    "name": "KIWOOM 팔란티어미국30년국채혼합액티브(H)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETF",
     "source": "kospi_code.mst"
   },
   {
@@ -6743,10 +6743,10 @@
     "code": "0127V0",
     "symbol": "0127V0.KS",
     "standardCode": "KR70127V0005",
-    "name": "KIWOOM 미국S&P500 TOP10&배당다우비중전환EF 000000000000NN 0NNN2NN",
+    "name": "KIWOOM 미국S&P500 TOP10&배당다우비중전환",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETF",
     "source": "kospi_code.mst"
   },
   {
@@ -13833,10 +13833,10 @@
     "code": "276970",
     "symbol": "276970.KS",
     "standardCode": "KR7276970001",
-    "name": "KODEX 미국S&P500배당귀족커버드콜(합성 H)EF 000000000000NN 0NNN2NN",
+    "name": "KODEX 미국S&P500배당귀족커버드콜(합성 H)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETF",
     "source": "kospi_code.mst"
   },
   {
@@ -17023,10 +17023,10 @@
     "code": "423920",
     "symbol": "423920.KS",
     "standardCode": "KR7423920008",
-    "name": "TIGER 미국필라델피아반도체레버리지(합성)EF 000000000000NN 0NNN2NN",
+    "name": "TIGER 미국필라델피아반도체레버리지(합성)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETF",
     "source": "kospi_code.mst"
   },
   {
@@ -19893,10 +19893,10 @@
     "code": "480020",
     "symbol": "480020.KS",
     "standardCode": "KR7480020007",
-    "name": "ACE 미국빅테크7+데일리타겟커버드콜(합성)EF 000000000000NN 0NNN2NN",
+    "name": "ACE 미국빅테크7+데일리타겟커버드콜(합성)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETF",
     "source": "kospi_code.mst"
   },
   {
@@ -21256,7 +21256,7 @@
     "name": "신한 인버스 코스피 200 선물 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -21266,7 +21266,7 @@
     "name": "신한 인버스 코스닥 150 선물 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -21276,7 +21276,7 @@
     "name": "신한 레버리지 10년 국채선물 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -21286,7 +21286,7 @@
     "name": "신한 인버스 2X 10년 국채선물 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -21296,7 +21296,7 @@
     "name": "신한 레버리지 코스피 200 선물 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -21306,7 +21306,7 @@
     "name": "신한 인버스 2X 코스피 200 선물 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -21316,7 +21316,7 @@
     "name": "신한 레버리지 코스닥 150 선물 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -21326,7 +21326,7 @@
     "name": "신한 인버스 2X 코스닥 150 선물 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -21336,7 +21336,7 @@
     "name": "신한 S&P 유로 선물 ETN(H)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -21346,7 +21346,7 @@
     "name": "신한 S&P 인버스 유로 선물 ETN(H)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -21356,7 +21356,7 @@
     "name": "신한 S&P 레버리지 유로 선물 ETN(H)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -21366,7 +21366,7 @@
     "name": "신한 S&P 인버스 2X 유로 선물 ETN(H)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -21376,7 +21376,7 @@
     "name": "신한 블룸버그 2X 천연가스 선물 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -21386,7 +21386,7 @@
     "name": "신한 코스피 200 TR ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -21396,7 +21396,7 @@
     "name": "신한 코스닥 150 TR ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -21406,7 +21406,7 @@
     "name": "신한 26-05 은행채(AAA) ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -21416,7 +21416,7 @@
     "name": "신한 2X 26-05 은행채(AAA) ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -21426,7 +21426,7 @@
     "name": "신한 26-05 공사채(AAA) ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -21436,7 +21436,7 @@
     "name": "신한 2X 26-05 공사채(AAA) ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -21446,27 +21446,27 @@
     "name": "신한 33-12 국고채 플러스 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
     "code": "Q500093",
     "symbol": "Q500093.KS",
     "standardCode": "KRG500000937",
-    "name": "신한 블룸버그 레버리지 WTI원유선물 ETN BEN 000000000000NN 0NNN3NN",
+    "name": "신한 블룸버그 레버리지 WTI원유선물 ETN B",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
     "code": "Q500094",
     "symbol": "Q500094.KS",
     "standardCode": "KRG500000945",
-    "name": "신한 블룸버그 인버스2X WTI원유선물 ETN BEN 000000000000NN 0NNN3NN",
+    "name": "신한 블룸버그 인버스2X WTI원유선물 ETN B",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -21476,7 +21476,7 @@
     "name": "신한 S&P500 VIX S/T 선물 ETN E",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -21486,7 +21486,7 @@
     "name": "신한 인버스2X 천연가스 선물 ETN B",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -21496,7 +21496,7 @@
     "name": "신한 레버리지 Russell 2000 ETN B",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -21506,7 +21506,7 @@
     "name": "신한 인버스 2X Russell 2000 ETN B",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -21516,7 +21516,7 @@
     "name": "신한 WTI원유 선물 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -21526,7 +21526,7 @@
     "name": "신한 금 선물 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -21536,7 +21536,7 @@
     "name": "신한 블룸버그 천연가스 선물 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -21546,7 +21546,7 @@
     "name": "신한 블룸버그 2X 천연가스 선물 ETN B",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -21556,7 +21556,7 @@
     "name": "신한 레버리지 미국달러 선물 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -21566,7 +21566,7 @@
     "name": "신한 인버스 2X 미국달러 선물 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -21576,17 +21576,17 @@
     "name": "신한 레버리지 다우존스지수 선물 ETN(H)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
     "code": "Q500028",
     "symbol": "Q500028.KS",
     "standardCode": "KRG502100289",
-    "name": "신한 인버스 2X 다우존스지수 선물 ETN(H) EN 000000000000NN 0NNN3NN",
+    "name": "신한 인버스 2X 다우존스지수 선물 ETN(H)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -21596,7 +21596,7 @@
     "name": "신한 레버리지 S&P500 선물 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -21606,7 +21606,7 @@
     "name": "신한 인버스 2X S&P500 선물 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -21616,7 +21616,7 @@
     "name": "신한 콩 선물 ETN(H)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -21626,7 +21626,7 @@
     "name": "신한 인버스 콩 선물 ETN(H)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -21636,7 +21636,7 @@
     "name": "신한 레버리지 은 선물 ETN(H)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -21646,7 +21646,7 @@
     "name": "신한 인버스 2X 은 선물 ETN(H)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -21656,7 +21656,7 @@
     "name": "신한 레버리지 금 선물 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -21666,7 +21666,7 @@
     "name": "신한 인버스 2X 금 선물 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -21676,7 +21676,7 @@
     "name": "신한 레버리지 구리 선물 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -21686,7 +21686,7 @@
     "name": "신한 인버스 2X 구리 선물 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -21696,7 +21696,7 @@
     "name": "대신 천연가스 선물 ETN(H)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -21706,7 +21706,7 @@
     "name": "대신 인버스 2X 코스닥 150 선물 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -21716,7 +21716,7 @@
     "name": "대신 인버스 천연가스 선물 ETN(H) B",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -21726,7 +21726,7 @@
     "name": "대신 레버리지 미국달러 선물 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -21736,7 +21736,7 @@
     "name": "대신 인버스 2X 미국달러 선물 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -21746,7 +21746,7 @@
     "name": "미래에셋 코스피200 선물 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -21756,7 +21756,7 @@
     "name": "미래에셋 인버스 코스피200 선물 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -21766,7 +21766,7 @@
     "name": "미래에셋 코스닥150 선물 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -21776,7 +21776,7 @@
     "name": "미래에셋 인버스 코스닥150 선물 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -21786,7 +21786,7 @@
     "name": "미래에셋 레버리지 옥수수 선물 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -21796,7 +21796,7 @@
     "name": "미래에셋 인버스 2X 옥수수 선물 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -21806,7 +21806,7 @@
     "name": "미래에셋 레버리지 코스피200 선물 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -21816,7 +21816,7 @@
     "name": "미래에셋 인버스 2X 코스피200 선물 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -21826,7 +21826,7 @@
     "name": "미래에셋 레버리지 코스닥150 선물 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -21836,7 +21836,7 @@
     "name": "미래에셋 인버스 2X 코스닥150 선물 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -21846,7 +21846,7 @@
     "name": "미래에셋 2X 미국채울트라30년 선물 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -21856,17 +21856,17 @@
     "name": "미래에셋 -2X 미국채울트라30년 선물 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
     "code": "Q520066",
     "symbol": "Q520066.KS",
     "standardCode": "KRG520000669",
-    "name": "미래에셋 KRX금현물 Auto-KO-C 2810-01 ETNEN 000000000000NN 0NNN4NN",
+    "name": "미래에셋 KRX금현물 Auto-KO-C 2810-01 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -21876,7 +21876,7 @@
     "name": "미래에셋 2X 홍콩H 선물 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -21886,7 +21886,7 @@
     "name": "미래에셋 -2X 홍콩H 선물 ETN(H)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -21896,7 +21896,7 @@
     "name": "미래에셋 미국 AI TOP3 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -21906,7 +21906,7 @@
     "name": "미래에셋 레버리지 미국 AI TOP3 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -21916,17 +21916,17 @@
     "name": "미래에셋 미국 방위산업 TOP3 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
     "code": "Q520075",
     "symbol": "Q520075.KS",
     "standardCode": "KRG520000750",
-    "name": "미래에셋 레버리지 미국 방위산업 TOP3 ETNEN 000000000000NN 0NNN3NN",
+    "name": "미래에셋 레버리지 미국 방위산업 TOP3 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -21936,7 +21936,7 @@
     "name": "미래에셋 1.5X 천연가스 선물 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -21946,7 +21946,7 @@
     "name": "미래에셋 -1.5X 천연가스 선물 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -21956,7 +21956,7 @@
     "name": "미래에셋 미국 제약 TOP3 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -21966,7 +21966,7 @@
     "name": "미래에셋 레버리지 미국 제약 TOP3 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -21976,7 +21976,7 @@
     "name": "미래에셋 미국 테크&반도체 TOP3 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -21986,7 +21986,7 @@
     "name": "미래에셋 2X 미국 테크&반도체 TOP3 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -21996,7 +21996,7 @@
     "name": "미래에셋 미국 자율주행대표기업 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -22006,7 +22006,7 @@
     "name": "미래에셋 2X 미국 자율주행대표기업 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -22016,7 +22016,7 @@
     "name": "미래에셋 -2X 미국 자율주행대표기업 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -22026,17 +22026,17 @@
     "name": "미래에셋 -2X 미국 AI TOP3 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
     "code": "Q520086",
     "symbol": "Q520086.KS",
     "standardCode": "KRG520000867",
-    "name": "미래에셋-0.5X S&P500 VIX S/T선물 ETN(H)BEN 000000000000NN 0NNN3NN",
+    "name": "미래에셋-0.5X S&P500 VIX S/T선물 ETN(H)B",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -22046,7 +22046,7 @@
     "name": "미래에셋 레버리지 KRX 금현물 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -22056,7 +22056,7 @@
     "name": "미래에셋 S&P500 VIX S/T 선물 ETN(H)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -22066,7 +22066,7 @@
     "name": "미래에셋 CAPE 실러 US Core Sector ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -22076,7 +22076,7 @@
     "name": "미래에셋 천연가스 선물 ETN B",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -22086,7 +22086,7 @@
     "name": "미래에셋 인버스 천연가스 선물 ETN B",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -22096,7 +22096,7 @@
     "name": "미래에셋 레버리지 은 선물 ETN B",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -22106,7 +22106,7 @@
     "name": "미래에셋 인버스 2X 은 선물 ETN B",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -22116,7 +22116,7 @@
     "name": "미래에셋 CD금리 플러스 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -22126,7 +22126,7 @@
     "name": "미래에셋 1.5X S&P500 VIX S/T선물 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -22136,7 +22136,7 @@
     "name": "미래에셋 레버리지 반도체 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -22146,7 +22146,7 @@
     "name": "미래에셋 인버스 2X 반도체 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -22156,7 +22156,7 @@
     "name": "삼성 금 선물 ETN(H)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -22166,7 +22166,7 @@
     "name": "삼성 인버스 금 선물 ETN(H)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -22176,7 +22176,7 @@
     "name": "삼성 은 선물 ETN(H)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -22186,7 +22186,7 @@
     "name": "삼성 인버스 은 선물 ETN(H)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -22196,7 +22196,7 @@
     "name": "삼성 인버스 코스피 200 선물 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -22206,7 +22206,7 @@
     "name": "삼성 인버스 코스닥 150 선물 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -22216,7 +22216,7 @@
     "name": "삼성 구리 선물 ETN(H)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -22226,7 +22226,7 @@
     "name": "삼성 인버스 구리 선물 ETN(H)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -22236,7 +22236,7 @@
     "name": "삼성 레버리지 코스피200 선물 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -22246,7 +22246,7 @@
     "name": "삼성 인버스 2X 코스피200 선물 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -22256,7 +22256,7 @@
     "name": "삼성 레버리지 코스닥150 선물 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -22266,7 +22266,7 @@
     "name": "삼성 인버스 2X 코스닥150 선물 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -22276,7 +22276,7 @@
     "name": "삼성 S&P500 TR ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -22286,7 +22286,7 @@
     "name": "삼성 레버리지 S&P500 선물 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -22296,7 +22296,7 @@
     "name": "삼성 인버스 2X S&P500 선물 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -22306,7 +22306,7 @@
     "name": "삼성 레버리지 나스닥 100 TR ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -22316,7 +22316,7 @@
     "name": "삼성 인버스 2X 나스닥 100 TR ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -22326,7 +22326,7 @@
     "name": "삼성 코스피 200 TR ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -22336,7 +22336,7 @@
     "name": "삼성 코스닥 150 TR ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -22346,7 +22346,7 @@
     "name": "삼성 레버리지 항셍테크 TR ETN(H) B",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -22356,7 +22356,7 @@
     "name": "삼성 나스닥 100 TR ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -22366,7 +22366,7 @@
     "name": "삼성 항셍테크 TR ETN(H) B",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -22376,7 +22376,7 @@
     "name": "삼성 인버스 2X 항셍테크 TR ETN(H) B",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -22386,7 +22386,7 @@
     "name": "삼성 일본니케이225선물 ETN(H)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -22396,17 +22396,17 @@
     "name": "삼성 레버리지 일본니케이225선물 ETN(H)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
     "code": "Q530125",
     "symbol": "Q530125.KS",
     "standardCode": "KRG530001251",
-    "name": "삼성 인버스 2X 일본니케이225선물 ETN(H) EN 000000000000NN 0NNN3NN",
+    "name": "삼성 인버스 2X 일본니케이225선물 ETN(H)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -22416,7 +22416,7 @@
     "name": "삼성 코리아 밸류업 TR ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -22426,7 +22426,7 @@
     "name": "삼성 미국다우존스 TR ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -22436,7 +22436,7 @@
     "name": "삼성 레버리지 미국다우존스 선물 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -22446,7 +22446,7 @@
     "name": "삼성 인버스 2X 미국다우존스 선물 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -22456,17 +22456,17 @@
     "name": "삼성 S&P500 VIX S/T 선물 ETN B",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
     "code": "Q530131",
     "symbol": "Q530131.KS",
     "standardCode": "KRG530001319",
-    "name": "삼성 인버스0.5X S&P500 VIX S/T선물 ETN BEN 000000000000NN 0NNN3NN",
+    "name": "삼성 인버스0.5X S&P500 VIX S/T선물 ETN B",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -22476,27 +22476,27 @@
     "name": "삼성 블룸버그 WTI원유 선물 ETN B",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
     "code": "Q530133",
     "symbol": "Q530133.KS",
     "standardCode": "KRG530001335",
-    "name": "삼성 블룸버그 레버리지 WTI원유선물 ETN BEN 000000000000NN 0NNN3NN",
+    "name": "삼성 블룸버그 레버리지 WTI원유선물 ETN B",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
     "code": "Q530134",
     "symbol": "Q530134.KS",
     "standardCode": "KRG530001343",
-    "name": "삼성 블룸버그 인버스2X WTI원유선물 ETN BEN 000000000000NN 0NNN3NN",
+    "name": "삼성 블룸버그 인버스2X WTI원유선물 ETN B",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -22506,7 +22506,7 @@
     "name": "삼성 인버스 China A50 선물 ETN(H) B",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -22516,7 +22516,7 @@
     "name": "삼성 인버스 2X 천연가스 선물 ETN D",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -22526,7 +22526,7 @@
     "name": "삼성 KRX 2차전지 TOP10 TR ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -22536,7 +22536,7 @@
     "name": "삼성 KRX 레버리지 2차전지 TOP10 TR ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -22546,17 +22546,17 @@
     "name": "삼성 iSelect 조선 TOP10 TR ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
     "code": "Q530140",
     "symbol": "Q530140.KS",
     "standardCode": "KRG530001400",
-    "name": "삼성 iSelect 레버리지 조선 TOP10 TR ETN EN 000000000000NN 0NNN3NN",
+    "name": "삼성 iSelect 레버리지 조선 TOP10 TR ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -22566,7 +22566,7 @@
     "name": "삼성 중국 자동차 TOP5 TR ETN(H)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -22576,7 +22576,7 @@
     "name": "삼성 중국 AI 테크 TOP5 TR ETN(H)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -22586,7 +22586,7 @@
     "name": "삼성 인버스 2X 은 선물 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -22596,7 +22596,7 @@
     "name": "삼성 레버리지 천연가스 선물 ETN D",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -22606,7 +22606,7 @@
     "name": "삼성 KRX 금현물 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -22616,7 +22616,7 @@
     "name": "삼성 코스피 양매도 5% OTM ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -22626,7 +22626,7 @@
     "name": "삼성 레버리지 WTI원유 선물 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -22636,7 +22636,7 @@
     "name": "삼성 인버스 2X WTI원유 선물 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -22646,7 +22646,7 @@
     "name": "삼성 레버리지 금 선물 ETN(H)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -22656,7 +22656,7 @@
     "name": "삼성 인버스 2X 금 선물 ETN(H)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -22666,7 +22666,7 @@
     "name": "삼성 레버리지 은 선물 ETN(H)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -22676,7 +22676,7 @@
     "name": "삼성 인버스 2X 은 선물 ETN(H)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -22686,7 +22686,7 @@
     "name": "삼성 레버리지 구리 선물 ETN(H)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -22696,7 +22696,7 @@
     "name": "삼성 인버스 2X 구리 선물 ETN(H)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -22706,7 +22706,7 @@
     "name": "N2 레버리지 금 선물 ETN(H)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -22716,7 +22716,7 @@
     "name": "N2 인버스 레버리지 금 선물 ETN(H)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -22726,7 +22726,7 @@
     "name": "N2 레버리지 은 선물 ETN(H)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -22736,7 +22736,7 @@
     "name": "N2 레버리지 구리 선물 ETN(H)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -22746,7 +22746,7 @@
     "name": "N2 인버스 레버리지 구리 선물 ETN(H)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -22756,7 +22756,7 @@
     "name": "N2 KIS CD금리투자 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -22766,7 +22766,7 @@
     "name": "N2 코스피 200 TR ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -22776,7 +22776,7 @@
     "name": "N2 코스닥 150 TR ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -22786,7 +22786,7 @@
     "name": "N2 선진국 1등주 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -22796,7 +22796,7 @@
     "name": "N2 월간 레버리지 선진국 1등주 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -22806,7 +22806,7 @@
     "name": "N2 월간 레버리지 코스피 200 선물 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -22816,7 +22816,7 @@
     "name": "N2 방위산업 Top5 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -22826,7 +22826,7 @@
     "name": "N2 월간 레버리지 방위산업 Top5 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -22836,7 +22836,7 @@
     "name": "N2 전력인프라 Top5 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -22846,7 +22846,7 @@
     "name": "N2 레버리지 국채10년 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -22856,7 +22856,7 @@
     "name": "N2 레버리지 국채30년 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -22866,7 +22866,7 @@
     "name": "N2 레버리지 코스닥150 선물 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -22876,7 +22876,7 @@
     "name": "N2 인버스 2X 코스닥150 선물 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -22886,7 +22886,7 @@
     "name": "N2 레버리지 천연가스 선물 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -22896,7 +22896,7 @@
     "name": "N2 인버스 2X 천연가스 선물 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -22906,7 +22906,7 @@
     "name": "N2 미국 IT TOP5 ETN(H)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -22916,7 +22916,7 @@
     "name": "N2 인버스 레버리지 WTI원유 선물 ETN(H)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -22926,7 +22926,7 @@
     "name": "한투 FTSE100 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -22936,7 +22936,7 @@
     "name": "한투 S&P500선물 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -22946,7 +22946,7 @@
     "name": "한투 나스닥100 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -22956,7 +22956,7 @@
     "name": "한투 금선물 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -22966,7 +22966,7 @@
     "name": "한투 인버스금선물 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -22976,7 +22976,7 @@
     "name": "한투 은선물 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -22986,7 +22986,7 @@
     "name": "한투 인버스은선물 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -22996,7 +22996,7 @@
     "name": "한투 레버리지금선물 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -23006,7 +23006,7 @@
     "name": "한투 인버스2X금선물 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -23016,7 +23016,7 @@
     "name": "한투 레버리지은선물 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -23026,7 +23026,7 @@
     "name": "한투 베트남VN30선물 ETN(H)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -23036,7 +23036,7 @@
     "name": "한투 인버스베트남VN30선물 ETN(H)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -23046,7 +23046,7 @@
     "name": "한투 레버리지베트남VN30선물 ETN(H)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -23056,7 +23056,7 @@
     "name": "한투 인버스2X베트남VN30 선물 ETN(H)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -23066,7 +23066,7 @@
     "name": "한투 레버리지플래티넘선물 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -23076,7 +23076,7 @@
     "name": "한투 인버스2X플래티넘선물 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -23086,7 +23086,7 @@
     "name": "한투 구리선물 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -23096,7 +23096,7 @@
     "name": "한투 레버리지구리선물 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -23106,7 +23106,7 @@
     "name": "한투 인버스2X구리선물 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -23116,7 +23116,7 @@
     "name": "한투 유럽탄소배출권선물 ETN(H)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -23126,7 +23126,7 @@
     "name": "한투 레버리지코스닥150선물 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -23136,7 +23136,7 @@
     "name": "한투 인버스2X코스닥150선물 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -23146,7 +23146,7 @@
     "name": "한투 인도네시아대표원자재 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -23156,7 +23156,7 @@
     "name": "한투 KIS CD금리투자 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -23166,7 +23166,7 @@
     "name": "한투 인버스유로스탁스50 ETN(H) C",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -23176,7 +23176,7 @@
     "name": "한투 인버스2X유로스탁스50 ETN(H) B",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -23186,7 +23186,7 @@
     "name": "한투 레버리지천연가스선물 ETN B",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -23196,7 +23196,7 @@
     "name": "한투 일본엔선물 ETN C",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -23206,7 +23206,7 @@
     "name": "한투 레버리지일본엔선물 ETN C",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -23216,7 +23216,7 @@
     "name": "한투 인버스2X일본엔선물 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -23226,7 +23226,7 @@
     "name": "한투 엔달러선물 ETN(H)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -23236,7 +23236,7 @@
     "name": "한투 레버리지엔달러선물 ETN(H)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -23246,7 +23246,7 @@
     "name": "한투 인버스2X엔달러 선물 ETN(H)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -23256,7 +23256,7 @@
     "name": "한투 일본종합상사TOP5 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -23266,7 +23266,7 @@
     "name": "한투 인버스나스닥100 ETN B",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -23276,7 +23276,7 @@
     "name": "한투 레버리지나스닥100 ETN B",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -23286,7 +23286,7 @@
     "name": "한투 인버스2X나스닥100 ETN B",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -23296,7 +23296,7 @@
     "name": "한투 일본니케이225선물 ETN(H)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -23306,7 +23306,7 @@
     "name": "한투 인버스일본니케이225선물 ETN(H)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -23316,7 +23316,7 @@
     "name": "한투 레버리지일본니케이225선물 ETN(H)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -23326,7 +23326,7 @@
     "name": "한투 인버스2X일본니케이225선물 ETN(H)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -23336,7 +23336,7 @@
     "name": "한투 레버리지국채30년 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -23346,7 +23346,7 @@
     "name": "한투 레버리지미국채30년 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -23356,7 +23356,7 @@
     "name": "한투 3X레버리지국채30년 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -23366,7 +23366,7 @@
     "name": "한투 3X레버리지미국채30년 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -23376,17 +23376,17 @@
     "name": "한투 S&P500 VIX S/T선물 ETN(H) B",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
     "code": "Q570115",
     "symbol": "Q570115.KS",
     "standardCode": "KRG570001153",
-    "name": "한투 인버스0.5X S&P500 VIX S/T선물 ETN BEN 000000000000NN 0NNN3NN",
+    "name": "한투 인버스0.5X S&P500 VIX S/T선물 ETN B",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -23396,7 +23396,7 @@
     "name": "한투 레버리지WTI원유선물 ETN B",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -23406,7 +23406,7 @@
     "name": "한투 인버스2XWTI원유선물 ETN B",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -23416,7 +23416,7 @@
     "name": "한투 인버스2X천연가스선물 ETN B",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -23426,7 +23426,7 @@
     "name": "한투 인버스2X은선물 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -23436,7 +23436,7 @@
     "name": "한투 레버리지천연가스선물 ETN C",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -23446,7 +23446,7 @@
     "name": "한투 코스피양매도5%OTM ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -23456,7 +23456,7 @@
     "name": "한투 코스피양매도3%OTM ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -23466,7 +23466,7 @@
     "name": "한투 레버리지S&P500선물 ETN(H)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -23476,7 +23476,7 @@
     "name": "한투 인버스2XS&P500선물 ETN(H)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -23486,7 +23486,7 @@
     "name": "KB 인버스 2X 항셍테크 선물 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -23496,7 +23496,7 @@
     "name": "KB 천연가스 선물 ETN(H)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -23506,7 +23506,7 @@
     "name": "KB 인버스 천연가스 선물 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -23516,7 +23516,7 @@
     "name": "KB 레버리지 금 선물 ETN(H)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -23526,7 +23526,7 @@
     "name": "KB 인버스 2X 금 선물 ETN(H)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -23536,7 +23536,7 @@
     "name": "KB S&P 레버리지 은 선물 ETN(H)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -23546,7 +23546,7 @@
     "name": "KB 레버리지 구리 선물 ETN(H)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -23556,7 +23556,7 @@
     "name": "KB 인버스 2X 구리 선물 ETN(H)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -23566,7 +23566,7 @@
     "name": "KB 레버리지 FANG 플러스 ETN(H)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -23576,7 +23576,7 @@
     "name": "KB S&P 유럽탄소배출권 선물 ETN(H)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -23586,7 +23586,7 @@
     "name": "KB 레버리지 KOSPI 200 선물 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -23596,7 +23596,7 @@
     "name": "KB 인버스 2X KOSPI 200 선물 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -23606,7 +23606,7 @@
     "name": "KB 레버리지 KOSDAQ 150 선물 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -23616,7 +23616,7 @@
     "name": "KB 인버스 2X KOSDAQ 150 선물 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -23626,7 +23626,7 @@
     "name": "KB 레버리지 항셍테크 선물 ETN(H) B",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -23636,7 +23636,7 @@
     "name": "KB 차이나 대형주 CSI 300 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -23646,7 +23646,7 @@
     "name": "KB 차이나 중형주 CSI 500 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -23656,7 +23656,7 @@
     "name": "KB 차이나 과창판 STAR 50 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -23666,7 +23666,7 @@
     "name": "KB 레버리지 밀 선물 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -23676,7 +23676,7 @@
     "name": "KB 인버스 2X 밀 선물 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -23686,7 +23686,7 @@
     "name": "KB 레버리지 콩 선물 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -23696,7 +23696,7 @@
     "name": "KB 인버스 2X 콩 선물 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -23706,7 +23706,7 @@
     "name": "KB 블룸버그 레버리지 천연가스 선물 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -23716,7 +23716,7 @@
     "name": "KB 일본 로보틱스 TOP 10 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -23726,7 +23726,7 @@
     "name": "KB 일본 컨슈머 TOP 10 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -23736,7 +23736,7 @@
     "name": "KB KIS CD금리투자 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -23746,7 +23746,7 @@
     "name": "KB 미국채 10년 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -23756,7 +23756,7 @@
     "name": "KB 레버리지 미국채 10년 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -23766,7 +23766,7 @@
     "name": "KB 미국채 30년 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -23776,7 +23776,7 @@
     "name": "KB 레버리지 미국채 30년 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -23786,7 +23786,7 @@
     "name": "KB 레버리지 미국채 10년 선물 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -23796,7 +23796,7 @@
     "name": "KB 인버스 2X 미국채 10년 선물 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -23806,7 +23806,7 @@
     "name": "KB 코스닥 150 TR ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -23816,7 +23816,7 @@
     "name": "KB 인도 대형 성장주 Select 5 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -23826,7 +23826,7 @@
     "name": "KB 인도 디지털 Select 5 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -23836,7 +23836,7 @@
     "name": "KB S&P 레버리지 WTI원유 선물 ETN B",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -23846,7 +23846,7 @@
     "name": "KB S&P 인버스 2X WTI원유 선물 ETN B",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -23856,7 +23856,7 @@
     "name": "KB 레버리지 2차전지 TOP 10 TR ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -23866,7 +23866,7 @@
     "name": "KB 인버스 2X 천연가스 선물 ETN B",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -23876,7 +23876,7 @@
     "name": "KB 화웨이 밸류체인 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -23886,7 +23886,7 @@
     "name": "KB 레버리지 화웨이 밸류체인 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -23896,7 +23896,7 @@
     "name": "KB BYD 밸류체인 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -23906,7 +23906,7 @@
     "name": "KB 레버리지 BYD 밸류체인 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -23916,7 +23916,7 @@
     "name": "KB 레버리지 미국 나스닥 100 TR ETN B",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -23926,7 +23926,7 @@
     "name": "KB 인버스 2X 미국 나스닥 100 TR ETN B",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -23936,7 +23936,7 @@
     "name": "KB 은 선물 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -23946,7 +23946,7 @@
     "name": "KB 레버리지 은 선물 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -23956,7 +23956,7 @@
     "name": "KB 인버스 은 선물 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -23966,7 +23966,7 @@
     "name": "KB 인버스 2X 은 선물 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -23976,7 +23976,7 @@
     "name": "KB 레버리지 반도체 TOP10 TR ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -23986,7 +23986,7 @@
     "name": "KB 레버리지 미국 S&P500 선물 ETN B",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -23996,7 +23996,7 @@
     "name": "KB 인버스 2X 미국 S&P500 선물 ETN B",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -24006,7 +24006,7 @@
     "name": "KB 솔랙티브 천연가스 선물 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -24016,7 +24016,7 @@
     "name": "KB 솔랙티브 레버리지 천연가스 선물 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -24026,7 +24026,7 @@
     "name": "KB 솔랙티브 인버스 천연가스 선물 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -24036,7 +24036,7 @@
     "name": "KB Wise 분할매매 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -24046,7 +24046,7 @@
     "name": "메리츠 인플레이션 국채 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -24056,7 +24056,7 @@
     "name": "메리츠 미국 인플레이션 국채 ETN(H)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -24066,7 +24066,7 @@
     "name": "메리츠 국채30년 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -24076,7 +24076,7 @@
     "name": "메리츠 레버리지 국채30년 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -24086,7 +24086,7 @@
     "name": "메리츠 인버스 국채30년 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -24096,7 +24096,7 @@
     "name": "메리츠 레버리지 금 선물 ETN(H)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -24106,7 +24106,7 @@
     "name": "메리츠 인버스 2X 금 선물 ETN(H)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -24116,7 +24116,7 @@
     "name": "메리츠 국채10년 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -24126,7 +24126,7 @@
     "name": "메리츠 인버스 국채10년 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -24136,7 +24136,7 @@
     "name": "메리츠 미국채10년 ETN(H)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -24146,7 +24146,7 @@
     "name": "메리츠 레버리지 미국채10년 ETN(H)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -24156,7 +24156,7 @@
     "name": "메리츠 인버스 미국채10년 ETN(H)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -24166,7 +24166,7 @@
     "name": "메리츠 인버스 2X 미국채10년 ETN(H)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -24176,7 +24176,7 @@
     "name": "메리츠 레버리지 구리 선물 ETN(H)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -24186,7 +24186,7 @@
     "name": "메리츠 인버스 2X 구리 선물 ETN(H)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -24196,7 +24196,7 @@
     "name": "메리츠 S&P 유럽탄소배출권 선물 ETN(H)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -24206,27 +24206,27 @@
     "name": "메리츠 대표 농산물 선물 ETN(H)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
     "code": "Q610035",
     "symbol": "Q610035.KS",
     "standardCode": "KRG610000355",
-    "name": "메리츠 레버리지 대표 농산물 선물 ETN(H) EN 000000000000NN 0NNN3NN",
+    "name": "메리츠 레버리지 대표 농산물 선물 ETN(H)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
     "code": "Q610036",
     "symbol": "Q610036.KS",
     "standardCode": "KRG610000363",
-    "name": "메리츠 인버스 2X 대표 농산물 선물 ETN(H)EN 000000000000NN 0NNN3NN",
+    "name": "메리츠 인버스 2X 대표 농산물 선물 ETN(H)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -24236,7 +24236,7 @@
     "name": "메리츠 미국채30년 ETN(H)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -24246,7 +24246,7 @@
     "name": "메리츠 레버리지 미국채30년 ETN(H)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -24256,7 +24256,7 @@
     "name": "메리츠 인버스 미국채30년 ETN(H)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -24266,7 +24266,7 @@
     "name": "메리츠 인버스 2X 미국채30년 ETN(H)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -24276,7 +24276,7 @@
     "name": "메리츠 국채3년 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -24286,7 +24286,7 @@
     "name": "메리츠 인버스 국채3년 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -24296,7 +24296,7 @@
     "name": "메리츠 국채5년 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -24306,7 +24306,7 @@
     "name": "메리츠 인버스 국채5년 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -24316,7 +24316,7 @@
     "name": "메리츠 3X 레버리지 국채3년 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -24326,7 +24326,7 @@
     "name": "메리츠 인버스 3X 국채3년 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -24336,7 +24336,7 @@
     "name": "메리츠 3X 레버리지 국채5년 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -24346,7 +24346,7 @@
     "name": "메리츠 인버스 3X 국채5년 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -24356,7 +24356,7 @@
     "name": "메리츠 3X 레버리지 국채10년 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -24366,7 +24366,7 @@
     "name": "메리츠 인버스 3X 국채10년 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -24376,7 +24376,7 @@
     "name": "메리츠 3X 레버리지 국채30년 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -24386,7 +24386,7 @@
     "name": "메리츠 인버스 3X 국채30년 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -24396,7 +24396,7 @@
     "name": "메리츠 KIS CD금리투자 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -24406,7 +24406,7 @@
     "name": "메리츠 KAP 통안채 6개월 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -24416,17 +24416,17 @@
     "name": "메리츠 KAP 통안채 3개월 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
     "code": "Q610067",
     "symbol": "Q610067.KS",
     "standardCode": "KRG610000678",
-    "name": "메리츠 블룸버그 2X 천연가스선물 ETN(H) BEN 000000000000NN 0NNN3NN",
+    "name": "메리츠 블룸버그 2X 천연가스선물 ETN(H) B",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -24436,7 +24436,7 @@
     "name": "메리츠 KAP 일본 엔화 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -24446,7 +24446,7 @@
     "name": "메리츠 KAP 레버리지 일본 엔화 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -24456,7 +24456,7 @@
     "name": "메리츠 KAP 인버스 2X 일본 엔화 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -24466,7 +24466,7 @@
     "name": "메리츠 KAP 중국 위안화 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -24476,7 +24476,7 @@
     "name": "메리츠 KAP 레버리지 중국 위안화 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -24486,7 +24486,7 @@
     "name": "메리츠 KAP 인버스 2X 중국 위안화 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -24496,7 +24496,7 @@
     "name": "메리츠 미국채10년 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -24506,7 +24506,7 @@
     "name": "메리츠 3X 레버리지 미국채10년 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -24516,7 +24516,7 @@
     "name": "메리츠 인버스 3X 미국채10년 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -24526,7 +24526,7 @@
     "name": "메리츠 미국채30년 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -24536,7 +24536,7 @@
     "name": "메리츠 3X 레버리지 미국채30년 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -24546,7 +24546,7 @@
     "name": "메리츠 인버스 3X 미국채30년 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -24556,7 +24556,7 @@
     "name": "메리츠 멕시코 페소화 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -24566,7 +24566,7 @@
     "name": "메리츠 레버리지 멕시코 페소화 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -24576,7 +24576,7 @@
     "name": "메리츠 인도 루피화 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -24586,7 +24586,7 @@
     "name": "메리츠 레버리지 인도 루피화 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -24596,27 +24596,27 @@
     "name": "메리츠 미국채30년 스트립 ETN(H)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
     "code": "Q610085",
     "symbol": "Q610085.KS",
     "standardCode": "KRG610000850",
-    "name": "메리츠 레버리지 미국채30년 스트립 ETN(H)EN 000000000000NN 0NNN3NN",
+    "name": "메리츠 레버리지 미국채30년 스트립 ETN(H)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
     "code": "Q610086",
     "symbol": "Q610086.KS",
     "standardCode": "KRG610000868",
-    "name": "메리츠 인버스2X 미국채30년 스트립 ETN(H)EN 000000000000NN 0NNN3NN",
+    "name": "메리츠 인버스2X 미국채30년 스트립 ETN(H)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -24626,7 +24626,7 @@
     "name": "메리츠 WTI원유 선물 ETN(H)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -24636,7 +24636,7 @@
     "name": "메리츠 레버리지 WTI원유 선물 ETN(H)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -24646,7 +24646,7 @@
     "name": "메리츠 인버스 2X WTI원유 선물 ETN(H)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -24656,7 +24656,7 @@
     "name": "메리츠 일본 국채 10년 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -24666,7 +24666,7 @@
     "name": "메리츠 3X 레버리지 일본 국채 10년 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -24676,7 +24676,7 @@
     "name": "메리츠 인버스 일본 국채 10년 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -24686,7 +24686,7 @@
     "name": "메리츠 인버스 3X 일본 국채 10년 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -24696,7 +24696,7 @@
     "name": "메리츠 천연가스 선물 ETN(H)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -24706,7 +24706,7 @@
     "name": "메리츠 레버리지 천연가스 선물 ETN(H)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -24716,17 +24716,17 @@
     "name": "메리츠 인버스 2X 천연가스 선물 ETN(H)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
     "code": "Q610097",
     "symbol": "Q610097.KS",
     "standardCode": "KRG610000975",
-    "name": "메리츠 미국채30년스트립 커버드콜 ETN(H) EN 000000000000NN 0NNN3NN",
+    "name": "메리츠 미국채30년스트립 커버드콜 ETN(H)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -24736,7 +24736,7 @@
     "name": "메리츠 미국채30년 풋라이트 ETN(H)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -24746,7 +24746,7 @@
     "name": "메리츠 은 선물 ETN(H)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -24756,7 +24756,7 @@
     "name": "메리츠 레버리지 은 선물 ETN(H)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -24766,7 +24766,7 @@
     "name": "메리츠 인버스 2X 은 선물 ETN(H)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -24776,7 +24776,7 @@
     "name": "하나 레버리지 옥수수 선물 ETN(H)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -24786,7 +24786,7 @@
     "name": "하나 인버스 2X 옥수수 선물 ETN(H)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -24796,7 +24796,7 @@
     "name": "하나 레버리지 콩 선물 ETN(H)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -24806,7 +24806,7 @@
     "name": "하나 인버스 2X 콩 선물 ETN(H)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -24816,7 +24816,7 @@
     "name": "하나 레버리지 코스닥150 선물 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -24826,7 +24826,7 @@
     "name": "하나 인버스 2X 코스닥150 선물 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -24836,27 +24836,27 @@
     "name": "하나 Solactive US Tech Top 10 ETN(H)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
     "code": "Q700023",
     "symbol": "Q700023.KS",
     "standardCode": "KRG700000232",
-    "name": "하나 Solactive 2X US Tech Top 10 ETN(H) EN 000000000000NN 0NNN3NN",
+    "name": "하나 Solactive 2X US Tech Top 10 ETN(H)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
     "code": "Q700025",
     "symbol": "Q700025.KS",
     "standardCode": "KRG700000257",
-    "name": "하나 블룸버그 2X 천연가스 선물 ETN(H) B EN 000000000000NN 0NNN3NN",
+    "name": "하나 블룸버그 2X 천연가스 선물 ETN(H) B",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -24866,7 +24866,7 @@
     "name": "하나 CD금리투자 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -24876,7 +24876,7 @@
     "name": "하나 반도체 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -24886,7 +24886,7 @@
     "name": "하나 레버리지 반도체 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -24896,7 +24896,7 @@
     "name": "하나 S&P 레버리지 WTI원유 선물 ETN B",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -24906,7 +24906,7 @@
     "name": "하나 S&P 인버스 2X WTI원유 선물 ETN B",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -24916,7 +24916,7 @@
     "name": "하나 레버리지 천연가스 선물 ETN(H)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -24926,7 +24926,7 @@
     "name": "하나 인버스 2X 천연가스 선물 ETN(H)",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -24936,7 +24936,7 @@
     "name": "하나 K방산TOP10 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -24946,7 +24946,7 @@
     "name": "하나 레버리지 K방산TOP10 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -24956,7 +24956,7 @@
     "name": "하나 인버스 2X K방산TOP10 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -24966,7 +24966,7 @@
     "name": "하나 인버스 2X 반도체 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -24976,7 +24976,7 @@
     "name": "키움 인버스 미국달러선물 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -24986,7 +24986,7 @@
     "name": "키움 INDXX 미국테크탑10 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -24996,7 +24996,7 @@
     "name": "키움 KPOP ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -25006,7 +25006,7 @@
     "name": "키움 코스피 200 TR ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -25016,7 +25016,7 @@
     "name": "키움 코스닥 150 TR ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -25026,7 +25026,7 @@
     "name": "키움 CD금리투자 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -25036,7 +25036,7 @@
     "name": "키움 2차전지산업 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -25046,7 +25046,7 @@
     "name": "키움 레버리지 2차전지산업 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -25056,7 +25056,7 @@
     "name": "키움 반도체TOP10 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -25066,7 +25066,7 @@
     "name": "키움 레버리지 반도체TOP10 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -25076,7 +25076,7 @@
     "name": "키움 바이오TOP10 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -25086,7 +25086,7 @@
     "name": "키움 레버리지 바이오TOP10 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -25096,7 +25096,7 @@
     "name": "키움 레버리지 조선TOP10 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -25106,7 +25106,7 @@
     "name": "키움 조선TOP10 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -25116,7 +25116,7 @@
     "name": "키움 미국달러선물 ETN B",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -25126,7 +25126,7 @@
     "name": "키움 리츠부동산인프라 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -25136,7 +25136,7 @@
     "name": "키움 레버리지 리츠부동산인프라 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -25146,7 +25146,7 @@
     "name": "키움 코스피200 선물 달러노출 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -25156,7 +25156,7 @@
     "name": "키움 K방산 TOP5 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -25166,7 +25166,7 @@
     "name": "키움 레버리지 K방산 TOP5 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -25176,7 +25176,7 @@
     "name": "키움 인버스 2X K방산 TOP5 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -25186,7 +25186,7 @@
     "name": "키움 전력 TOP5 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -25196,7 +25196,7 @@
     "name": "키움 레버리지 전력 TOP5 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -25206,7 +25206,7 @@
     "name": "키움 인버스 2X 전력 TOP5 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {
@@ -25216,7 +25216,7 @@
     "name": "키움 인버스 2X 반도체TOP10 ETN",
     "market": "KOSPI",
     "venue": "MAIN",
-    "type": "EQUITY",
+    "type": "ETN",
     "source": "kospi_code.mst"
   },
   {

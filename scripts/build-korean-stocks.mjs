@@ -11,10 +11,19 @@
  *
  * 출력: data/korean-stocks.json
  *
- * KIS 마스터 파일 포맷 (EUC-KR, 고정폭):
- *   - kospi/kosdaq_code.mst: 코드(9) + ISIN(12) + 종목명(가변) + 그룹코드(2) + ...
- *   - nxt_kospi/nxt_kosdaq_code.mst: 유사 포맷 (약간 다른 레이아웃)
- *   - theme_code.mst: 테마코드 + 테마명 + 종목코드(6)
+ * KIS 마스터 파일 포맷 (EUC-KR, 고정폭 바이트):
+ *   오프셋   길이   필드명        설명
+ *   0        9      표준코드      "005930   " 또는 "F70100026" (우측 공백 패딩)
+ *   9        12     ISIN 코드     "KR7005930003"
+ *   21       40     종목명        EUC-KR, 우측 공백 패딩
+ *   61       2      그룹코드      "ST"(주식), "EF"(ETF), "BC"(수익증권), "FS"(해외)
+ *   63       ...    기타 필드    (사용하지 않음)
+ *
+ * ※ 핵심: 그룹코드는 항상 BYTE offset 61에 위치 (고정폭)
+ *   이전 버전에서는 decoded string에서 regex로 그룹코드를 찾았으나,
+ *   EUC-KR의 2바이트 한글 때문에 decoded string 내 위치가 가변적이어서
+ *   이름이 긴 ETF/ETN에서 그룹코드 분리 실패 → 쓰레기값 포함 문제 발생.
+ *   → 바이트 레벨 파싱으로 정확히 분리.
  */
 
 import { readFileSync, writeFileSync, existsSync } from 'fs';
@@ -24,50 +33,50 @@ import { fileURLToPath } from 'url';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = resolve(__dirname, '..');
 
-// ─── EUC-KR 디코딩 (iconv-lite 없이 Node.js 내장 TextDecoder 사용) ───
-// Node.js 22+ 에서 EUC-KR 지원. 미지원시 수동 폴백.
+// ─── EUC-KR 디코딩 (Node.js 내장 TextDecoder 사용) ───
 function decodeEucKr(buffer) {
   try {
     const decoder = new TextDecoder('euc-kr');
     return decoder.decode(buffer);
   } catch {
-    // EUC-KR 미지원 환경 폴백: 각 바이트를 개별적으로 처리
-    // ASCII 범위는 그대로, 한글(2바이트)은 유니코드로 변환
-    const result = [];
-    let i = 0;
-    while (i < buffer.length) {
-      const byte = buffer[i];
-      if (byte <= 0x7F) {
-        result.push(String.fromCharCode(byte));
-        i++;
-      } else {
-        // 2바이트 EUC-KR → 유니코드 변환 시도
-        const byte2 = buffer[i + 1];
-        if (byte2 !== undefined) {
-          result.push(String.fromCharCode((byte << 8) | byte2));
-          i += 2;
-        } else {
-          result.push('?');
+    // EUC-KR 미지원 환경 폴백: cp949 시도
+    try {
+      const decoder = new TextDecoder('cp949');
+      return decoder.decode(buffer);
+    } catch {
+      // 최종 폴백: 각 바이트를 개별적으로 처리
+      const result = [];
+      let i = 0;
+      while (i < buffer.length) {
+        const byte = buffer[i];
+        if (byte <= 0x7F) {
+          result.push(String.fromCharCode(byte));
           i++;
+        } else {
+          const byte2 = buffer[i + 1];
+          if (byte2 !== undefined) {
+            result.push(String.fromCharCode((byte << 8) | byte2));
+            i += 2;
+          } else {
+            result.push('?');
+            i++;
+          }
         }
       }
+      return result.join('');
     }
-    return result.join('');
   }
 }
 
 /**
- * KIS kospi/kosdaq 마스터 파일 파싱
+ * KIS kospi/kosdaq 마스터 파일 파싱 (바이트 레벨)
  *
- * 라인 포맷 (kospi_code.mst / kosdaq_code.mst):
- *   필드          오프셋   길이   설명
- *   표준코드       0        9     "000070   " 또는 "F70100026"
- *   ISIN          9        12    "KR7000070003"
- *   종목명         21       가변  공백으로 끝남, 다음 필드 전까지
- *   그룹코드       다음2    2     "ST"(주식), "EF"(ETF), "BC"(수익증권), "FS"(해외)
- *   ...
- *
- * nxt_kospi/nxt_kosdaq은 약간 다른 레이아웃이지만 기본 구조 동일
+ * 라인 바이트 포맷:
+ *   [0-8]    표준코드 (9 bytes, ASCII, 우측 공백 패딩)
+ *   [9-20]   ISIN 코드 (12 bytes, ASCII)
+ *   [21-60]  종목명   (40 bytes, EUC-KR, 우측 공백 패딩)
+ *   [61-62]  그룹코드 (2 bytes, ASCII: ST/EF/BC/FS)
+ *   [63-]    기타 필드
  */
 function parseMasterFile(filePath, market, sourceName) {
   if (!existsSync(filePath)) {
@@ -76,14 +85,30 @@ function parseMasterFile(filePath, market, sourceName) {
   }
 
   const buffer = readFileSync(filePath);
-  const content = decodeEucKr(buffer);
-  const lines = content.split(/\r?\n/).filter(line => line.trim().length > 0);
+
+  // 바이트 단위로 라인 분리 (CRLF/LF)
+  const lines = [];
+  let start = 0;
+  for (let i = 0; i < buffer.length; i++) {
+    if (buffer[i] === 0x0A) { // LF
+      // CR+LF인 경우 CR 제외
+      const end = (i > 0 && buffer[i - 1] === 0x0D) ? i - 1 : i;
+      if (end > start) {
+        lines.push(buffer.subarray(start, end));
+      }
+      start = i + 1;
+    }
+  }
+  // 마지막 라인
+  if (start < buffer.length) {
+    lines.push(buffer.subarray(start, buffer.length));
+  }
 
   const stocks = [];
 
-  for (const line of lines) {
+  for (const lineBytes of lines) {
     try {
-      const stock = parseMasterLine(line, market, sourceName);
+      const stock = parseMasterLineBytes(lineBytes, market, sourceName);
       if (stock) {
         stocks.push(stock);
       }
@@ -96,58 +121,45 @@ function parseMasterFile(filePath, market, sourceName) {
 }
 
 /**
- * 마스터 파일 한 라인 파싱
- * 
- * KIS 마스터 포맷 (고정폭):
- *   [0-8]   표준코드 (9바이트, 우측 공백 패딩)
- *   [9-20]  ISIN 코드 (12바이트, "KR7" 접두사)
- *   [21-]   종목명 (가변, 공백으로 구분)
- *   
- *   종목명 이후: 그룹코드(ST/EF/BC/FS) + 기타 필드
+ * 마스터 파일 한 라인 파싱 (바이트 레벨)
+ *
+ * 바이트 포맷 (고정폭):
+ *   [0-8]    표준코드 (9 bytes)
+ *   [9-20]   ISIN 코드 (12 bytes)
+ *   [21-60]  종목명   (40 bytes, EUC-KR)
+ *   [61-62]  그룹코드 (2 bytes: ST/EF/BC/FS)
  */
-function parseMasterLine(line, market, sourceName) {
-  if (line.length < 24) return null;
+function parseMasterLineBytes(lineBytes, market, sourceName) {
+  // 최소 63바이트 필요 (코드9 + ISIN12 + 이름40 + 그룹2)
+  if (lineBytes.length < 63) return null;
 
-  // 표준코드 추출 (9바이트, 공백 제거)
-  const rawCode = line.substring(0, 9).trim();
+  // 1) 표준코드 추출 (bytes 0-8, ASCII)
+  const codeBytes = lineBytes.subarray(0, 9);
+  const rawCode = new TextDecoder('ascii').decode(codeBytes).trim();
   if (!rawCode) return null;
 
-  // ISIN 코드 추출 (위치 9부터 12바이트)
-  const isinRaw = line.substring(9, 21).trim();
+  // 2) ISIN 코드 추출 (bytes 9-20, ASCII)
+  const isinBytes = lineBytes.subarray(9, 21);
+  const isinRaw = new TextDecoder('ascii').decode(isinBytes).trim();
 
-  // 종목명 추출: ISIN 이후부터 그룹코드(ST/EF/BC/FS) 전까지
-  // 종목명은 21번째 위치에서 시작, 다음 공백+그룹코드 패턴 전까지
-  const rest = line.substring(21);
-  
-  // 그룹코드 패턴 찾기: " ST", " EF", " BC", " FS" (공백+2글자 그룹코드)
-  let name = '';
-  let groupCode = '';
-  const groupPattern = /\s+(ST|EF|BC|FS)\s/;
-  const groupMatch = rest.match(groupPattern);
-  
-  if (groupMatch) {
-    name = rest.substring(0, groupMatch.index).trim();
-    groupCode = groupMatch[1];
-  } else {
-    // 그룹코드를 찾지 못한 경우, 종목명만 추출 시도
-    // 다중 공백으로 구분되는 경우도 있음
-    const parts = rest.split(/\s{2,}/);
-    name = parts[0]?.trim() || '';
-    if (parts.length > 1) {
-      groupCode = parts[1]?.substring(0, 2)?.trim() || '';
-    }
-  }
-
+  // 3) 종목명 추출 (bytes 21-60, EUC-KR, 우측 공백 트림)
+  const nameBytes = lineBytes.subarray(21, 61);
+  const name = decodeEucKr(nameBytes).trim();
   if (!name) return null;
+
+  // 4) 그룹코드 추출 (bytes 61-62, ASCII)
+  const groupBytes = lineBytes.subarray(61, 63);
+  const groupCode = new TextDecoder('ascii').decode(groupBytes).trim();
 
   // ISIN에서 "KR" 접두사가 있으면 standardCode로 사용
   const standardCode = isinRaw.startsWith('KR') ? isinRaw : undefined;
 
-  // 종목 유형 판별 (이전 korean-stocks.json과 호환: BC/FS도 EQUITY로 처리)
+  // 종목 유형 판별
+  // ST = 주식, EF = ETF, BC = 수익증권, FS = 해외주식
+  // ETN은 Q로 시작하는 코드 (Q5xxxxx) → 별도 분류
   let type = 'EQUITY';
   if (groupCode === 'EF') type = 'ETF';
-  // BC(수익증권), FS(해외)도 검색 가능하도록 EQUITY로 분류
-  // 이전 JSON에서는 모두 EQUITY로 처리되었음
+  if (rawCode.startsWith('Q')) type = 'ETN';
 
   // symbol 생성: .KS(KOSPI) 또는 .KQ(KOSDAQ)
   const suffix = market === 'KOSPI' ? 'KS' : market === 'KOSDAQ' ? 'KQ' : 'KS';
@@ -166,7 +178,7 @@ function parseMasterLine(line, market, sourceName) {
 
 /**
  * 테마 마스터 파일 파싱
- * 
+ *
  * theme_code.mst 포맷:
  *   테마코드(8) + 공백 + 테마명(가변) + 공백 + 종목코드(6)
  *   예: "0272018 신규 상장주                        027360"
@@ -195,7 +207,7 @@ function parseThemeFile(filePath) {
       // 나머지에서 테마명과 종목코드 분리
       // 종목코드는 마지막 6자리 숫자 (앞에 공백)
       const rest = line.substring(8);
-      
+
       // 마지막 6자리+앞공백 패턴으로 종목코드 찾기
       const stockCodeMatch = rest.match(/\s+(\d{6})\s*$/);
       let stockCode = '';
@@ -274,7 +286,6 @@ function main() {
 
   // ─── 중복 제거 및 병합 ───
   // 우선순위: kospi > kosdaq > nxt_kospi > nxt_kosdaq (기존 순서 유지)
-  // 코드+마켓 조합으로 중복 제거 (같은 코드가 KOSPI/KOSDAQ에 있을 수 있음)
   const seen = new Set();
   const allStocks = [];
 
@@ -308,6 +319,24 @@ function main() {
     marketStats[s.market] = (marketStats[s.market] || 0) + 1;
   }
   console.log('   마켓별:', marketStats);
+
+  // ─── 이름 정상 여부 검증 ───
+  let garbledCount = 0;
+  const garbledSamples = [];
+  for (const s of allStocks) {
+    if (s.name.includes('0NN') || s.name.includes('NNN') || s.name.includes('00000')) {
+      garbledCount++;
+      if (garbledSamples.length < 5) garbledSamples.push(s);
+    }
+  }
+  if (garbledCount > 0) {
+    console.warn(`\n⚠️  이름에 쓰레기값 포함된 종목: ${garbledCount}개`);
+    for (const s of garbledSamples) {
+      console.warn(`   ${s.code} | ${s.name}`);
+    }
+  } else {
+    console.log('\n✅ 모든 종목명 정상 (쓰레기값 없음)');
+  }
 
   // ─── korean-stocks.json 저장 ───
   const outputPath = resolve(dataDir, 'korean-stocks.json');

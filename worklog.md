@@ -157,3 +157,24 @@ Stage Summary:
 - Search ranking dramatically improved with relevance scoring
 - Korean alias mapping enables natural language search for overseas stocks
 - Committed as d2127d7
+---
+Task ID: 1
+Agent: main
+Task: Fix domestic stock search failures - garbled ETF names and missing ETN codes
+
+Work Log:
+- Analyzed .mst file byte-level format: Code(9B) + ISIN(12B) + Name(40B) + GroupCode(2B) at byte offset 61
+- Found root cause 1: build-korean-stocks.mjs used regex on decoded strings, failed when name filled 40-byte field (no space before group code) → 28 ETF/ETN entries had garbled names like "000000000000NN 0NNN2NN"
+- Found root cause 2: stock-master.ts extractDomesticCode() didn't handle Q-code ETN entries (Q500061 etc.) → 397 ETN entries were not searchable
+- Rewrote build-korean-stocks.mjs parseMasterLine to use byte-level parsing (Buffer.subarray at fixed offsets 0/9/21/61)
+- Added Q-code ETN support to stock-master.ts: extractDomesticCode(), isDomesticStockCode(), and indexing loop
+- Added 'ETN' codeType to DomesticIndexEntry interface
+- Rebuilt korean-stocks.json: 4,346 entries, 0 garbled names, ETN type properly classified
+- Verified: all 4,346 entries now indexed (was 3,949 before fix)
+- Tested search: TIGER 엔비디아, 인버스, Q500061, 0000D0 all work correctly
+
+Stage Summary:
+- Fixed: 28 garbled ETF/ETN names (byte-level parsing instead of regex)
+- Fixed: 397 Q-code ETN entries now searchable (was completely missing before)
+- Total indexed: 4,346 / 4,346 (100% coverage, was 3,949 / 4,346 = 90.9%)
+- Type breakdown: STANDARD 3,577 + ETF_ALPHANUMERIC 296 + ETN 397 + SPECIAL 76 = 4,346

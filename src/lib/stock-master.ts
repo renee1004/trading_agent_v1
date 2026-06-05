@@ -85,6 +85,11 @@ function extractDomesticCode(code: string): string | null {
   const alphaNumeric = code.match(/^(\d{4}[A-Z0-9]{2})$/);
   if (alphaNumeric) return alphaNumeric[1];
 
+  // ETN 코드: "Q500061", "Q520066" 등
+  // 패턴: Q + 영숫자 6자리 이상
+  const etnCode = code.match(/^(Q[A-Z0-9]{4,})$/);
+  if (etnCode) return etnCode[1];
+
   return null;
 }
 
@@ -111,7 +116,7 @@ interface DomesticIndexEntry {
   market: string;       // "KOSPI" | "KOSDAQ" | "KONEX"
   exchangeCode: string; // "KRX"
   currency: string;     // "KRW"
-  codeType: 'STANDARD' | 'ETF_ALPHANUMERIC' | 'PREFERRED' | 'SPECIAL';
+  codeType: 'STANDARD' | 'ETF_ALPHANUMERIC' | 'ETN' | 'PREFERRED' | 'SPECIAL';
   /** 우선주인 경우 보통주 symbol (API 조회용) */
   baseSymbol?: string;
 }
@@ -178,6 +183,23 @@ for (const entry of KOREAN_STOCK_ITEMS) {
     };
   }
 
+  // 4) ETN 코드 (Q-code) — Q5xxxxx 패턴, KIS API에서 지원
+  // 예: Q500061 (신한 인버스 코스피 200 선물 ETN)
+  if (!indexEntry && entry.code.startsWith('Q') && /^Q[A-Z0-9]{4,}$/.test(entry.code)) {
+    const displayCode = `KRX:${entry.code}`;
+    if (DOMESTIC_MASTER_BY_SYMBOL.has(entry.code)) continue;
+
+    indexEntry = {
+      symbol: entry.code,
+      displayCode,
+      stockName: entry.name,
+      market: entry.market,
+      exchangeCode: 'KRX',
+      currency: 'KRW',
+      codeType: 'ETN',
+    };
+  }
+
   if (!indexEntry) continue;
 
   DOMESTIC_MASTER_ITEMS.push(indexEntry);
@@ -196,6 +218,7 @@ function normalizeCode(value: string): string {
  * 지원 포맷:
  * - 순수 6자리 숫자: "005930" (보통주)
  * - 6자리 영숫자: "0000D0" (ETF/ETN)
+ * - Q 접두사 + 영숫자: "Q500061" (ETN)
  * - 5자리+K/L: "00088K" (우선주)
  * - F/J 접두사: "F70100026", "J0036221D" (특수상품)
  */
@@ -205,6 +228,8 @@ export function isDomesticStockCode(code: string): boolean {
   if (/^\d{6}$/.test(normalized)) return true;
   // 6자리 영숫자 (ETF/ETN): 숫자 4자리 + 영숫자 2자리
   if (/^\d{4}[A-Z0-9]{2}$/.test(normalized)) return true;
+  // ETN: Q + 영숫자 4자리 이상
+  if (/^Q[A-Z0-9]{4,}$/.test(normalized)) return true;
   // 우선주: 5자리 숫자 + K/L
   if (/^\d{5}[KL]$/.test(normalized)) return true;
   // 특수상품: F 또는 J 접두사
