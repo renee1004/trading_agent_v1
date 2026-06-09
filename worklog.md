@@ -203,3 +203,30 @@ Stage Summary:
 - "아프리카tv" → SOOP (067160) ✅
 - 70+ domestic Korean alias mappings added
 - searchAllStocks() now supports domestic alias lookup via DOMESTIC_MASTER_BY_SYMBOL
+
+---
+Task ID: 1
+Agent: main
+Task: Fix TradingEngine.analyzeAllStrategies() hardcoded thresholds to use dynamic signalThreshold/weakSignalThreshold
+
+Work Log:
+- Identified the core bug: analyzeAllStrategies() lines 789-793 had hardcoded `buyScore >= 50` / `sellScore >= 50` that ignored the passed-in signalThreshold/weakSignalThreshold parameters
+- Replaced hardcoded 4-tier logic (BUY/SELL/HOLD) with 5-tier logic matching analyzeComposite(): 강한 BUY → 강한 SELL → 약한 BUY → 약한 SELL → HOLD
+- Added holdReason field with detailed diagnostics for every HOLD result
+- Added buyScore, sellScore, finalThreshold fields to TradingSignal interface (types.ts)
+- Updated analyzeAllStrategies() return object to include holdReason, buyScore, sellScore, finalThreshold
+- Updated topBuyCandidates in AgentCycleResult to include buyScore, sellScore, finalThreshold, holdReason
+- Updated trading-agent.ts to push all candidates (not just BUY/SELL) to topBuyCandidates for diagnostics
+- Added buyScore-descending sort to topBuyCandidates before slicing
+- Added HOLD-specific logging with holdReason in both DOMESTIC and OVERSEAS analysis loops
+- Verified thresholds match user requirements: TEST(30/25), CONSERVATIVE(60/40), AGGRESSIVE(25/20)
+- Build passed successfully
+
+Stage Summary:
+- Core fix: Hardcoded `>= 50` replaced with dynamic signalThreshold/weakSignalThreshold
+- TEST mode: 강한 BUY at buyScore>=30, 약한 BUY at buyScore>=25
+- CONSERVATIVE mode: 강한 BUY at buyScore>=60, 약한 BUY at buyScore>=40
+- AGGRESSIVE mode: 강한 BUY at buyScore>=25, 약한 BUY at buyScore>=20
+- HOLD logs now show: "ALL 최종 기준 미달: buyScore=X, sellScore=Y, required=Z(강한), W(약한)"
+- /api/agent/status topBuyCandidates now includes buyScore, sellScore, finalThreshold, holdReason
+- Files modified: trading-engine.ts, trading-agent.ts, types.ts

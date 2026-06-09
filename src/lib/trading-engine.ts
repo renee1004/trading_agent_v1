@@ -781,23 +781,51 @@ export class TradingEngine {
     buyScore /= totalWeight;
     sellScore /= totalWeight;
 
-    // 최종 신호 결정
+    // 최종 신호 결정 (strategyAggressiveness 기반 동적 임계값 적용)
+    // 강한 신호: signalThreshold 이상 + 격차 조건 충족
+    // 약한 신호: weakSignalThreshold 이상 + 단순 우위
     let signalType: 'BUY' | 'SELL' | 'HOLD';
     let confidence: number;
     let reason: string;
+    let holdReason: string | undefined;
 
-    if (buyScore > sellScore + 15 && buyScore >= 50) {
+    if (buyScore >= signalThreshold && buyScore > sellScore + 15) {
+      // 강한 BUY: signalThreshold 도달 + sellScore 대비 15점 이상 우위
       signalType = 'BUY';
       confidence = Math.min(95, buyScore);
-      reason = `종합 매수신호 [${strategyResults.join(', ')}]`;
-    } else if (sellScore > buyScore + 15 && sellScore >= 50) {
+      reason = `종합 강한 매수신호 (buyScore=${buyScore.toFixed(2)} >= ${signalThreshold}) [${strategyResults.join(', ')}]`;
+    } else if (sellScore >= signalThreshold && sellScore > buyScore + 15) {
+      // 강한 SELL: signalThreshold 도달 + buyScore 대비 15점 이상 우위
       signalType = 'SELL';
       confidence = Math.min(95, sellScore);
-      reason = `종합 매도신호 [${strategyResults.join(', ')}]`;
+      reason = `종합 강한 매도신호 (sellScore=${sellScore.toFixed(2)} >= ${signalThreshold}) [${strategyResults.join(', ')}]`;
+    } else if (buyScore > sellScore && buyScore >= weakSignalThreshold) {
+      // 약한 BUY: weakSignalThreshold 도달 + sellScore 대비 단순 우위
+      signalType = 'BUY';
+      confidence = Math.min(70, buyScore);
+      reason = `종합 약한 매수신호 (buyScore=${buyScore.toFixed(2)} >= weak=${weakSignalThreshold}) [${strategyResults.join(', ')}]`;
+    } else if (sellScore > buyScore && sellScore >= weakSignalThreshold) {
+      // 약한 SELL: weakSignalThreshold 도달 + buyScore 대비 단순 우위
+      signalType = 'SELL';
+      confidence = Math.min(70, sellScore);
+      reason = `종합 약한 매도신호 (sellScore=${sellScore.toFixed(2)} >= weak=${weakSignalThreshold}) [${strategyResults.join(', ')}]`;
     } else {
+      // HOLD: 어떤 임계값도 충족하지 못함
       signalType = 'HOLD';
       confidence = Math.max(buyScore, sellScore);
-      reason = `신호 혼재 [${strategyResults.join(', ')}]`;
+
+      // holdReason 상세 진단
+      if (buyScore > sellScore) {
+        holdReason = `ALL 최종 기준 미달: buyScore=${buyScore.toFixed(2)}, sellScore=${sellScore.toFixed(2)}, required=${signalThreshold}(강한), ${weakSignalThreshold}(약한)`;
+        if (buyScore >= signalThreshold - 10) {
+          holdReason += ` | ${signalThreshold - buyScore < 0 ? '' : 'signalThreshold까지만 ' + (signalThreshold - buyScore).toFixed(2) + '점'}`;
+        }
+      } else if (sellScore > buyScore) {
+        holdReason = `ALL 최종 기준 미달: sellScore=${sellScore.toFixed(2)}, buyScore=${buyScore.toFixed(2)}, required=${signalThreshold}(강한), ${weakSignalThreshold}(약한)`;
+      } else {
+        holdReason = `ALL 매수/매도 균형: buyScore=${buyScore.toFixed(2)} = sellScore=${sellScore.toFixed(2)}, 뚜렷한 방향성 없음`;
+      }
+      reason = holdReason;
     }
 
     // 모든 지표 합산
@@ -818,6 +846,10 @@ export class TradingEngine {
       confidence,
       price: candles[candles.length - 1].close,
       reason,
+      holdReason,
+      buyScore: Math.round(buyScore * 100) / 100,
+      sellScore: Math.round(sellScore * 100) / 100,
+      finalThreshold: signalThreshold,
       indicators: allIndicators,
       timestamp: new Date(),
     };

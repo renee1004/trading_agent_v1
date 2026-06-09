@@ -59,7 +59,7 @@ export interface AgentCycleResult {
   uiSignalsCount?: number;
   executableSignalsCount?: number;
   signalsBlockedReasons?: string[];
-  topBuyCandidates?: Array<{stockCode: string; stockName: string; confidence: number; signalType: string; blockedReason?: string}>;
+  topBuyCandidates?: Array<{stockCode: string; stockName: string; confidence: number; signalType: string; buyScore?: number; sellScore?: number; finalThreshold?: number; blockedReason?: string; holdReason?: string}>;
   signalThreshold?: number;
   weakSignalThreshold?: number;
   minConfidenceThreshold?: number;
@@ -983,7 +983,7 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
   let uiSignalsCount = 0;          // TradingEngine이 생성한 BUY/SELL 신호 수 (HOLD 제외)
   let executableSignalsCount = 0;  // 리스크 매니저 통과한 실행 가능 신호 수
   const signalsBlockedReasons: string[] = [];  // 신호 차단 사유 수집
-  const topBuyCandidates: Array<{stockCode: string; stockName: string; confidence: number; signalType: string; blockedReason?: string}> = [];
+  const topBuyCandidates: Array<{stockCode: string; stockName: string; confidence: number; signalType: string; buyScore?: number; sellScore?: number; finalThreshold?: number; blockedReason?: string; holdReason?: string}> = [];
 
   // ── FORCE_TEST_SIGNAL ──
   // PAPER 모드에서 주문 파이프라인 검증용: 1개 BUY 신호 강제 주입
@@ -1070,7 +1070,7 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
       );
 
       // 종목별 상세 정보 로그
-      addLog('INFO', 'DOMESTIC', `${stock.name} 분석 결과: ${signal.signalType} (신뢰도: ${signal.confidence}%)`, {
+      const logDetails: Record<string, unknown> = {
         stockCode: stock.code,
         candlesLength: candles.length,
         lastClose: candles[candles.length - 1].close,
@@ -1078,18 +1078,31 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
         strategy: signal.strategy,
         signalThreshold: effectiveSettings.signalThreshold,
         weakSignalThreshold: effectiveSettings.weakSignalThreshold,
-      });
+      };
 
-      // BUY/SELL 후보 추적 (진단용)
+      // HOLD인 경우 holdReason 로그에 추가
+      if (signal.signalType === 'HOLD' && signal.holdReason) {
+        logDetails.holdReason = signal.holdReason;
+        addLog('INFO', 'DOMESTIC', `${stock.name} 분석 결과: HOLD (buyScore=${signal.buyScore ?? '-'}, sellScore=${signal.sellScore ?? '-'}, 임계값=${signal.finalThreshold ?? effectiveSettings.signalThreshold}) — ${signal.holdReason}`, logDetails);
+      } else {
+        addLog('INFO', 'DOMESTIC', `${stock.name} 분석 결과: ${signal.signalType} (신뢰도: ${signal.confidence}%)`, logDetails);
+      }
+
+      // BUY/SELL/HOLD 모두 후보 추적 (진단용)
       if (signal.signalType !== 'HOLD') {
         uiSignalsCount++;
-        topBuyCandidates.push({
-          stockCode: stock.code,
-          stockName: stock.name,
-          confidence: signal.confidence,
-          signalType: signal.signalType,
-        });
       }
+      // 상위 후보 추적 (BUY/SELL + HOLD 중 buyScore가 높은 것)
+      topBuyCandidates.push({
+        stockCode: stock.code,
+        stockName: stock.name,
+        confidence: signal.confidence,
+        signalType: signal.signalType,
+        buyScore: signal.buyScore,
+        sellScore: signal.sellScore,
+        finalThreshold: signal.finalThreshold ?? effectiveSettings.signalThreshold,
+        holdReason: signal.holdReason,
+      });
 
       // ── FORCE_TEST_SIGNAL: 첫 번째 BUY 후보에 강제 BUY 주입 ──
       if (FORCE_TEST_SIGNAL && !forceTestSignalUsed && signal.signalType === 'HOLD' && domesticStocks.indexOf(stock) === 0) {
@@ -1354,26 +1367,61 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
         const gapDisplay = currentPrice > 0
           ? `, currentPrice=${currentPrice}, gap=${(priceGapPercent * 100).toFixed(2)}%`
           : '';
-        addLog('INFO', 'OVERSEAS',
-          `${stock.name} 분석 결과: ${signal.signalType} (신뢰도: ${signal.confidence}%), normalizedSymbol=${normalizedSymbol}, candles=${candles.length}, lastDailyClose=${analysisPrice}${gapDisplay}, source=${priceDataSource}`,
-          {
-            originalStockCode: currentPriceInfo?.originalStockCode || stock.code,
-            stockCode: currentPriceInfo?.stockCode || stock.code,
-            exchangeCode: normExchange,
-            normalizedSymbol,
-            candlesLength: candles.length,
-            lastDailyClose: analysisPrice,
-            currentPrice,
-            priceGapPercent: parseFloat((priceGapPercent * 100).toFixed(4)),
-            currentPriceTimestamp,
-            rawPriceFields: currentPriceInfo?.rawPriceFields,
-            currentPriceField: currentPriceInfo?.currentPriceField || 'last',
-            dataSource: priceDataSource,
-            realtimeEnabled: false,
-            signalType: signal.signalType,
-            strategy: signal.strategy,
-          }
-        );
+
+        // 해외 종목 분석 로그 (HOLD인 경우 holdReason 포함)
+        if (signal.signalType === 'HOLD' && signal.holdReason) {
+          addLog('INFO', 'OVERSEAS',
+            `${stock.name} 분석 결과: HOLD (buyScore=${signal.buyScore ?? '-'}, sellScore=${signal.sellScore ?? '-'}, 임계값=${signal.finalThreshold ?? effectiveSettings.signalThreshold}) — ${signal.holdReason}`,
+            {
+              originalStockCode: currentPriceInfo?.originalStockCode || stock.code,
+              stockCode: currentPriceInfo?.stockCode || stock.code,
+              exchangeCode: normExchange,
+              normalizedSymbol,
+              candlesLength: candles.length,
+              lastDailyClose: analysisPrice,
+              currentPrice,
+              priceGapPercent: parseFloat((priceGapPercent * 100).toFixed(4)),
+              currentPriceTimestamp,
+              dataSource: priceDataSource,
+              signalType: signal.signalType,
+              strategy: signal.strategy,
+              holdReason: signal.holdReason,
+            }
+          );
+        } else {
+          addLog('INFO', 'OVERSEAS',
+            `${stock.name} 분석 결과: ${signal.signalType} (신뢰도: ${signal.confidence}%), normalizedSymbol=${normalizedSymbol}, candles=${candles.length}, lastDailyClose=${analysisPrice}${gapDisplay}, source=${priceDataSource}`,
+            {
+              originalStockCode: currentPriceInfo?.originalStockCode || stock.code,
+              stockCode: currentPriceInfo?.stockCode || stock.code,
+              exchangeCode: normExchange,
+              normalizedSymbol,
+              candlesLength: candles.length,
+              lastDailyClose: analysisPrice,
+              currentPrice,
+              priceGapPercent: parseFloat((priceGapPercent * 100).toFixed(4)),
+              currentPriceTimestamp,
+              rawPriceFields: currentPriceInfo?.rawPriceFields,
+              currentPriceField: currentPriceInfo?.currentPriceField || 'last',
+              dataSource: priceDataSource,
+              realtimeEnabled: false,
+              signalType: signal.signalType,
+              strategy: signal.strategy,
+            }
+          );
+        }
+
+        // 상위 후보 추적 (BUY/SELL + HOLD 중 buyScore가 높은 것)
+        topBuyCandidates.push({
+          stockCode: stock.code,
+          stockName: stock.name,
+          confidence: signal.confidence,
+          signalType: signal.signalType,
+          buyScore: signal.buyScore,
+          sellScore: signal.sellScore,
+          finalThreshold: signal.finalThreshold ?? effectiveSettings.signalThreshold,
+          holdReason: signal.holdReason,
+        });
 
         if (signal.signalType !== 'HOLD') {
           signalsGenerated++;
@@ -1633,7 +1681,9 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
     uiSignalsCount,
     executableSignalsCount,
     signalsBlockedReasons: signalsBlockedReasons.slice(0, 10),
-    topBuyCandidates: topBuyCandidates.slice(0, 5),
+    topBuyCandidates: topBuyCandidates
+      .sort((a, b) => (b.buyScore ?? 0) - (a.buyScore ?? 0))  // buyScore 높은 순 정렬
+      .slice(0, 5),
     signalThreshold: effectiveSettings.signalThreshold,
     weakSignalThreshold: effectiveSettings.weakSignalThreshold,
     minConfidenceThreshold: effectiveSettings.minConfidenceThreshold,
