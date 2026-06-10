@@ -1180,9 +1180,27 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
           }
 
           // 포지션 사이즈 계산
-          const quantity = domesticRisk.calculatePositionSize(
+          let quantity = domesticRisk.calculatePositionSize(
             domesticPositions.accountBalance, finalSignal.price, finalSignal.confidence
           );
+
+          // TEST 모드에서는 항상 1주로 제한 (소액 주문 검증)
+          if (effectiveSettings.strategyAggressiveness === 'TEST') {
+            quantity = 1;
+          }
+
+          // 주문금액이 maxDomesticOrderAmount 초과 시 1주도 안 되면 건너뛰고 다음 후보로
+          const estimatedAmount = finalSignal.price * quantity;
+          if (estimatedAmount > effectiveSettings.maxDomesticOrderAmount) {
+            signalsBlockedReasons.push(`${stock.name}: 주문금액 초과 (${estimatedAmount.toLocaleString()} > ${effectiveSettings.maxDomesticOrderAmount.toLocaleString()})`);
+            const candidate = topBuyCandidates.find(c => c.stockCode === stock.code);
+            if (candidate) candidate.blockedReason = `주문금액 초과: ${estimatedAmount.toLocaleString()} > ${effectiveSettings.maxDomesticOrderAmount.toLocaleString()}`;
+            addLog('RISK', 'DOMESTIC',
+              `${stock.name} 주문금액 초과 — 다음 후보로 이동: ${quantity}주 × ${finalSignal.price}원 = ${estimatedAmount.toLocaleString()} > 최대 ${effectiveSettings.maxDomesticOrderAmount.toLocaleString()}`,
+              { estimatedAmount, maxDomesticOrderAmount: effectiveSettings.maxDomesticOrderAmount, quantity, price: finalSignal.price }
+            );
+            continue;  // 다음 후보 시도
+          }
 
           // 주문 실행
           const result = await executeOrder(kisClient, { ...finalSignal, price: finalSignal.price }, 'DOMESTIC', effectiveSettings, undefined, quantity);

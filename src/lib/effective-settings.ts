@@ -126,9 +126,9 @@ const DEFAULT_SETTINGS: EffectiveTradingSettings = {
   allowRealDomesticOrder: false,
   allowRealOverseasOrder: false,
   killSwitchEnabled: false,
-  maxDomesticOrderAmount: 100000,    // KRW 10만원
+  maxDomesticOrderAmount: 500000,    // KRW 50만원 (TEST/PAPER 모드 최소 주문 가능)
   maxOverseasOrderAmount: 100,       // USD 100달러
-  maxDailyDomesticOrders: 1,
+  maxDailyDomesticOrders: 3,        // TEST 모드에서 후보 시도 가능하도록 3건 허용
   maxDailyOverseasOrders: 1,
   maxOpenDomesticPositions: 1,
   maxOpenOverseasPositions: 1,
@@ -643,8 +643,16 @@ export function validateOrderExecution(
 
   // 7. 주문금액 한도
   if (estimatedOrderAmount > maxOrderAmount) {
-    result.blockedReason = `주문금액 초과: ${estimatedOrderAmount.toLocaleString()} > ${maxOrderAmount.toLocaleString()}`;
-    return result;
+    // TEST+PAPER 모드에서는 1주 금액이 maxOrderAmount 이하면 허용 (수량은 호출 측에서 1로 제한됨)
+    const oneShareAmount = signalPrice * 1;
+    const isTestPaper = settings.strategyAggressiveness === 'TEST' && settings.orderExecutionMode === 'PAPER';
+    if (isTestPaper && oneShareAmount <= maxOrderAmount && quantity > 1) {
+      // 1주로 자동 조정은 호출 측에서 처리하므로 여기서는 통과시킴
+      console.warn(`[OrderValidation] TEST+PAPER: 수량 자동 조정 ${quantity}→1 (1주금액=${oneShareAmount.toLocaleString()}, 최대=${maxOrderAmount.toLocaleString()})`);
+    } else {
+      result.blockedReason = `주문금액 초과: ${estimatedOrderAmount.toLocaleString()} > ${maxOrderAmount.toLocaleString()}`;
+      return result;
+    }
   }
 
   // 8. 일일 주문 건수 한도
