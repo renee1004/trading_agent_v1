@@ -22,9 +22,9 @@ export async function POST() {
     console.log('[TestMode] Prisma 연결 상태:', connected);
 
     // ═══════════════════════════════════════════════════════
-    // STEP 1: override 키에 strategyAggressiveness='TEST' 저장
+    // STEP 1: override 키에 strategyAggressiveness='PIPELINE_TEST' 저장
     // ═══════════════════════════════════════════════════════
-    const overrideSaved = await setAppSetting(OVERRIDE_KEY, { strategyAggressiveness: 'TEST' });
+    const overrideSaved = await setAppSetting(OVERRIDE_KEY, { strategyAggressiveness: 'PIPELINE_TEST' });
     console.log('[TestMode] STEP 1 - override 키 저장:', overrideSaved ? '성공' : '실패');
 
     // 검증
@@ -32,7 +32,7 @@ export async function POST() {
     const overrideRecord = await getAppSetting(OVERRIDE_KEY);
     if (overrideRecord?.value && typeof overrideRecord.value === 'object') {
       const val = (overrideRecord.value as Record<string, unknown>).strategyAggressiveness;
-      overrideVerified = val === 'TEST';
+      overrideVerified = val === 'PIPELINE_TEST';
       console.log('[TestMode] STEP 1 검증:', { val, overrideVerified });
     }
 

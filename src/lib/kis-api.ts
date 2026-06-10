@@ -167,9 +167,10 @@ class KisApiThrottler {
 }
 
 // 전역 KIS API 스로틀러 인스턴스 (모든 KisApiClient가 공유)
-// KIS 모의투자 서버는 초당 5건 제한 → 600ms 간격으로 안전 마진 확보
+// KIS 모의투자 서버는 초당 5건 제한 → 400ms 간격으로 안전 마진 확보
+// 주문/잔고조회(HIGH) 요청 사이에 최소 400~500ms delay 보장
 const kisThrottler = new KisApiThrottler(
-  Number(process.env.KIS_THROTTLE_MS) || 600
+  Number(process.env.KIS_THROTTLE_MS) || 400
 );
 
 /**

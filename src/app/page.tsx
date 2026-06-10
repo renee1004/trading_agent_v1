@@ -2758,12 +2758,13 @@ export default function TradingDashboard() {
 
                 {/* ── 공격성 선택 (개별) ── */}
                 <div>
-                  <p className="text-xs font-semibold text-muted-foreground mb-2">전략 공격성 개별 선택</p>
-                  <div className="grid gap-3 grid-cols-1 sm:grid-cols-3">
+                  <p className="text-xs font-semibold text-muted-foreground mb-2">전략 공격성 선택</p>
+                  <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
                     {([
-                      { value: 'CONSERVATIVE', label: '보수', desc: '신호 ≥60, 신뢰도 ≥50%', color: 'emerald', note: 'LIVE/REAL 강제' },
-                      { value: 'TEST', label: '테스트', desc: '신호 ≥30, 신뢰도 ≥30%', color: 'amber', note: 'PAPER 모의투자용' },
-                      { value: 'AGGRESSIVE', label: '공격', desc: '신호 ≥25, 신뢰도 ≥25%', color: 'rose', note: '위험도 높음' },
+                      { value: 'CONSERVATIVE', label: '보수', desc: '신호 ≥60, 신뢰도 ≥50%', color: 'emerald', note: 'LIVE/REAL 강제', features: '고정% 손절/익절' },
+                      { value: 'PIPELINE_TEST', label: '파이프라인 테스트', desc: '신호 ≥30, 신뢰도 ≥30%', color: 'amber', note: 'PAPER 모의투자용', features: '1주 고정, 주문 파이프라인 검증' },
+                      { value: 'STRATEGY_TEST', label: '전략 테스트', desc: '신호 ≥30, 신뢰도 ≥30%', color: 'blue', note: 'PAPER 모의투자용', features: 'ATR 손절 + 분할 익절 + 지수 필터' },
+                      { value: 'AGGRESSIVE_STRATEGY', label: '공격 전략', desc: '신호 ≥25, 신뢰도 ≥25%', color: 'rose', note: '위험도 높음', features: 'ATR 손절 + 분할 익절 + 지수 필터' },
                     ] as const).map((mode) => {
                       const isActive = (agentStatus as any)?.effectiveSettings?.strategyAggressiveness === mode.value;
                       return (
@@ -2773,6 +2774,7 @@ export default function TradingDashboard() {
                             isActive
                               ? mode.color === 'emerald' ? 'border-emerald-500 bg-emerald-50/50'
                                 : mode.color === 'amber' ? 'border-amber-500 bg-amber-50/50'
+                                : mode.color === 'blue' ? 'border-blue-500 bg-blue-50/50'
                                 : 'border-rose-500 bg-rose-50/50'
                               : 'border-gray-200 hover:border-gray-300'
                           }`}
@@ -2789,8 +2791,9 @@ export default function TradingDashboard() {
                             }
                           }}
                         >
-                          <div className="font-semibold text-sm">{mode.label} 모드 {isActive ? '✓' : ''}</div>
+                          <div className="font-semibold text-sm">{mode.label} {isActive ? '✓' : ''}</div>
                           <div className="text-xs text-muted-foreground mt-1">{mode.desc}</div>
+                          <div className="text-xs mt-1 font-medium" style={{ color: mode.color === 'emerald' ? '#059669' : mode.color === 'amber' ? '#d97706' : mode.color === 'blue' ? '#2563eb' : '#e11d48' }}>{mode.features}</div>
                           <div className="text-xs mt-1 opacity-60">{mode.note}</div>
                         </button>
                       );
