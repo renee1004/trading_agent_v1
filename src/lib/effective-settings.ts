@@ -105,7 +105,7 @@ const DEFAULT_SETTINGS: EffectiveTradingSettings = {
   enableOverseasOrder: false,
   allowAfterHoursTrading: false,
   tradeOnlyMarketHours: true,
-  cycleIntervalMs: 60000,
+  cycleIntervalMs: 120000,
   domesticMarketOpen: '09:00',
   domesticMarketClose: '15:30',
   overseasMarketOpen: '23:30',

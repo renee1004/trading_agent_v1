@@ -167,7 +167,10 @@ class KisApiThrottler {
 }
 
 // 전역 KIS API 스로틀러 인스턴스 (모든 KisApiClient가 공유)
-const kisThrottler = new KisApiThrottler(500);
+// KIS 모의투자 서버는 초당 5건 제한 → 600ms 간격으로 안전 마진 확보
+const kisThrottler = new KisApiThrottler(
+  Number(process.env.KIS_THROTTLE_MS) || 600
+);
 
 /**
  * KIS API 호출 속도제한(EGW00201) 재시도 래퍼
@@ -611,6 +614,7 @@ export class KisApiClient {
       console.log(`[KIS API] placeOrder 코드 정규화: ${order.stockCode} → ${normalizedStockCode}`);
     }
 
+    return retryOnRateLimit(async () => {
     const token = await this.ensureToken();
     await kisThrottler.acquire('placeOrder', 'HIGH');
     const url = `${this.baseUrl}/uapi/domestic-stock/v1/trading/order-cash`;
@@ -676,6 +680,7 @@ export class KisApiClient {
       rt_cd: result.rt_cd,
       msg_cd: result.msg_cd,
     };
+    }, 'placeOrder');
   }
 
   async getAccountBalance(): Promise<AccountBalance> {
@@ -1637,6 +1642,7 @@ export class KisApiClient {
   }
 
   async placeOverseasOrder(order: OrderRequest): Promise<OrderResponse> {
+    return retryOnRateLimit(async () => {
     const token = await this.ensureToken();
     await kisThrottler.acquire('placeOverseasOrder', 'HIGH');
     const url = `${this.baseUrl}/uapi/overseas-stock/v1/trading/order`;
@@ -1698,6 +1704,7 @@ export class KisApiClient {
       rt_cd: result.rt_cd,
       msg_cd: result.msg_cd,
     };
+    }, 'placeOverseasOrder');
   }
 
   async getOverseasAccountBalance(): Promise<{

@@ -230,3 +230,26 @@ Stage Summary:
 - HOLD logs now show: "ALL 최종 기준 미달: buyScore=X, sellScore=Y, required=Z(강한), W(약한)"
 - /api/agent/status topBuyCandidates now includes buyScore, sellScore, finalThreshold, holdReason
 - Files modified: trading-engine.ts, trading-agent.ts, types.ts
+
+---
+Task ID: 2
+Agent: main
+Task: Fix selectedStrategy=COMPOSITE not being used (hardcoded 'ALL'), fix COMPOSITE thresholds, add KIS throttle/retry, increase cycleIntervalMs
+
+Work Log:
+- Found root cause: trading-agent.ts had `strategy='ALL'` hardcoded in both domestic (line 1066) and overseas (line 1354) TradingEngine.analyze() calls, ignoring effectiveSettings.selectedStrategy
+- Changed both calls to use `effectiveSettings.selectedStrategy || 'ALL'`
+- Fixed analyzeComposite() gap thresholds: strong signal gap from 20→15, weak signal gap from 0→5 (matching user's TEST mode spec)
+- Added holdReason, buyScore, sellScore, finalThreshold to analyzeComposite() return object
+- Added retryOnRateLimit wrapper to placeOrder() and placeOverseasOrder() (previously only balance queries had it)
+- Increased KIS throttler interval from 500ms→600ms (KIS allows 5/sec, 200ms margin)
+- Made throttler interval configurable via KIS_THROTTLE_MS env var
+- Changed cycleIntervalMs default from 60000→120000 in effective-settings.ts and agent-scheduler.ts
+- Build passed successfully
+
+Stage Summary:
+- Core fix: selectedStrategy=COMPOSITE now actually calls analyzeComposite() instead of analyzeAllStrategies()
+- TEST mode with COMPOSITE: buyScore=39.75 → strong BUY (>=30, >sellScore+15)
+- KIS rate limit protection: retryOnRateLimit on all order + balance methods, 600ms throttle
+- cycleIntervalMs=120000 (2 min cycles) reduces API call density
+- Files modified: trading-agent.ts, trading-engine.ts, kis-api.ts, effective-settings.ts, agent-scheduler.ts

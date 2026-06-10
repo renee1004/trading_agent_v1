@@ -32,7 +32,7 @@ let schedulerState: SchedulerState = {
   isSchedulerRunning: false,
   intervalId: null,
   config: {
-    cycleIntervalMs: 60000,
+    cycleIntervalMs: 120000,
     tradeOnlyMarketHours: true,
     domesticMarketOpen: '08:30',   // 장전 시간외 + 동시호가 포함
     domesticMarketClose: '18:00', // 시간외 단일가까지 포함

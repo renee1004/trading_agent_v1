@@ -1062,8 +1062,9 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
       stocksAnalyzed++;
 
       // 전략 분석 (strategyAggressiveness 기반 동적 임계값 적용)
+      // selectedStrategy(COMPOSITE/ALL 등)를 실제로 반영 — 'ALL' 하드코딩 제거
       const signal = TradingEngine.analyze(
-        candles, stock.code, stock.name, 'ALL', 'DOMESTIC',
+        candles, stock.code, stock.name, effectiveSettings.selectedStrategy || 'ALL', 'DOMESTIC',
         {}, // userParams
         effectiveSettings.signalThreshold,
         effectiveSettings.weakSignalThreshold,
@@ -1350,8 +1351,9 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
         }
 
         // 전략 분석 (strategyAggressiveness 기반 동적 임계값 적용)
+        // selectedStrategy(COMPOSITE/ALL 등)를 실제로 반영 — 'ALL' 하드코딩 제거
         const signal = TradingEngine.analyze(
-          candles, stock.code, stock.name, 'ALL', 'OVERSEAS',
+          candles, stock.code, stock.name, effectiveSettings.selectedStrategy || 'ALL', 'OVERSEAS',
           {}, // userParams
           effectiveSettings.signalThreshold,
           effectiveSettings.weakSignalThreshold,

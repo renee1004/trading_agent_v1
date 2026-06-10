@@ -243,25 +243,37 @@ export class TradingEngine {
     }
 
     // 신호 결정 (strategyAggressiveness 기반 동적 임계값)
+    // 강한 신호: signalThreshold + 격차 15점 이상 우위
+    // 약한 신호: weakSignalThreshold + 격차 5점 이상 우위
     const totalScore = Math.max(buyScore, sellScore);
     let signalType: 'BUY' | 'SELL' | 'HOLD';
     let confidence: number;
+    let holdReason: string | undefined;
 
-    if (buyScore >= signalThreshold && buyScore > sellScore + 20) {
+    if (buyScore >= signalThreshold && buyScore > sellScore + 15) {
       signalType = 'BUY';
       confidence = Math.min(95, buyScore);
-    } else if (sellScore >= signalThreshold && sellScore > buyScore + 20) {
+    } else if (sellScore >= signalThreshold && sellScore > buyScore + 15) {
       signalType = 'SELL';
       confidence = Math.min(95, sellScore);
-    } else if (buyScore > sellScore && buyScore >= weakSignalThreshold) {
+    } else if (buyScore > sellScore + 5 && buyScore >= weakSignalThreshold) {
       signalType = 'BUY';
       confidence = Math.min(70, buyScore);
-    } else if (sellScore > buyScore && sellScore >= weakSignalThreshold) {
+    } else if (sellScore > buyScore + 5 && sellScore >= weakSignalThreshold) {
       signalType = 'SELL';
       confidence = Math.min(70, sellScore);
     } else {
       signalType = 'HOLD';
       confidence = Math.max(buyScore, sellScore);
+
+      // holdReason 상세 진단
+      if (buyScore > sellScore) {
+        holdReason = `COMPOSITE 기준 미달: buyScore=${buyScore.toFixed(2)}, sellScore=${sellScore.toFixed(2)}, required=${signalThreshold}(강한), ${weakSignalThreshold}(약한), 격차=+${(buyScore - sellScore).toFixed(2)} (강한=15, 약한=5 필요)`;
+      } else if (sellScore > buyScore) {
+        holdReason = `COMPOSITE 기준 미달: sellScore=${sellScore.toFixed(2)}, buyScore=${buyScore.toFixed(2)}, required=${signalThreshold}(강한), ${weakSignalThreshold}(약한)`;
+      } else {
+        holdReason = `COMPOSITE 매수/매도 균형: buyScore=${buyScore.toFixed(2)} = sellScore=${sellScore.toFixed(2)}, 방향성 없음`;
+      }
     }
 
     const reason = reasons.length > 0 
@@ -276,6 +288,10 @@ export class TradingEngine {
       confidence,
       price: lastClose,
       reason,
+      holdReason,
+      buyScore: Math.round(buyScore * 100) / 100,
+      sellScore: Math.round(sellScore * 100) / 100,
+      finalThreshold: signalThreshold,
       indicators: indicatorValues,
       timestamp: new Date(),
     };
