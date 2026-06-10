@@ -253,3 +253,23 @@ Stage Summary:
 - KIS rate limit protection: retryOnRateLimit on all order + balance methods, 600ms throttle
 - cycleIntervalMs=120000 (2 min cycles) reduces API call density
 - Files modified: trading-agent.ts, trading-engine.ts, kis-api.ts, effective-settings.ts, agent-scheduler.ts
+
+---
+Task ID: 3
+Agent: main
+Task: Fix maxDomesticOrderAmount blocking orders in TEST/PAPER mode, add fallback to next candidate
+
+Work Log:
+- Changed maxDomesticOrderAmount default: 100000 → 500000 (KRW 50만원)
+- Changed maxDailyDomesticOrders default: 1 → 3 (allows trying multiple candidates)
+- Added maxDomesticOrderAmount=500000 and maxDailyDomesticOrders=3 to test-mode POST API
+- Added TEST mode quantity limit: always 1 share (소액 주문 검증)
+- Added pre-order estimatedAmount check: if 1 share still exceeds maxDomesticOrderAmount, skip and try next candidate (continue)
+- Added TEST+PAPER special case in validateOrderExecution: if 1주 금액 ≤ maxOrderAmount and quantity > 1, allow through (quantity already limited to 1 by caller)
+- Build passed, pushed to GitHub (5d5404f)
+
+Stage Summary:
+- maxDomesticOrderAmount=500000 allows most Korean stocks at 1 share
+- TEST mode forces quantity=1, so 삼성전자우(191,200원), SK하이닉스(207,500원) etc. are all under 500K
+- If even 1 share exceeds 500K (e.g. high-price stocks), the system skips to next candidate
+- test-mode POST now saves these limits to DB for persistence
