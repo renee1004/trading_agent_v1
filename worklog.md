@@ -273,3 +273,32 @@ Stage Summary:
 - TEST mode forces quantity=1, so 삼성전자우(191,200원), SK하이닉스(207,500원) etc. are all under 500K
 - If even 1 share exceeds 500K (e.g. high-price stocks), the system skips to next candidate
 - test-mode POST now saves these limits to DB for persistence
+
+---
+Task ID: 4
+Agent: main
+Task: Implement v2 strategy system - ATR stops, risk-based sizing, partial exits, new modes
+
+Work Log:
+- Added 4 new StrategyAggressiveness modes: CONSERVATIVE, PIPELINE_TEST, STRATEGY_TEST, AGGRESSIVE_STRATEGY
+- Auto-migration: existing TEST→PIPELINE_TEST, AGGRESSIVE→AGGRESSIVE_STRATEGY
+- Each mode has: signalThreshold, weakSignalThreshold, minConfidence, accountRiskPercent, useATRStop, partialTakeProfit, indexFilter
+- RiskManager: SELL signals now verify stock is held (unheld SELL = avoidance signal only)
+- RiskManager: ATR-based position sizing (riskAmount / stopDistance where stopDistance = ATR × 1.5)
+- RiskManager: calculateATRStopLoss() method added
+- RiskManager: checkPositionExit() now supports partial exits (+2% 30%, +4% 30%, rest trailing stop)
+- PIPELINE_TEST: always 1 share, basic stops
+- STRATEGY_TEST: ATR stops, partial exits, index filter, 0.5% account risk
+- AGGRESSIVE_STRATEGY: same as STRATEGY_TEST but lower thresholds (signal ≥25)
+- Position model: added highSinceEntry, stopLossPrice, takeProfitPrice, trailingStopPrice, entryATR, partialExitCount, realizedPnL
+- Updated test-mode API: strategyAggressiveness='PIPELINE_TEST'
+- Updated all TEST/AGGRESSIVE references across codebase
+- Prisma schema pushed (will auto-migrate on Railway)
+- Build passed, pushed to GitHub (7248129)
+
+Stage Summary:
+- 4 aggressiveness modes with progressive features
+- SELL-only-for-held-positions implemented
+- ATR-based stop loss and position sizing
+- Partial take-profit (2%/4% milestones + trailing)
+- DB Position model extended with exit management fields
