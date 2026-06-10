@@ -3301,11 +3301,22 @@ export default function TradingDashboard() {
                         <Switch
                           checked={strategy.isActive}
                           onCheckedChange={async (checked) => {
-                            await fetch('/api/strategy/list', {
-                              method: 'PUT',
-                              headers: { 'Content-Type': 'application/json' },
-                              body: JSON.stringify({ id: strategy.id, isActive: checked }),
-                            });
+                            // 낙관적 UI 업데이트: 즉시 화면에 반영
+                            setStrategies(prev => prev.map(s =>
+                              s.id === strategy.id ? { ...s, isActive: checked } : s
+                            ));
+                            try {
+                              await fetch('/api/strategy/list', {
+                                method: 'PUT',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ id: strategy.id, isActive: checked }),
+                              });
+                            } catch {
+                              // 실패 시 원래 상태로 복구
+                              setStrategies(prev => prev.map(s =>
+                                s.id === strategy.id ? { ...s, isActive: !checked } : s
+                              ));
+                            }
                             loadDashboardData();
                           }}
                         />

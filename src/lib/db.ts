@@ -45,7 +45,7 @@ function createInMemoryDb() {
   // 기본값 설정
   function applyDefaults(modelName: string, record: any): void {
     if (record.isActive === undefined && ['WatchlistItem', 'RiskConfig'].includes(modelName)) record.isActive = true;
-    if (record.isActive === undefined && modelName === 'TradingStrategy') record.isActive = false;
+    if (record.isActive === undefined && modelName === 'TradingStrategy') record.isActive = true;
     if (record.market === undefined && modelName === 'WatchlistItem') record.market = 'DOMESTIC';
     if (record.isDemo === undefined && modelName === 'KisConfig') record.isDemo = true;
     if (record.isRunning === undefined && modelName === 'AgentConfig') record.isRunning = false;
