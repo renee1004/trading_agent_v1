@@ -56,8 +56,8 @@ export async function POST() {
       killSwitchEnabled: false,
       allowRealDomesticOrder: false,
       allowRealOverseasOrder: false,
-      maxDomesticOrderAmount: 500000,     // KRW 50만원 — TEST 모드에서 소액 주문 가능
-      maxDailyDomesticOrders: 3,          // 후보 시도 허용
+      maxDomesticOrderAmount: 1000000,    // KRW 100만원 — TEST 모드에서 소액 주문 가능
+      maxDailyDomesticOrders: 5,          // 후보 시도 허용
     };
 
     // 계산값 제거

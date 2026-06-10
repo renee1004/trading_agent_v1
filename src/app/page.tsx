@@ -2639,18 +2639,19 @@ export default function TradingDashboard() {
                       className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors disabled:opacity-50"
                       onClick={async () => {
                         try {
-                          const res = await fetch('/api/settings/trading/test-mode', {
+                          const res = await fetch('/api/settings/trading/mode', {
                             method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ mode: 'PIPELINE_TEST' }),
                           });
                           const data = await res.json();
                           if (data.verified) {
-                            console.log('[TestMode] 전환 성공 ✓', data.message);
-                            alert('TEST 모드 전환 성공! ✓\nsignalThreshold=30, minConfidence=30%');
+                            console.log('[ModeSwitch] PIPELINE_TEST 전환 성공 ✓', data.message);
+                            alert('PIPELINE_TEST 모드 전환 성공! ✓\nsignalThreshold=30, useATRStop=false');
                           } else {
-                            console.error('[TestMode] 전환 검증 실패!', data);
-                            alert(`TEST 모드 전환 검증 실패!\nstrategyAggressiveness=${data.data?.strategyAggressiveness}\nsignalThreshold=${data.data?.signalThreshold}\nsource=${data.sources?.strategyAggressiveness}\n\n디버그: override=${data.debug?.overrideVerified}, main=${data.debug?.mainVerified}`);
+                            console.error('[ModeSwitch] 전환 검증 실패!', data);
+                            alert(`PIPELINE_TEST 모드 전환 검증 실패!\n${data.message}`);
                           }
-                          // 반드시 상태 재조회
                           await loadAgentStatus();
                           await loadSettingsFromServer();
                         } catch (e) {
@@ -2659,7 +2660,34 @@ export default function TradingDashboard() {
                         }
                       }}
                     >
-                      PAPER + 테스트 모드로 전환
+                      PAPER + 파이프라인 테스트
+                    </button>
+                    <button
+                      className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 transition-colors disabled:opacity-50"
+                      onClick={async () => {
+                        try {
+                          const res = await fetch('/api/settings/trading/mode', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ mode: 'STRATEGY_TEST' }),
+                          });
+                          const data = await res.json();
+                          if (data.verified) {
+                            console.log('[ModeSwitch] STRATEGY_TEST 전환 성공 ✓', data.message);
+                            alert('STRATEGY_TEST 모드 전환 성공! ✓\nATR 손절 + 분할 익절 + 지수 필터 활성화');
+                          } else {
+                            console.error('[ModeSwitch] 전환 검증 실패!', data);
+                            alert(`STRATEGY_TEST 모드 전환 검증 실패!\n${data.message}`);
+                          }
+                          await loadAgentStatus();
+                          await loadSettingsFromServer();
+                        } catch (e) {
+                          console.error('STRATEGY_TEST 모드 전환 실패:', e);
+                          alert('STRATEGY_TEST 모드 전환 실패: ' + (e instanceof Error ? e.message : '네트워크 오류'));
+                        }
+                      }}
+                    >
+                      PAPER + 전략 테스트
                     </button>
                     <button
                       className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
@@ -2780,12 +2808,18 @@ export default function TradingDashboard() {
                           }`}
                           onClick={async () => {
                             try {
-                              await fetch('/api/settings/trading', {
+                              // /api/settings/trading/mode 사용: override 키 + 메인 설정 동시 업데이트
+                              const res = await fetch('/api/settings/trading/mode', {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ strategyAggressiveness: mode.value }),
+                                body: JSON.stringify({ mode: mode.value }),
                               });
+                              const data = await res.json();
+                              if (!data.verified) {
+                                console.error('[ModeSwitch] 검증 실패:', data.message);
+                              }
                               await loadAgentStatus();
+                              await loadSettingsFromServer();
                             } catch (e) {
                               console.error('전략 공격성 변경 실패:', e);
                             }

@@ -161,11 +161,11 @@ const DEFAULT_SETTINGS: EffectiveTradingSettings = {
   allowRealDomesticOrder: false,
   allowRealOverseasOrder: false,
   killSwitchEnabled: false,
-  maxDomesticOrderAmount: 500000,    // KRW 50만원 (TEST/PAPER 모드 최소 주문 가능)
-  maxOverseasOrderAmount: 100,       // USD 100달러
-  maxDailyDomesticOrders: 3,        // TEST 모드에서 후보 시도 가능하도록 3건 허용
-  maxDailyOverseasOrders: 1,
-  maxOpenDomesticPositions: 1,
+  maxDomesticOrderAmount: 1000000,   // KRW 100만원 (1일 매수 금액한도)
+  maxOverseasOrderAmount: 500,       // USD 500달러
+  maxDailyDomesticOrders: 5,         // 일일 최대 5건
+  maxDailyOverseasOrders: 3,
+  maxOpenDomesticPositions: 3,
   maxOpenOverseasPositions: 1,
 
   // 전략 공격성 기본값

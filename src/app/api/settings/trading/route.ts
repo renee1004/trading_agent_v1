@@ -20,7 +20,7 @@ const DEFAULT_SETTINGS: EffectiveTradingSettings = {
   enableOverseasOrder: false,
   allowAfterHoursTrading: false,
   tradeOnlyMarketHours: true,
-  cycleIntervalMs: 60000,
+  cycleIntervalMs: 120000,
   domesticMarketOpen: '09:00',
   domesticMarketClose: '15:30',
   overseasMarketOpen: '23:30',
@@ -40,17 +40,22 @@ const DEFAULT_SETTINGS: EffectiveTradingSettings = {
   allowRealDomesticOrder: false,
   allowRealOverseasOrder: false,
   killSwitchEnabled: false,
-  maxDomesticOrderAmount: 100000,
-  maxOverseasOrderAmount: 100,
-  maxDailyDomesticOrders: 1,
-  maxDailyOverseasOrders: 1,
-  maxOpenDomesticPositions: 1,
+  maxDomesticOrderAmount: 1000000,
+  maxOverseasOrderAmount: 500,
+  maxDailyDomesticOrders: 5,
+  maxDailyOverseasOrders: 3,
+  maxOpenDomesticPositions: 3,
   maxOpenOverseasPositions: 1,
   // 전략 공격성 기본값
   strategyAggressiveness: 'CONSERVATIVE',
   signalThreshold: 60,
   weakSignalThreshold: 40,
   minConfidenceThreshold: 50,
+  // 고급 전략 설정 (strategyAggressiveness에 의해 자동 설정)
+  accountRiskPercent: 0.3,
+  useATRStop: false,
+  partialTakeProfit: false,
+  indexFilter: false,
 };
 
 type SettingsKey = keyof typeof DEFAULT_SETTINGS;
