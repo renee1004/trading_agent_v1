@@ -1179,13 +1179,15 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
             continue;
           }
 
-          // 포지션 사이즈 계산
+          // 포지션 사이즈 계산 — v2: ATR 기반 리스크 사이징
+          const atrValue = finalSignal.indicators?.atr14 || finalSignal.indicators?.atr;
           let quantity = domesticRisk.calculatePositionSize(
-            domesticPositions.accountBalance, finalSignal.price, finalSignal.confidence
+            domesticPositions.accountBalance, finalSignal.price, finalSignal.confidence,
+            atrValue, effectiveSettings.accountRiskPercent, effectiveSettings.useATRStop,
           );
 
-          // TEST 모드에서는 항상 1주로 제한 (소액 주문 검증)
-          if (effectiveSettings.strategyAggressiveness === 'TEST') {
+          // PIPELINE_TEST 모드에서는 항상 1주로 제한
+          if (effectiveSettings.strategyAggressiveness === 'PIPELINE_TEST') {
             quantity = 1;
           }
 

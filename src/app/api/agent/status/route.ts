@@ -291,7 +291,7 @@ export async function GET() {
             ordersPlaced: agentStatus.lastCycleResult?.ordersPlaced ?? 0,
             // ── testModeApplied: PAPER+TEST가 올바르게 적용되었는지 ──
             testModeApplied: effectiveSettings.orderExecutionMode === 'PAPER'
-              && effectiveSettings.strategyAggressiveness === 'TEST',
+              && (effectiveSettings.strategyAggressiveness === 'PIPELINE_TEST' || effectiveSettings.strategyAggressiveness === 'STRATEGY_TEST'),
             // ── testModeApplied 상세 진단 ──
             testModeDiagnostics: {
               orderExecutionMode: effectiveSettings.orderExecutionMode,
@@ -300,10 +300,10 @@ export async function GET() {
               weakSignalThreshold: effectiveSettings.weakSignalThreshold,
               minConfidenceThreshold: effectiveSettings.minConfidenceThreshold,
               aggressivenessSource: settingsSources.strategyAggressiveness,
-              isTestMode: effectiveSettings.strategyAggressiveness === 'TEST',
+              isTestMode: effectiveSettings.strategyAggressiveness === 'PIPELINE_TEST' || effectiveSettings.strategyAggressiveness === 'STRATEGY_TEST',
               isPaperMode: effectiveSettings.orderExecutionMode === 'PAPER',
               isDemoMode: effectiveSettings.tradingMode === 'DEMO',
-              expectedThresholds: effectiveSettings.strategyAggressiveness === 'TEST'
+              expectedThresholds: (effectiveSettings.strategyAggressiveness === 'PIPELINE_TEST' || effectiveSettings.strategyAggressiveness === 'STRATEGY_TEST')
                 ? { signalThreshold: 30, weakSignalThreshold: 25, minConfidenceThreshold: 30 }
                 : null,
             },

@@ -78,20 +78,29 @@ model TradeHistory {
 }
 
 model Position {
-  id           String   @id @default(cuid())
-  stockCode    String
-  stockName    String
-  quantity     Int
-  avgPrice     Float
-  currentPrice Float?
-  profitLoss   Float?
-  profitRate   Float?
-  strategy     String?
-  market       String   @default("DOMESTIC") // DOMESTIC, OVERSEAS
-  exchangeCode String?  // NAS, NYS, AMS
-  currency     String   @default("KRW")
-  openedAt     DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id                String   @id @default(cuid())
+  stockCode         String
+  stockName         String
+  quantity          Int
+  avgPrice          Float
+  currentPrice      Float?
+  profitLoss        Float?
+  profitRate        Float?
+  strategy          String?
+  market            String   @default("DOMESTIC") // DOMESTIC, OVERSEAS
+  exchangeCode      String?  // NAS, NYS, AMS
+  currency          String   @default("KRW")
+  // ── 청산 관리 필드 ──
+  highSinceEntry    Float?   // 진입 후 최고가 (트레일링스탑용)
+  stopLossPrice     Float?   // 손절가
+  takeProfitPrice   Float?   // 익절가
+  trailingStopPrice Float?   // 트레일링스탑 현재 가격
+  entryATR          Float?   // 진입 시 ATR (ATR 기반 손절폭 계산용)
+  partialExitCount  Int      @default(0) // 분할 익절 횟수
+  // ── 성과 추적 ──
+  realizedPnL       Float?   // 분할 청산 실현 손익
+  openedAt          DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 }
 
 model TradingSession {

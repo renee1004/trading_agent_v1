@@ -1,6 +1,7 @@
 // 리스크 관리 모듈
 // 포지션 사이즈, 손절, 익절, 최대 손실 등 관리
 // 시장별(DOMESTIC/OVERSEAS) 차별화된 리스크 파라미터 적용
+// v2: ATR 기반 손절폭, 리스크 기반 포지션 사이즈, SELL 보유 확인, 분할 익절
 
 import { RiskConfig, TradingSignal, BalanceItem, MarketType } from './types';
 import { getMarketRiskConfig, OVERSEAS_RISK_DEFAULTS } from './market-defaults';
@@ -38,6 +39,7 @@ export class RiskManager {
 
   /**
    * 매매 가능 여부 확인
+   * v2: SELL 신호 시 보유 여부 확인 추가
    */
   canTrade(
     signal: TradingSignal,
@@ -62,7 +64,7 @@ export class RiskManager {
       };
     }
 
-    // 최대 포지션 수 체크
+    // 최대 포지션 수 체크 (BUY만)
     if (signal.signalType === 'BUY' && currentPositions.length >= this.config.maxOpenPositions) {
       return { 
         allowed: false, 
@@ -81,6 +83,17 @@ export class RiskManager {
       }
     }
 
+    // v2: SELL 신호 시 보유 확인 — 미보유 SELL은 주문 차단
+    if (signal.signalType === 'SELL') {
+      const heldPosition = currentPositions.find(p => p.stockCode === signal.stockCode);
+      if (!heldPosition) {
+        return {
+          allowed: false,
+          reason: `${signal.stockName} 미보유 — SELL 주문 불가 (매수 회피 신호로만 기록)`,
+        };
+      }
+    }
+
     // 신뢰도 필터 (strategyAggressiveness에 따른 동적 임계값)
     if (signal.confidence < this.minConfidenceThreshold) {
       return {
@@ -93,29 +106,80 @@ export class RiskManager {
   }
 
   /**
-   * 포지션 사이즈 계산 (Kelly Criterion 기반 보수적 적용)
-   * 해외주식: 환율 버퍼 차감 후 계산
+   * 포지션 사이즈 계산 — v2: ATR 기반 리스크 포지션 사이징
+   * 
+   * 기본 원리:
+   * - 1회 거래 허용 손실 = 계좌 평가금 × accountRiskPercent (0.3~0.5%)
+   * - 손절폭(stopDistance) = ATR × multiplier (변동성 기반) 또는 고정 %
+   * - 포지션 수량 = 허용 손실 / 손절폭
+   * 
+   * PIPELINE_TEST 모드에서는 항상 1주 반환
    */
   calculatePositionSize(
     accountBalance: number,
     price: number,
-    confidence: number
+    confidence: number,
+    atrValue?: number,
+    accountRiskPercent: number = 0.3,
+    useATRStop: boolean = false,
   ): number {
-    // 해외주식은 환율 버퍼만큼 포지션 축소
+    // PIPELINE_TEST: 항상 1주
+    if (accountRiskPercent <= 0.3 && !useATRStop) {
+      return 1;
+    }
+
+    // 1회 거래 허용 손실금액
+    const riskAmount = accountBalance * (accountRiskPercent / 100);
+
+    let stopDistance: number;
+
+    if (useATRStop && atrValue && atrValue > 0) {
+      // ATR 기반 손절폭: ATR × 1.5 (변동성에 적응)
+      stopDistance = atrValue * 1.5;
+    } else {
+      // 고정 % 기반 손절폭
+      const exchangeBuffer = this.market === 'OVERSEAS' 
+        ? OVERSEAS_RISK_DEFAULTS.exchangeRateBuffer 
+        : 0;
+      stopDistance = price * (this.config.stopLossPercent + exchangeBuffer);
+    }
+
+    // 손절폭이 최소 가격의 1% 이하면 안전 마진
+    stopDistance = Math.max(stopDistance, price * 0.01);
+
+    // 리스크 기반 수량 = 허용 손실 / 손절폭
+    const quantity = Math.floor(riskAmount / stopDistance);
+
+    // 최대 포지션 비율 제한 (계좌의 maxPositionSize% 이하)
     const exchangeBuffer = this.market === 'OVERSEAS' 
       ? OVERSEAS_RISK_DEFAULTS.exchangeRateBuffer 
       : 0;
     const effectiveBalance = accountBalance * (1 - exchangeBuffer);
-    
-    // 기본 포지션 비율 = 최대 포지션 비율 * 신뢰도 비율
     const maxAmount = effectiveBalance * this.config.maxPositionSize;
-    const confidenceFactor = confidence / 100;
-    const positionAmount = maxAmount * confidenceFactor;
-    
-    // 주식 수량 계산
-    const quantity = Math.floor(positionAmount / price);
-    
-    return Math.max(1, quantity);
+    const maxQuantityBySize = Math.floor(maxAmount / price);
+
+    // 신뢰도에 따른 축소 (보수적 조정)
+    const confidenceFactor = Math.min(confidence / 100, 1.0);
+    const adjustedMaxQuantity = Math.max(1, Math.floor(maxQuantityBySize * confidenceFactor));
+
+    // 리스크 기반 수량과 최대 비율 기반 수량 중 작은 값
+    const finalQuantity = Math.min(
+      Math.max(1, quantity),
+      adjustedMaxQuantity
+    );
+
+    return finalQuantity;
+  }
+
+  /**
+   * ATR 기반 손절가 계산
+   * stopLoss = entryPrice - ATR × multiplier
+   */
+  calculateATRStopLoss(entryPrice: number, atrValue: number, multiplier: number = 1.5): number {
+    if (!atrValue || atrValue <= 0) {
+      return this.calculateStopLoss(entryPrice);
+    }
+    return Math.floor(entryPrice - atrValue * multiplier);
   }
 
   /**
@@ -201,29 +265,65 @@ export class RiskManager {
   }
 
   /**
-   * 포지션 익절/손절 체크
+   * 포지션 익절/손절 체크 — v2: 분할 익절 + ATR 손절 + 트레일링스탑
+   * 
+   * 분할 익절 (partialTakeProfit 활성화 시):
+   * - +2% → 30% 익절 (1차)
+   * - +4% → 30% 익절 (2차)
+   * - 나머지 → 트레일링 스톱 (3%)
+   * 
+   * 손절:
+   * - ATR 모드: entryPrice - ATR×1.5
+   * - 기본: entryPrice × (1 - stopLossPercent)
    */
   checkPositionExit(
     position: BalanceItem,
     currentPrice: number,
     entryPrice: number,
     highSinceEntry: number,
-    strategy: string = 'default'
-  ): { shouldExit: boolean; reason: string; exitPrice: number } {
-    const stopLoss = this.calculateStopLoss(entryPrice, strategy);
-    const takeProfit = this.calculateTakeProfit(entryPrice, strategy);
-    const trailingStop = this.calculateTrailingStop(entryPrice, highSinceEntry, strategy);
+    strategy: string = 'default',
+    partialExitCount: number = 0,
+    partialTakeProfit: boolean = false,
+    atrValue?: number,
+    useATRStop: boolean = false,
+  ): { shouldExit: boolean; reason: string; exitPrice: number; exitQuantity?: number } {
+    // 손절가 계산 (ATR 또는 고정%)
+    const stopLoss = useATRStop && atrValue && atrValue > 0
+      ? this.calculateATRStopLoss(entryPrice, atrValue)
+      : this.calculateStopLoss(entryPrice, strategy);
 
+    // 손절 체크 — 무조건 전량 청산
     if (currentPrice <= stopLoss) {
-      return { shouldExit: true, reason: '손절가 도달', exitPrice: currentPrice };
+      return { shouldExit: true, reason: `손절가 도달 (${currentPrice} ≤ ${stopLoss})`, exitPrice: currentPrice };
     }
 
-    if (currentPrice >= takeProfit) {
-      return { shouldExit: true, reason: '익절가 도달', exitPrice: currentPrice };
-    }
+    const profitRate = (currentPrice - entryPrice) / entryPrice;
 
-    if (currentPrice <= trailingStop && highSinceEntry > entryPrice * 1.05) {
-      return { shouldExit: true, reason: '트레일링 스톱', exitPrice: currentPrice };
+    // 분할 익절 모드
+    if (partialTakeProfit) {
+      // 1차 익절: +2% → 30% 포지션 청산
+      if (profitRate >= 0.02 && partialExitCount === 0) {
+        return { shouldExit: true, reason: `1차 익절 (+${(profitRate * 100).toFixed(1)}%)`, exitPrice: currentPrice, exitQuantity: Math.max(1, Math.ceil(position.quantity * 0.3)) };
+      }
+      // 2차 익절: +4% → 30% 포지션 청산
+      if (profitRate >= 0.04 && partialExitCount === 1) {
+        return { shouldExit: true, reason: `2차 익절 (+${(profitRate * 100).toFixed(1)}%)`, exitPrice: currentPrice, exitQuantity: Math.max(1, Math.ceil(position.quantity * 0.3)) };
+      }
+      // 이후 트레일링 스톱
+      const trailingStop = this.calculateTrailingStop(entryPrice, highSinceEntry, strategy);
+      if (currentPrice <= trailingStop && highSinceEntry > entryPrice * 1.02) {
+        return { shouldExit: true, reason: `트레일링 스톱 (고점 대비 -${((1 - currentPrice / highSinceEntry) * 100).toFixed(1)}%)`, exitPrice: currentPrice };
+      }
+    } else {
+      // 기존 단일 익절 모드
+      const takeProfit = this.calculateTakeProfit(entryPrice, strategy);
+      if (currentPrice >= takeProfit) {
+        return { shouldExit: true, reason: '익절가 도달', exitPrice: currentPrice };
+      }
+      const trailingStop = this.calculateTrailingStop(entryPrice, highSinceEntry, strategy);
+      if (currentPrice <= trailingStop && highSinceEntry > entryPrice * 1.05) {
+        return { shouldExit: true, reason: '트레일링 스톱', exitPrice: currentPrice };
+      }
     }
 
     return { shouldExit: false, reason: '', exitPrice: 0 };

@@ -51,7 +51,7 @@ export async function POST() {
       ...existingValue,
       tradingMode: 'DEMO',
       orderExecutionMode: 'PAPER',
-      strategyAggressiveness: 'TEST',
+      strategyAggressiveness: 'PIPELINE_TEST',
       autoDomesticOrderEnabled: true,
       killSwitchEnabled: false,
       allowRealDomesticOrder: false,
@@ -66,9 +66,9 @@ export async function POST() {
     delete mergedValue.minConfidenceThreshold;
 
     // 최종 확인
-    if (mergedValue.strategyAggressiveness !== 'TEST') {
-      console.error('[TestMode] BUG: 병합 후 strategyAggressiveness가 TEST가 아님!', mergedValue.strategyAggressiveness);
-      mergedValue.strategyAggressiveness = 'TEST';
+    if (mergedValue.strategyAggressiveness !== 'PIPELINE_TEST') {
+      console.error('[TestMode] BUG: 병합 후 strategyAggressiveness가 PIPELINE_TEST가 아님!', mergedValue.strategyAggressiveness);
+      mergedValue.strategyAggressiveness = 'PIPELINE_TEST';
     }
 
     const mainSaved = await setAppSetting(SETTINGS_DB_KEY, mergedValue);
@@ -82,14 +82,14 @@ export async function POST() {
       const record = await getAppSetting(SETTINGS_DB_KEY);
       if (record?.value && typeof record.value === 'object') {
         const val = (record.value as Record<string, unknown>).strategyAggressiveness;
-        mainVerified = val === 'TEST';
+        mainVerified = val === 'PIPELINE_TEST';
         console.log(`[TestMode] STEP 3 - 검증 ${attempt}/3:`, { strategyAggressiveness: val, verified: mainVerified });
       }
       if (mainVerified) break;
 
       // 재시도
       if (attempt < 3) {
-        await setAppSetting(SETTINGS_DB_KEY, { ...mergedValue, strategyAggressiveness: 'TEST' });
+        await setAppSetting(SETTINGS_DB_KEY, { ...mergedValue, strategyAggressiveness: 'PIPELINE_TEST' });
       }
     }
 
@@ -98,7 +98,7 @@ export async function POST() {
     // ═══════════════════════════════════════════════════════
     const { settings: effectiveResult, source: resultSource, sources: resultSources } = await getEffectiveTradingSettings();
 
-    const effectiveVerified = effectiveResult.strategyAggressiveness === 'TEST'
+    const effectiveVerified = effectiveResult.strategyAggressiveness === 'PIPELINE_TEST'
       && effectiveResult.orderExecutionMode === 'PAPER'
       && effectiveResult.signalThreshold === 30
       && effectiveResult.minConfidenceThreshold === 30;
@@ -138,7 +138,7 @@ export async function POST() {
         sourcesStrategyAggressiveness: resultSources.strategyAggressiveness,
       },
       message: effectiveVerified
-        ? 'TEST 모드 전환 완료 ✓ signalThreshold=30, minConfidence=30'
+        ? 'PIPELINE_TEST 모드 전환 완료 ✓ signalThreshold=30, minConfidence=30'
         : `검증 실패: aggressiveness=${effectiveResult.strategyAggressiveness}, threshold=${effectiveResult.signalThreshold}, source=${resultSources.strategyAggressiveness}`,
     });
   } catch (error) {

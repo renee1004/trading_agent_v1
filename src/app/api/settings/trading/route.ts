@@ -140,7 +140,7 @@ export async function POST(request: NextRequest) {
 
     // ── strategyAggressiveness 화이트리스트 검증 ──
     // orderExecutionMode와 동일하게 유효값이 아니면 기본값(CONSERVATIVE)으로 복구
-    const validAggressiveness = ['CONSERVATIVE', 'TEST', 'AGGRESSIVE'];
+    const validAggressiveness = ['CONSERVATIVE', 'PIPELINE_TEST', 'STRATEGY_TEST', 'AGGRESSIVE_STRATEGY'];
     if (safetyChecked.strategyAggressiveness && !validAggressiveness.includes(safetyChecked.strategyAggressiveness)) {
       console.warn('[Settings] strategyAggressiveness 무효값, CONSERVATIVE로 복구:', safetyChecked.strategyAggressiveness);
       safetyChecked.strategyAggressiveness = 'CONSERVATIVE';

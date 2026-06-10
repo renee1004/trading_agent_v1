@@ -15,7 +15,7 @@ import { isOverseasMarketOpen, getOverseasBlockedReason } from './market-hours';
 // =============================================
 // 설정 인터페이스 + 안전 기본값
 // =============================================
-export type StrategyAggressiveness = 'CONSERVATIVE' | 'TEST' | 'AGGRESSIVE';
+export type StrategyAggressiveness = 'CONSERVATIVE' | 'PIPELINE_TEST' | 'STRATEGY_TEST' | 'AGGRESSIVE_STRATEGY';
 
 /**
  * strategyAggressiveness에 따른 임계값 매핑
@@ -29,21 +29,51 @@ export const AGGRESSIVENESS_THRESHOLDS: Record<StrategyAggressiveness, {
   signalThreshold: number;       // TradingEngine BUY 신호 최소 buyScore
   weakSignalThreshold: number;   // 약한 BUY 신호 최소 buyScore
   minConfidence: number;         // RiskManager 최소 신뢰도(%)
+  accountRiskPercent: number;    // 1회 거래 허용 손실 (계좌 기준 %)
+  useATRStop: boolean;           // ATR 기반 손절폭 사용 여부
+  partialTakeProfit: boolean;    // 분할 익절 사용 여부
+  indexFilter: boolean;          // 지수 방향성 필터 사용 여부
+  description: string;
 }> = {
   CONSERVATIVE: {
     signalThreshold: 60,
     weakSignalThreshold: 40,
     minConfidence: 50,
+    accountRiskPercent: 0.3,     // 계좌의 0.3%
+    useATRStop: false,
+    partialTakeProfit: false,
+    indexFilter: false,
+    description: '보수 모드 — 기존 고정% 손절/익절',
   },
-  TEST: {
+  PIPELINE_TEST: {
     signalThreshold: 30,
     weakSignalThreshold: 25,
     minConfidence: 30,
+    accountRiskPercent: 0.3,
+    useATRStop: false,
+    partialTakeProfit: false,
+    indexFilter: false,
+    description: '파이프라인 검증 — 주문 1건 접수 테스트 (1주 고정)',
   },
-  AGGRESSIVE: {
+  STRATEGY_TEST: {
+    signalThreshold: 30,
+    weakSignalThreshold: 25,
+    minConfidence: 30,
+    accountRiskPercent: 0.5,     // 계좌의 0.5%
+    useATRStop: true,
+    partialTakeProfit: true,
+    indexFilter: true,
+    description: '전략 검증 — ATR 손절 + 분할 익절 + 지수 필터',
+  },
+  AGGRESSIVE_STRATEGY: {
     signalThreshold: 25,
     weakSignalThreshold: 20,
     minConfidence: 25,
+    accountRiskPercent: 0.5,
+    useATRStop: true,
+    partialTakeProfit: true,
+    indexFilter: true,
+    description: '공격 전략 — 수익 극대화 (ATR 손절 + 분할 익절 + 지수 필터)',
   },
 };
 
@@ -95,6 +125,11 @@ export interface EffectiveTradingSettings {
   signalThreshold: number;           // BUY 신호 최소 buyScore
   weakSignalThreshold: number;       // 약한 BUY 신호 최소 buyScore
   minConfidenceThreshold: number;    // RiskManager 최소 신뢰도(%)
+  // ── 고급 전략 설정 (strategyAggressiveness에 따라 자동 설정) ──
+  accountRiskPercent: number;        // 1회 거래 허용 손실 (계좌 기준 %)
+  useATRStop: boolean;               // ATR 기반 손절폭 사용
+  partialTakeProfit: boolean;        // 분할 익절 사용
+  indexFilter: boolean;              // 지수 방향성 필터 사용
 }
 
 const DEFAULT_SETTINGS: EffectiveTradingSettings = {
@@ -138,6 +173,10 @@ const DEFAULT_SETTINGS: EffectiveTradingSettings = {
   signalThreshold: AGGRESSIVENESS_THRESHOLDS.CONSERVATIVE.signalThreshold,
   weakSignalThreshold: AGGRESSIVENESS_THRESHOLDS.CONSERVATIVE.weakSignalThreshold,
   minConfidenceThreshold: AGGRESSIVENESS_THRESHOLDS.CONSERVATIVE.minConfidence,
+  accountRiskPercent: AGGRESSIVENESS_THRESHOLDS.CONSERVATIVE.accountRiskPercent,
+  useATRStop: AGGRESSIVENESS_THRESHOLDS.CONSERVATIVE.useATRStop,
+  partialTakeProfit: AGGRESSIVENESS_THRESHOLDS.CONSERVATIVE.partialTakeProfit,
+  indexFilter: AGGRESSIVENESS_THRESHOLDS.CONSERVATIVE.indexFilter,
 };
 
 export interface EffectiveSettingsResult {
@@ -241,7 +280,7 @@ export async function getEffectiveTradingSettings(): Promise<EffectiveSettingsRe
     const overrideRecord = await getAppSetting('strategy_aggressiveness_override');
     if (overrideRecord?.value && typeof overrideRecord.value === 'object') {
       const val = (overrideRecord.value as Record<string, unknown>).strategyAggressiveness;
-      if (val === 'CONSERVATIVE' || val === 'TEST' || val === 'AGGRESSIVE') {
+      if (val === 'CONSERVATIVE' || val === 'TEST' || val === 'AGGRESSIVE' || val === 'PIPELINE_TEST' || val === 'STRATEGY_TEST' || val === 'AGGRESSIVE_STRATEGY') {
         overrideAggressiveness = val as StrategyAggressiveness;
         overrideSource = 'db';
         console.log('[EffectiveSettings] 0순위 override 키에서 strategyAggressiveness:', overrideAggressiveness);
@@ -416,16 +455,20 @@ export async function getEffectiveTradingSettings(): Promise<EffectiveSettingsRe
   // =============================================
   // 전략 공격성 + 임계값 설정
   // =============================================
+  // 기존 TEST/AGGRESSIVE → 새 모드 자동 마이그레이션
+  if ((settings.strategyAggressiveness as string) === 'TEST') {
+    settings.strategyAggressiveness = 'PIPELINE_TEST';
+  } else if ((settings.strategyAggressiveness as string) === 'AGGRESSIVE') {
+    settings.strategyAggressiveness = 'AGGRESSIVE_STRATEGY';
+  }
+
   // strategyAggressiveness 유효성 검증
-  const validAggressiveness: StrategyAggressiveness[] = ['CONSERVATIVE', 'TEST', 'AGGRESSIVE'];
+  const validAggressiveness: StrategyAggressiveness[] = ['CONSERVATIVE', 'PIPELINE_TEST', 'STRATEGY_TEST', 'AGGRESSIVE_STRATEGY'];
   if (!validAggressiveness.includes(settings.strategyAggressiveness)) {
     settings.strategyAggressiveness = 'CONSERVATIVE';
   }
 
   // LIVE 주문 실행 모드에서는 항상 CONSERVATIVE 강제 (안전장치)
-  // PAPER + DEMO에서는 TEST/AGGRESSIVE 허용 (모의투자 파이프라인 검증 목적)
-  // 핵심: orderExecutionMode가 LIVE일 때만 강제, tradingMode=REAL만으로는 강제하지 않음
-  // 이유: PAPER 모드에서 tradingMode=REAL일 수 있음 (실전계좌 + 모의주문)
   if (settings.orderExecutionMode === 'LIVE' && settings.strategyAggressiveness !== 'CONSERVATIVE') {
     console.warn(`[EffectiveSettings] LIVE 주문 실행 모드에서는 CONSERVATIVE 강제 (원래=${settings.strategyAggressiveness})`);
     settings.strategyAggressiveness = 'CONSERVATIVE';
@@ -436,6 +479,10 @@ export async function getEffectiveTradingSettings(): Promise<EffectiveSettingsRe
   settings.signalThreshold = thresholds.signalThreshold;
   settings.weakSignalThreshold = thresholds.weakSignalThreshold;
   settings.minConfidenceThreshold = thresholds.minConfidence;
+  settings.accountRiskPercent = thresholds.accountRiskPercent;
+  settings.useATRStop = thresholds.useATRStop;
+  settings.partialTakeProfit = thresholds.partialTakeProfit;
+  settings.indexFilter = thresholds.indexFilter;
 
   // =============================================
   // 소스 추적
@@ -645,7 +692,7 @@ export function validateOrderExecution(
   if (estimatedOrderAmount > maxOrderAmount) {
     // TEST+PAPER 모드에서는 1주 금액이 maxOrderAmount 이하면 허용 (수량은 호출 측에서 1로 제한됨)
     const oneShareAmount = signalPrice * 1;
-    const isTestPaper = settings.strategyAggressiveness === 'TEST' && settings.orderExecutionMode === 'PAPER';
+    const isTestPaper = (settings.strategyAggressiveness === 'PIPELINE_TEST' || settings.strategyAggressiveness === 'STRATEGY_TEST') && settings.orderExecutionMode === 'PAPER';
     if (isTestPaper && oneShareAmount <= maxOrderAmount && quantity > 1) {
       // 1주로 자동 조정은 호출 측에서 처리하므로 여기서는 통과시킴
       console.warn(`[OrderValidation] TEST+PAPER: 수량 자동 조정 ${quantity}→1 (1주금액=${oneShareAmount.toLocaleString()}, 최대=${maxOrderAmount.toLocaleString()})`);
