@@ -3,7 +3,7 @@
 
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -749,13 +749,19 @@ export default function TradingDashboard() {
     }
   }, [loadKisConfigFromStorage]);
 
+  // 설정 로드 완료 추적 (loadSettingsFromServer가 다시 실행되지 않도록)
+  const settingsLoadedRef = useRef(false);
+
   // 초기 로드 및 자동 새로고침
   useEffect(() => {
     let mounted = true;
     const fetchData = async () => {
       if (!mounted) return;
-      // 서버 DB에서 설정 먼저 로드 (진실의 원천)
-      await loadSettingsFromServer();
+      // 설정은 최초 1회만 서버에서 로드 (이후에는 selectedStrategy 변경 시 재호출 방지)
+      if (!settingsLoadedRef.current) {
+        await loadSettingsFromServer();
+        settingsLoadedRef.current = true;
+      }
       // KIS 설정/토큰 상태를 먼저 확인한 뒤 잔고 조회
       await loadKisConfig();
       await Promise.all([loadDashboardData(), loadOverseasData(), loadAgentStatus()]);
@@ -763,7 +769,25 @@ export default function TradingDashboard() {
     fetchData();
     const interval = setInterval(fetchData, 30000);
     return () => { mounted = false; clearInterval(interval); };
-  }, [selectedStrategy, loadDashboardData, loadOverseasData, loadAgentStatus, loadKisConfig]);
+  }, [selectedStrategy, loadDashboardData, loadOverseasData, loadAgentStatus, loadKisConfig, loadSettingsFromServer]);
+
+  // 전략 변경 시 신호 데이터만 다시 로드
+  useEffect(() => {
+    const loadSignals = async () => {
+      try {
+        const signalRes = await fetch(`/api/trading/signals?strategy=${selectedStrategy}`);
+        if (signalRes.ok) {
+          const signalData = await signalRes.json();
+          if (signalData.success) {
+            setSignals(signalData.data.allSignals || []);
+          }
+        }
+      } catch (error) {
+        console.error('신호 로드 실패:', error);
+      }
+    };
+    loadSignals();
+  }, [selectedStrategy]);
 
   // 자동 사이클: 에이전트 실행 중 + 자동사이클 활성화 시 60초마다 실행
   useEffect(() => {
