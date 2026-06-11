@@ -79,6 +79,14 @@ export interface AgentStatus {
   totalTrades: number;
   dailyPnL: number;
   logs: AgentLog[];
+  // ── 주문 카운트 분리 ──
+  ordersAttempted: number;   // 주문 시도 (BLOCKED 포함)
+  ordersSubmitted: number;   // KIS에 제출됨 (PENDING)
+  ordersFilled: number;     // 체결 완료 (FILLED)
+  ordersBlocked: number;    // 사전검증 차단
+  ordersFailed: number;     // KIS API 실패
+  // ── 거래내역 저장 실패 추적 ──
+  tradeHistorySaveFailures: Array<{time: Date; market: string; stockCode: string; error: string}>;
 }
 
 // 메모리 내 에이전트 상태 (서버 재시작 시 리셋)
@@ -91,6 +99,12 @@ let agentState: AgentStatus = {
   totalTrades: 0,
   dailyPnL: 0,
   logs: [],
+  ordersAttempted: 0,
+  ordersSubmitted: 0,
+  ordersFilled: 0,
+  ordersBlocked: 0,
+  ordersFailed: 0,
+  tradeHistorySaveFailures: [],
 };
 
 const MAX_LOGS = 200;
@@ -469,6 +483,39 @@ async function executeOrder(
       strategy: signal.strategy,
       blockedReason: validation.blockedReason,
     });
+    // 차단 건도 TradeHistory에 기록
+    agentState.ordersAttempted++;
+    agentState.ordersBlocked++;
+    try {
+      await prisma.tradeHistory.create({
+        data: {
+          stockCode: signal.stockCode,
+          stockName: signal.stockName,
+          tradeType: signal.signalType,
+          quantity: quantity,
+          price: signal.price,
+          totalAmount: signal.price * quantity,
+          strategy: signal.strategy,
+          signalReason: signal.reason,
+          status: 'BLOCKED',
+          orderNo: '',
+          market,
+          exchangeCode: exchangeCode || null,
+          currency: market === 'OVERSEAS' ? 'USD' : 'KRW',
+          source: 'AGENT',
+          orderExecutionMode: settings.orderExecutionMode,
+          currentPrice: signal.price,
+          orderPrice: signal.price,
+          msg1: `주문 차단: ${validation.blockedReason}`,
+        },
+      });
+    } catch (dbErr) {
+      const errMsg = dbErr instanceof Error ? dbErr.message : String(dbErr);
+      addLog('ERROR', market, 'BLOCKED 거래내역 저장 실패', { error: errMsg });
+      agentState.tradeHistorySaveFailures.push({
+        time: new Date(), market, stockCode: signal.stockCode, error: errMsg,
+      });
+    }
     return { success: false, orderNo: '', message: `주문 차단: ${validation.blockedReason}` };
   }
 
@@ -480,10 +527,42 @@ async function executeOrder(
         stockCode: signal.stockCode,
         exchangeCode: exchangeCode || '',
       });
+      agentState.ordersAttempted++;
+      agentState.ordersBlocked++;
+      try {
+        await prisma.tradeHistory.create({
+          data: {
+            stockCode: signal.stockCode, stockName: signal.stockName,
+            tradeType: signal.signalType, quantity, price: signal.price,
+            totalAmount: signal.price * quantity, strategy: signal.strategy,
+            signalReason: signal.reason, status: 'BLOCKED', orderNo: '',
+            market, exchangeCode: exchangeCode || null,
+            currency: 'USD', source: 'AGENT', orderExecutionMode: settings.orderExecutionMode,
+            currentPrice: signal.price, orderPrice: signal.price,
+            msg1: `해외 주문 차단: 유효하지 않은 거래소 코드 (${exchangeCode || '없음'})`,
+          },
+        });
+      } catch {}
       return { success: false, orderNo: '', message: `해외 주문 차단: 유효하지 않은 거래소 코드 (${exchangeCode || '없음'})` };
     }
     if (quantity <= 0) {
       addLog('RISK', market, `해외 주문 차단: 수량이 0 이하 (${quantity})`, { stockCode: signal.stockCode });
+      agentState.ordersAttempted++;
+      agentState.ordersBlocked++;
+      try {
+        await prisma.tradeHistory.create({
+          data: {
+            stockCode: signal.stockCode, stockName: signal.stockName,
+            tradeType: signal.signalType, quantity, price: signal.price,
+            totalAmount: signal.price * quantity, strategy: signal.strategy,
+            signalReason: signal.reason, status: 'BLOCKED', orderNo: '',
+            market, exchangeCode: exchangeCode || null,
+            currency: 'USD', source: 'AGENT', orderExecutionMode: settings.orderExecutionMode,
+            currentPrice: signal.price, orderPrice: signal.price,
+            msg1: `해외 주문 차단: 수량이 0 이하 (${quantity})`,
+          },
+        });
+      } catch {}
       return { success: false, orderNo: '', message: `해외 주문 차단: 수량이 0 이하 (${quantity})` };
     }
   }
@@ -498,6 +577,22 @@ async function executeOrder(
         strategy: signal.strategy,
         session: policy.session,
       });
+      agentState.ordersAttempted++;
+      agentState.ordersBlocked++;
+      try {
+        await prisma.tradeHistory.create({
+          data: {
+            stockCode: signal.stockCode, stockName: signal.stockName,
+            tradeType: signal.signalType, quantity, price: signal.price,
+            totalAmount: signal.price * quantity, strategy: signal.strategy,
+            signalReason: signal.reason, status: 'BLOCKED', orderNo: '',
+            market, exchangeCode: null, currency: 'KRW',
+            source: 'AGENT', orderExecutionMode: settings.orderExecutionMode,
+            currentPrice: signal.price, orderPrice: signal.price,
+            msg1: `주문 차단: ${policy.reason}`,
+          },
+        });
+      } catch {}
       return { success: false, orderNo: '', message: `주문 차단: ${policy.reason}` };
     }
   }
@@ -521,6 +616,9 @@ async function executeOrder(
   let orderNo = '';
   let status = 'PENDING';
   let message = '';
+  let rtCd = '';
+  let msgCd = '';
+  let msg1 = '';
 
   // KIS API로 주문 실행
   if (kisClient) {
@@ -532,10 +630,13 @@ async function executeOrder(
       orderNo = result.orderNo;
       status = result.status;
       message = result.message;
+      rtCd = result.rt_cd || '';
+      msgCd = result.msg_cd || '';
     } catch (error) {
       orderNo = '';
       status = 'FAILED';
       message = `주문 실패: ${error instanceof Error ? error.message : 'Unknown'}`;
+      msg1 = error instanceof Error ? error.message : String(error);
       addLog('ERROR', market, `${signal.stockName} 주문 실패`, {
         error: error instanceof Error ? error.message : String(error),
         stockCode: signal.stockCode,
@@ -549,15 +650,87 @@ async function executeOrder(
       stockCode: signal.stockCode,
       signalType: signal.signalType,
     });
+    // KIS 미연결 건도 TradeHistory에 기록
+    agentState.ordersAttempted++;
+    agentState.ordersBlocked++;
+    try {
+      await prisma.tradeHistory.create({
+        data: {
+          stockCode: signal.stockCode,
+          stockName: signal.stockName,
+          tradeType: signal.signalType,
+          quantity: safeQuantity,
+          price: signal.price,
+          totalAmount: signal.price * safeQuantity,
+          strategy: signal.strategy,
+          signalReason: signal.reason,
+          status: 'BLOCKED',
+          orderNo: '',
+          market,
+          exchangeCode: exchangeCode || null,
+          currency: market === 'OVERSEAS' ? 'USD' : 'KRW',
+          source: 'AGENT',
+          orderExecutionMode: settings.orderExecutionMode,
+          currentPrice: signal.price,
+          orderPrice: signal.price,
+          msg1: 'KIS API 미연결: 주문 불가',
+        },
+      });
+    } catch (dbErr) {
+      addLog('ERROR', market, 'BLOCKED(KIS미연결) 거래내역 저장 실패', {
+        error: dbErr instanceof Error ? dbErr.message : String(dbErr),
+      });
+    }
     return { success: false, orderNo: '', message: 'KIS API 미연결: 주문을 실행할 수 없습니다. API 설정을 완료하고 토큰을 발급받으세요.' };
   }
 
-  // 주문 완전 실패 시 종료
+  // 주문 실패 시 TradeHistory에 기록 후 종료
   if (status === 'FAILED') {
+    agentState.ordersAttempted++;
+    agentState.ordersFailed++;
+    try {
+      await prisma.tradeHistory.create({
+        data: {
+          stockCode: signal.stockCode,
+          stockName: signal.stockName,
+          tradeType: signal.signalType,
+          quantity: safeQuantity,
+          price: signal.price,
+          totalAmount: signal.price * safeQuantity,
+          strategy: signal.strategy,
+          signalReason: signal.reason,
+          status: 'FAILED',
+          orderNo,
+          market,
+          exchangeCode: exchangeCode || null,
+          currency: market === 'OVERSEAS' ? 'USD' : 'KRW',
+          source: 'AGENT',
+          orderExecutionMode: settings.orderExecutionMode,
+          currentPrice: signal.price,
+          orderPrice: signal.price,
+          rtCd,
+          msgCd,
+          msg1: msg1 || message,
+        },
+      });
+    } catch (dbErr) {
+      const errMsg = dbErr instanceof Error ? dbErr.message : String(dbErr);
+      addLog('ERROR', market, 'FAILED 거래내역 저장 실패', { error: errMsg });
+      agentState.tradeHistorySaveFailures.push({
+        time: new Date(), market, stockCode: signal.stockCode, error: errMsg,
+      });
+    }
     return { success: false, orderNo, message };
   }
 
-  // 거래 내역 DB 기록
+  // 거래 내역 DB 기록 (PENDING / FILLED)
+  agentState.ordersAttempted++;
+  if (status === 'FILLED') {
+    agentState.ordersFilled++;
+    agentState.totalTrades++;
+  } else {
+    agentState.ordersSubmitted++;
+  }
   try {
     await prisma.tradeHistory.create({
       data: {
@@ -583,12 +756,22 @@ async function executeOrder(
         filledPrice: status === 'FILLED' ? signal.price : null,
         avgFillPrice: status === 'FILLED' ? signal.price : null,
         slippagePercent: null,
-        // KIS API 응답 (추후 체결 조회에서 업데이트)
+        // KIS API 응답
+        rtCd,
+        msgCd,
+        msg1,
       },
     });
   } catch (dbError) {
+    const errMsg = dbError instanceof Error ? dbError.message : String(dbError);
     addLog('ERROR', market, '거래 내역 저장 실패', {
-      error: dbError instanceof Error ? dbError.message : String(dbError),
+      error: errMsg,
+      stockCode: signal.stockCode,
+      status,
+      orderNo,
+    });
+    agentState.tradeHistorySaveFailures.push({
+      time: new Date(), market, stockCode: signal.stockCode, error: errMsg,
     });
   }
 

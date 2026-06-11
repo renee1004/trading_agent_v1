@@ -958,6 +958,146 @@ export class KisApiClient {
   }
 
   /**
+   * 국내주식 당일 체결내역 전체 조회
+   * KIS API: TTTC8001R (실전) / VTTC8001R (모의)
+   * 엔드포인트: /uapi/domestic-stock/v1/trading/inquire-ccnl
+   * orderNo 없이 호출하면 당일 전체 체결내역 반환
+   */
+  async getInquireDailyTrades(): Promise<Array<{
+    orderNo: string;
+    stockCode: string;
+    stockName: string;
+    orderType: string;
+    orderQuantity: number;
+    filledQuantity: number;
+    filledPrice: number;
+    status: string;
+    orderTime: string;
+  }>> {
+    try {
+      const token = await this.ensureToken();
+      await kisThrottler.acquire('getInquireDailyTrades', 'NORMAL');
+      const url = `${this.baseUrl}/uapi/domestic-stock/v1/trading/inquire-ccnl`;
+
+      const account = parseAccountNo(this.config.accountNo);
+      const params = new URLSearchParams({
+        CANO: account.cano,
+        ACNT_PRDT_CD: account.productCode,
+        INQR_DVSN_1: '1',
+        INQR_DVSN_2: '0',
+        CTX_AREA_FK100: '',
+        CTX_AREA_NK100: '',
+      });
+
+      const trId = this.config.isDemo ? 'VTTC8001R' : 'TTTC8001R';
+
+      const response = await fetch(`${url}?${params.toString()}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+          appKey: this.config.appKey,
+          appSecret: this.config.appSecret,
+          tr_id: trId,
+        },
+      });
+
+      const result = await response.json();
+
+      if (result.rt_cd !== '0') {
+        console.warn('[KIS API] 당일 체결내역 조회 실패:', result.msg1);
+        return [];
+      }
+
+      const output1 = Array.isArray(result.output1) ? result.output1 : [];
+      return output1.map((item: Record<string, string>) => ({
+        orderNo: item.odno || item.ord_no || '',
+        stockCode: item.pdno || item.stck_shrn_iscd || '',
+        stockName: item.prdt_name || '',
+        orderType: (item.sll_buy_dvsn_cd === '01' || item.ord_dvsn_cd === '01') ? 'BUY' : 'SELL',
+        orderQuantity: safeNumber(item.ord_qty),
+        filledQuantity: safeNumber(item.tot_ccld_qty || item.ccld_qty),
+        filledPrice: safeNumber(item.tot_ccld_amt || item.avg_prpr),
+        status: item.ord_dvsn_name || '',
+        orderTime: item.ord_tmd || '',
+      }));
+    } catch (error) {
+      console.error('[KIS API] 당일 체결내역 조회 에러:', error);
+      return [];
+    }
+  }
+
+  /**
+   * 해외주식 당일 체결내역 전체 조회
+   * KIS API: JTTT3018R (실전) / VTTT3018R (모의)
+   * 엔드포인트: /uapi/overseas-stock/v1/trading/inquire-ccnl
+   */
+  async getInquireOverseasDailyTrades(): Promise<Array<{
+    orderNo: string;
+    stockCode: string;
+    stockName: string;
+    orderType: string;
+    orderQuantity: number;
+    filledQuantity: number;
+    filledPrice: number;
+    status: string;
+    orderTime: string;
+  }>> {
+    try {
+      const token = await this.ensureToken();
+      await kisThrottler.acquire('getInquireOverseasDailyTrades', 'NORMAL');
+      const url = `${this.baseUrl}/uapi/overseas-stock/v1/trading/inquire-ccnl`;
+
+      const account = parseAccountNo(this.config.accountNo);
+      const params = new URLSearchParams({
+        CANO: account.cano,
+        ACNT_PRDT_CD: account.productCode,
+        INQR_DVSN_1: '1',
+        INQR_DVSN_2: '0',
+        CTX_AREA_FK200: '',
+        CTX_AREA_NK200: '',
+      });
+
+      const trId = this.config.isDemo ? 'VTTT3018R' : 'JTTT3018R';
+
+      const response = await fetch(`${url}?${params.toString()}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+          appKey: this.config.appKey,
+          appSecret: this.config.appSecret,
+          tr_id: trId,
+          custtype: 'P',
+        },
+      });
+
+      const result = await response.json();
+
+      if (result.rt_cd !== '0') {
+        console.warn('[KIS API] 해외 당일 체결내역 조회 실패:', result.msg1);
+        return [];
+      }
+
+      const output1 = Array.isArray(result.output1) ? result.output1 : [];
+      return output1.map((item: Record<string, string>) => ({
+        orderNo: item.odno || item.ord_no || '',
+        stockCode: item.pdno || item.ovrs_item_no || '',
+        stockName: item.prdt_name || item.ovrs_item_name || '',
+        orderType: (item.sll_buy_dvsn_cd === '01' || item.ord_dvsn_cd === '01') ? 'BUY' : 'SELL',
+        orderQuantity: safeNumber(item.ord_qty),
+        filledQuantity: safeNumber(item.tot_ccld_qty || item.ccld_qty),
+        filledPrice: safeNumber(item.ft_ccld_amt || item.avg_prpr),
+        status: item.ord_dvsn_name || '',
+        orderTime: item.ord_tmd || '',
+      }));
+    } catch (error) {
+      console.error('[KIS API] 해외 당일 체결내역 조회 에러:', error);
+      return [];
+    }
+  }
+
+  /**
    * 미체결 주문 전체 조회
    * 대기 중인 주문을 확인하여 정리/취소 여부 판단
    */

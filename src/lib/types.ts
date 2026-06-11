@@ -102,6 +102,7 @@ export interface OrderResponse {
   message: string;
   rt_cd?: string;   // KIS API 응답 코드 ('0'=성공)
   msg_cd?: string;  // KIS API 메시지 코드
+  msg1?: string;    // KIS API 응답 메시지
 }
 
 export interface BalanceItem {

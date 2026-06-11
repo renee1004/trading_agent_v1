@@ -92,6 +92,25 @@ export async function GET() {
         totalCycles: agentStatus.totalCycles,
         totalTrades: agentStatus.totalTrades,
         dailyPnL: agentStatus.dailyPnL,
+        // ── 주문 카운트 분리 ──
+        ordersAttempted: agentStatus.ordersAttempted,
+        ordersSubmitted: agentStatus.ordersSubmitted,
+        ordersFilled: agentStatus.ordersFilled,
+        ordersBlocked: agentStatus.ordersBlocked,
+        ordersFailed: agentStatus.ordersFailed,
+        // ── 거래내역 저장 실패 진단 ──
+        tradeHistoryDiagnostics: {
+          saveFailureCount: agentStatus.tradeHistorySaveFailures.length,
+          recentFailures: agentStatus.tradeHistorySaveFailures.slice(-5).map(f => ({
+            time: f.time.toISOString(),
+            market: f.market,
+            stockCode: f.stockCode,
+            error: f.error,
+          })),
+          warning: agentStatus.tradeHistorySaveFailures.length > 0
+            ? `${agentStatus.tradeHistorySaveFailures.length}건의 거래내역 저장 실패 — DB 연결 또는 스키마를 확인하세요`
+            : null,
+        },
         lastCycleSummary: agentStatus.lastCycleResult ? {
           stocksAnalyzed: agentStatus.lastCycleResult.stocksAnalyzed,
           signalsGenerated: agentStatus.lastCycleResult.signalsGenerated,
