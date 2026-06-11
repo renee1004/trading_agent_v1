@@ -1,6 +1,7 @@
 // PrismaClient 싱글톤 — db.ts Proxy를 우회하는 직접 Prisma 연결
 // Railway(Production)에서 DATABASE_URL이 설정된 경우에만 사용
 // 이 모듈은 db.ts의 비동기 초기화 경쟁상태를 완전히 회피합니다.
+// DATABASE_URL이 없으면 PrismaClient를 생성하지 않음 (크래시 방지)
 
 import { PrismaClient } from '@prisma/client';
 
@@ -8,15 +9,18 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
 
+// DATABASE_URL이 없으면 PrismaClient 생성하지 않음 (InMemory DB 사용)
 export const prisma =
-  globalForPrisma.prisma ??
-  new PrismaClient({
-    log: process.env.NODE_ENV === 'development'
-      ? ['query', 'error', 'warn']
-      : ['error'],
-  });
+  !!process.env.DATABASE_URL
+    ? (globalForPrisma.prisma ??
+      new PrismaClient({
+        log: process.env.NODE_ENV === 'development'
+          ? ['query', 'error', 'warn']
+          : ['error'],
+      }))
+    : (null as any); // DATABASE_URL 없으면 null
 
-if (process.env.NODE_ENV !== 'production') {
+if (process.env.NODE_ENV !== 'production' && prisma) {
   globalForPrisma.prisma = prisma;
 }
 

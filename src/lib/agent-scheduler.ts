@@ -662,7 +662,9 @@ export async function getSchedulerStatus(): Promise<{
  */
 export async function autoRecoverScheduler(): Promise<void> {
   try {
-    const config = await prisma.agentConfig.findFirst();
+    // db 프록시 사용 (InMemory DB 폴백 지원)
+    const { db } = await import('./db');
+    const config = await db.agentConfig.findFirst();
     if (config?.isRunning && config.schedulerMode === 'SERVER') {
       console.log('[Scheduler] 이전 실행 세션 발견, 자동 복구 시도...');
       const result = await startScheduler();
@@ -671,7 +673,7 @@ export async function autoRecoverScheduler(): Promise<void> {
       } else {
         console.error('[Scheduler] 자동 복구 실패:', result.message);
         // 복구 실패 시 DB 상태 리셋
-        await prisma.agentConfig.update({
+        await db.agentConfig.update({
           where: { id: config.id },
           data: { isRunning: false, currentSessionId: null },
         });

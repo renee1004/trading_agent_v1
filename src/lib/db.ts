@@ -1,8 +1,18 @@
 // 데이터베이스 연결 - 안전한 폴백 처리
 // DATABASE_URL이 없거나 연결 실패 시에도 앱이 크래시되지 않음
 // 인메모리 DB는 실제 메모리에 데이터를 저장하여 DB 없이도 동작
+// v2: JSON 파일 영속성 추가 — 서버 재시작해도 데이터 유지
 
 import { NextResponse } from 'next/server';
+import * as fs from 'fs';
+import * as path from 'path';
+
+// ============================================
+// JSON 파일 영속성 설정
+// ============================================
+const PERSIST_DIR = path.join(process.cwd(), 'data');
+const PERSIST_FILE = path.join(PERSIST_DIR, 'inmemory-db.json');
+const DEBOUNCE_MS = 2000; // 2초 디바운스 — 연속 쓰기 방지
 
 // ============================================
 // 인메모리 데이터베이스 - DB 없이도 모든 기능 동작
@@ -81,6 +91,82 @@ function createInMemoryDb() {
     return result;
   }
 
+  // ── JSON 파일 영속성 ──
+  let _saveTimer: ReturnType<typeof setTimeout> | null = null;
+  let _dataLoaded = false;
+
+  // 디스크에 저장 (debounced) — 연속 쓰기 시 마지막 1회만 실행
+  function scheduleSave() {
+    if (_saveTimer) clearTimeout(_saveTimer);
+    _saveTimer = setTimeout(() => {
+      saveToDiskNow();
+      _saveTimer = null;
+    }, DEBOUNCE_MS);
+  }
+
+  // 즉시 저장
+  function saveToDiskNow() {
+    try {
+      if (!fs.existsSync(PERSIST_DIR)) {
+        fs.mkdirSync(PERSIST_DIR, { recursive: true });
+      }
+      const data: Record<string, any[]> = {};
+      for (const [modelName, store] of Object.entries(stores)) {
+        data[modelName] = Array.from(store.values());
+      }
+      fs.writeFileSync(PERSIST_FILE, JSON.stringify(data, null, 2), 'utf-8');
+      const totalRecords = Object.values(data).reduce((sum, arr) => sum + arr.length, 0);
+      console.log(`[InMemoryDB] Saved ${totalRecords} records to ${PERSIST_FILE}`);
+    } catch (err) {
+      console.error('[InMemoryDB] Failed to save to disk:', err);
+    }
+  }
+
+  // 디스크에서 로딩 — 서버 시작 시 1회만 실행
+  function loadFromDisk() {
+    if (_dataLoaded) return;
+    _dataLoaded = true;
+    try {
+      if (!fs.existsSync(PERSIST_FILE)) {
+        console.log('[InMemoryDB] No persistence file found, starting fresh');
+        return;
+      }
+      const raw = fs.readFileSync(PERSIST_FILE, 'utf-8');
+      const data = JSON.parse(raw);
+      let totalRecords = 0;
+      for (const [modelName, records] of Object.entries(data)) {
+        if (!Array.isArray(records)) continue;
+        const store = getStore(modelName);
+        for (const record of records) {
+          // Date 필드 복원 (JSON에서 문자열로 직렬화됨)
+          if (record.createdAt && typeof record.createdAt === 'string') {
+            record.createdAt = new Date(record.createdAt);
+          }
+          if (record.updatedAt && typeof record.updatedAt === 'string') {
+            record.updatedAt = new Date(record.updatedAt);
+          }
+          if (record.tradedAt && typeof record.tradedAt === 'string') {
+            record.tradedAt = new Date(record.tradedAt);
+          }
+          if (record.lastCycleAt && typeof record.lastCycleAt === 'string') {
+            record.lastCycleAt = new Date(record.lastCycleAt);
+          }
+          if (record.tokenExpiresAt && typeof record.tokenExpiresAt === 'string') {
+            record.tokenExpiresAt = new Date(record.tokenExpiresAt);
+          }
+          if (record.openedAt && typeof record.openedAt === 'string') {
+            record.openedAt = new Date(record.openedAt);
+          }
+          store.set(record.id, record);
+          totalRecords++;
+        }
+      }
+      console.log(`[InMemoryDB] Loaded ${totalRecords} records from ${PERSIST_FILE}`);
+    } catch (err) {
+      console.error('[InMemoryDB] Failed to load from disk:', err);
+    }
+  }
+
   // 모델 핸들러 생성
   function createHandler(modelName: string) {
     return {
@@ -139,6 +225,7 @@ function createInMemoryDb() {
         applyDefaults(modelName, record);
         store.set(id, record);
         console.log(`[InMemoryDB] Created ${modelName}:`, id, args?.data?.stockName || args?.data?.name || '');
+        scheduleSave(); // 영속성: 변경 시 자동 저장
         return { ...record };
       },
 
@@ -160,6 +247,7 @@ function createInMemoryDb() {
         const existing = store.get(targetId);
         const updated = { ...existing, ...args?.data, updatedAt: new Date() };
         store.set(targetId, updated);
+        scheduleSave(); // 영속성: 변경 시 자동 저장
         return { ...updated };
       },
 
@@ -169,6 +257,7 @@ function createInMemoryDb() {
           if (matchesWhere(record, args?.where)) {
             const updated = { ...record, ...args?.update, updatedAt: new Date() };
             store.set(record.id, updated);
+            scheduleSave(); // 영속성: 변경 시 자동 저장
             return { ...updated };
           }
         }
@@ -178,6 +267,7 @@ function createInMemoryDb() {
         const record = { id, ...args?.where, ...args?.create, createdAt: now, updatedAt: now };
         applyDefaults(modelName, record);
         store.set(id, record);
+        scheduleSave(); // 영속성: 변경 시 자동 저장
         return { ...record };
       },
 
@@ -187,12 +277,14 @@ function createInMemoryDb() {
         if (id && store.has(id)) {
           const record = store.get(id);
           store.delete(id);
+          scheduleSave(); // 영속성: 변경 시 자동 저장
           return record;
         }
         // where 조건으로 찾아서 삭제
         for (const [rid, record] of store.entries()) {
           if (matchesWhere(record, args?.where)) {
             store.delete(rid);
+            scheduleSave(); // 영속성: 변경 시 자동 저장
             return record;
           }
         }
@@ -204,6 +296,7 @@ function createInMemoryDb() {
         if (!args?.where) {
           const count = store.size;
           store.clear();
+          if (count > 0) scheduleSave(); // 영속성: 변경 시 자동 저장
           return { count };
         }
         let count = 0;
@@ -213,6 +306,7 @@ function createInMemoryDb() {
             count++;
           }
         }
+        if (count > 0) scheduleSave(); // 영속성: 변경 시 자동 저장
         return { count };
       },
 
@@ -225,6 +319,7 @@ function createInMemoryDb() {
             count++;
           }
         }
+        if (count > 0) scheduleSave(); // 영속성: 변경 시 자동 저장
         return { count };
       },
 
@@ -336,6 +431,7 @@ function createInMemoryDb() {
             // INSERT
             store.set(id, { id, key, value, createdAt: new Date(), updatedAt: new Date() });
           }
+          scheduleSave(); // 영속성: Raw SQL 변경 시 자동 저장
           return 1; // 영향받은 행 수
         }
 
@@ -352,6 +448,7 @@ function createInMemoryDb() {
           for (const [rid, record] of store.entries()) {
             if (record.key === keyValue) {
               store.set(rid, { ...record, value: jsonValue, updatedAt: new Date() });
+              scheduleSave(); // 영속성: Raw SQL UPDATE 시 자동 저장
               return 1;
             }
           }
@@ -362,6 +459,7 @@ function createInMemoryDb() {
           for (const [rid, record] of store.entries()) {
             if (record.key === values[0]) {
               store.set(rid, { ...record, value: jsonValue, updatedAt: new Date() });
+              scheduleSave(); // 영속성: Raw SQL UPDATE 시 자동 저장
               return 1;
             }
           }
@@ -387,6 +485,9 @@ function createInMemoryDb() {
 
   return new Proxy(handlers as any, {
     get: (target, prop) => {
+      // 내부 메서드: 디스크 로딩
+      if (prop === '_loadFromDisk') return loadFromDisk;
+      if (prop === '_saveToDiskNow') return saveToDiskNow;
       // $로 시작하는 Prisma 내장 메서드
       if (typeof prop === 'string' && prop.startsWith('$')) {
         return (rawSqlHandler as any)[prop];
@@ -594,8 +695,35 @@ function getInMemoryDb() {
   if (!_inMemoryDb) {
     _inMemoryDb = createInMemoryDb();
     console.log('[DB] In-memory database initialized');
+    // 서버 시작 시 디스크에서 데이터 복원
+    if (typeof window === 'undefined') {
+      _inMemoryDb._loadFromDisk?.();
+    }
   }
   return _inMemoryDb;
+}
+
+// 샘플 데이터 자동 시드 (최초 1회, 거래내역이 없을 때만)
+let _seeded = false;
+export async function seedIfEmpty() {
+  if (_seeded || _usePrisma) return;
+  _seeded = true;
+  try {
+    const existing = await db.tradeHistory.findMany({ take: 1 });
+    if (existing.length === 0) {
+      console.log('[DB] No trade history found, auto-seeding sample data...');
+      const res = await fetch('http://localhost:' + (process.env.PORT || '3000') + '/api/trading/seed', { method: 'POST' });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success) {
+          console.log('[DB] Auto-seed completed:', data.message);
+        }
+      }
+    }
+  } catch (err) {
+    // 시드 실패해도 치명적이지 않음
+    console.warn('[DB] Auto-seed skipped:', err);
+  }
 }
 
 // Prisma가 성공하면 교체
