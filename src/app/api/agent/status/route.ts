@@ -9,6 +9,7 @@ import { getEffectiveTradingSettings, computeRuntimeDecision, AGGRESSIVENESS_THR
 import { getOverseasMarketInfo, isUSDST, getCurrentKSTString, getCurrentETString } from '@/lib/market-hours';
 import { getDomesticSession } from '@/lib/agent-scheduler';
 import { getAllAppSettings } from '@/lib/prisma';
+import { db } from '@/lib/db';
 
 export async function GET() {
   try {
@@ -33,7 +34,7 @@ export async function GET() {
     const { settings: effectiveSettings, source: settingsSource, sources: settingsSources } = await getEffectiveTradingSettings();
     const runtimeDecision = computeRuntimeDecision(effectiveSettings);
 
-    // DB에서 영속 로그 조회 (최근 30개) — 직접 Prisma 사용
+    // DB에서 영속 로그 조회 (최근 30개)
     let dbLogs: Array<{
       id: string;
       type: string;
@@ -43,19 +44,17 @@ export async function GET() {
       createdAt: string;
     }> = [];
     try {
-      const { prisma, ensurePrismaConnected } = await import('@/lib/prisma');
-      await ensurePrismaConnected();
-      const logs = await prisma.agentLog.findMany({
+      const logs = await db.agentLog.findMany({
         orderBy: { createdAt: 'desc' },
         take: 30,
       });
-      dbLogs = logs.map(l => ({
+      dbLogs = logs.map((l: any) => ({
         id: l.id,
         type: l.type,
         market: l.market,
         message: l.message,
         details: l.details,
-        createdAt: l.createdAt.toISOString(),
+        createdAt: l.createdAt?.toISOString?.() || l.createdAt,
       }));
     } catch {
       // DB 로그 조회 실패 시 메모리 로그 사용

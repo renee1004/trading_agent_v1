@@ -29,9 +29,7 @@ export async function GET(request: NextRequest) {
     let kisConnected = false;
 
     try {
-      const { prisma, ensurePrismaConnected } = await import('@/lib/prisma');
-      await ensurePrismaConnected();
-      const kisConfig = await prisma.kisConfig.findFirst();
+      const kisConfig = await db.kisConfig.findFirst();
 
       if (kisConfig) {
         kisConnected = true;

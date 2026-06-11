@@ -2,7 +2,7 @@
 // 시그널 생성 → 리스크 체크 → 주문 실행 → 포지션 모니토링 전체 파이프라인
 // 국내주식 + 해외주식 지원
 
-import { prisma } from './prisma';
+import { db } from './db';
 import { KisApiClient, normalizeOverseasSymbol } from './kis-api';
 import { TradingEngine } from './trading-engine';
 import { RiskManager } from './risk-manager';
@@ -126,7 +126,7 @@ export function addLog(
   agentState.logs = [log, ...agentState.logs].slice(0, MAX_LOGS);
 
   // DB에 로그 영속화 (비동기, 실패해도 무시)
-  prisma.agentLog.create({
+  db.agentLog.create({
     data: {
       type,
       market,
@@ -393,7 +393,7 @@ async function executeOrder(
   // ── KIS isDemo 확인 ──
   let isDemo = true;
   try {
-    const kisConfig = await prisma.kisConfig.findFirst();
+    const kisConfig = await db.kisConfig.findFirst();
     if (kisConfig) {
       isDemo = kisConfig.isDemo;
     }
@@ -407,14 +407,14 @@ async function executeOrder(
   try {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    dailyOrderCount = await prisma.tradeHistory.count({
+    dailyOrderCount = await db.tradeHistory.count({
       where: {
         market,
         tradedAt: { gte: today },
         status: { notIn: ['CANCELLED', 'FAILED'] },
       },
     });
-    openPositions = await prisma.position.count({
+    openPositions = await db.position.count({
       where: { market },
     });
   } catch (_e) {
@@ -487,7 +487,7 @@ async function executeOrder(
     agentState.ordersAttempted++;
     agentState.ordersBlocked++;
     try {
-      await prisma.tradeHistory.create({
+      await db.tradeHistory.create({
         data: {
           stockCode: signal.stockCode,
           stockName: signal.stockName,
@@ -530,7 +530,7 @@ async function executeOrder(
       agentState.ordersAttempted++;
       agentState.ordersBlocked++;
       try {
-        await prisma.tradeHistory.create({
+        await db.tradeHistory.create({
           data: {
             stockCode: signal.stockCode, stockName: signal.stockName,
             tradeType: signal.signalType, quantity, price: signal.price,
@@ -550,7 +550,7 @@ async function executeOrder(
       agentState.ordersAttempted++;
       agentState.ordersBlocked++;
       try {
-        await prisma.tradeHistory.create({
+        await db.tradeHistory.create({
           data: {
             stockCode: signal.stockCode, stockName: signal.stockName,
             tradeType: signal.signalType, quantity, price: signal.price,
@@ -580,7 +580,7 @@ async function executeOrder(
       agentState.ordersAttempted++;
       agentState.ordersBlocked++;
       try {
-        await prisma.tradeHistory.create({
+        await db.tradeHistory.create({
           data: {
             stockCode: signal.stockCode, stockName: signal.stockName,
             tradeType: signal.signalType, quantity, price: signal.price,
@@ -654,7 +654,7 @@ async function executeOrder(
     agentState.ordersAttempted++;
     agentState.ordersBlocked++;
     try {
-      await prisma.tradeHistory.create({
+      await db.tradeHistory.create({
         data: {
           stockCode: signal.stockCode,
           stockName: signal.stockName,
@@ -689,7 +689,7 @@ async function executeOrder(
     agentState.ordersAttempted++;
     agentState.ordersFailed++;
     try {
-      await prisma.tradeHistory.create({
+      await db.tradeHistory.create({
         data: {
           stockCode: signal.stockCode,
           stockName: signal.stockName,
@@ -732,7 +732,7 @@ async function executeOrder(
     agentState.ordersSubmitted++;
   }
   try {
-    await prisma.tradeHistory.create({
+    await db.tradeHistory.create({
       data: {
         stockCode: signal.stockCode,
         stockName: signal.stockName,
@@ -780,7 +780,7 @@ async function executeOrder(
     try {
       if (signal.signalType === 'BUY') {
         const positionId = `${market}-${exchangeCode || 'KR'}-${signal.stockCode}`;
-        await prisma.position.upsert({
+        await db.position.upsert({
           where: {
             id: positionId,
           },
@@ -806,16 +806,16 @@ async function executeOrder(
       } else if (signal.signalType === 'SELL') {
         // 매도 시 포지션 삭제 또는 수량 감소
         const positionId = `${market}-${exchangeCode || 'KR'}-${signal.stockCode}`;
-        const existingPos = await prisma.position.findUnique({
+        const existingPos = await db.position.findUnique({
           where: { id: positionId },
         });
         if (existingPos) {
           if (existingPos.quantity <= safeQuantity) {
-            await prisma.position.delete({
+            await db.position.delete({
               where: { id: positionId },
             });
           } else {
-            await prisma.position.update({
+            await db.position.update({
               where: { id: positionId },
               data: {
                 quantity: existingPos.quantity - safeQuantity,
@@ -936,14 +936,14 @@ async function reconcilePositions(
     );
 
     // DB에서 현재 마켓의 포지션 조회
-    const dbPositions = await prisma.position.findMany({
+    const dbPositions = await db.position.findMany({
       where: { market },
     });
 
     // 1. 잔고에 없는 포지션 삭제 (전량 매도 또는 체결 실패)
     for (const dbPos of dbPositions) {
       if (!actualIds.has(dbPos.id)) {
-        await prisma.position.delete({ where: { id: dbPos.id } }).catch(() => {});
+        await db.position.delete({ where: { id: dbPos.id } }).catch(() => {});
         removed++;
         addLog('INFO', market, `포지션 동기화: ${dbPos.stockName} 삭제 (잔고에 없음)`, {
           stockCode: dbPos.stockCode,
@@ -958,7 +958,7 @@ async function reconcilePositions(
 
       if (!dbPos) {
         // DB에 없는 새 포지션 (수동 매수 또는 이전 세션에서 보유)
-        await prisma.position.create({
+        await db.position.create({
           data: {
             id: positionId,
             stockCode: pos.stockCode,
@@ -978,7 +978,7 @@ async function reconcilePositions(
       } else {
         // 수량/가격 업데이트
         if (dbPos.quantity !== pos.quantity || Math.abs(dbPos.currentPrice - pos.currentPrice) > 0) {
-          await prisma.position.update({
+          await db.position.update({
             where: { id: positionId },
             data: {
               quantity: pos.quantity,
@@ -1123,9 +1123,9 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
       // 토큰 갱신 내용을 DB에도 업데이트 (getTokenInfo 공식 메서드 사용)
       const tokenInfo = kisClient.getTokenInfo();
       if (tokenInfo.accessToken && tokenInfo.tokenExpiresAt) {
-        const configRecord = await prisma.kisConfig.findFirst();
+        const configRecord = await db.kisConfig.findFirst();
         if (configRecord) {
-          await prisma.kisConfig.update({
+          await db.kisConfig.update({
             where: { id: configRecord.id },
             data: {
               accessToken: tokenInfo.accessToken,
@@ -1835,11 +1835,11 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
   // ========================================
   if (agentState.currentSessionId) {
     try {
-      const session = await prisma.tradingSession.findUnique({
+      const session = await db.tradingSession.findUnique({
         where: { id: agentState.currentSessionId },
       });
       if (session) {
-        await prisma.tradingSession.update({
+        await db.tradingSession.update({
           where: { id: agentState.currentSessionId },
           data: {
             totalTrades: session.totalTrades + ordersPlaced,
@@ -1920,13 +1920,13 @@ export async function startAgent(): Promise<{ success: boolean; sessionId: strin
 
   try {
     // 기존 실행 중 세션 정지
-    await prisma.tradingSession.updateMany({
+    await db.tradingSession.updateMany({
       where: { status: 'RUNNING' },
       data: { status: 'STOPPED', stoppedAt: new Date() },
     });
 
     // 새 세션 생성
-    const session = await prisma.tradingSession.create({
+    const session = await db.tradingSession.create({
       data: {
         status: 'RUNNING',
         startedAt: new Date(),
@@ -1958,7 +1958,7 @@ export async function stopAgent(): Promise<{ success: boolean; message: string }
 
   try {
     if (agentState.currentSessionId) {
-      await prisma.tradingSession.update({
+      await db.tradingSession.update({
         where: { id: agentState.currentSessionId },
         data: { status: 'STOPPED', stoppedAt: new Date() },
       });

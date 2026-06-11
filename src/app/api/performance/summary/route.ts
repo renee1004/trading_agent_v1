@@ -4,23 +4,15 @@
 // - 종목별 손익, 전략별 손익
 
 import { NextResponse } from 'next/server';
-import { prisma, isPrismaAvailable, ensurePrismaConnected } from '@/lib/prisma';
+import { db, isDbAvailable, getDbType } from '@/lib/db';
 
 export async function GET() {
   try {
-    if (!isPrismaAvailable()) {
-      return NextResponse.json(
-        { success: false, error: 'DB 연결 불가' },
-        { status: 503 }
-      );
-    }
-
-    await ensurePrismaConnected();
-
+    // InMemory DB도 지원하므로 항상 시도
     // ── 1. 전체 거래 통계 ──
     // BUY+SELL 쌍을 매칭하여 실현 손익을 계산하는 대신,
     // SELL 거래의 profitRate를 기준으로 승/패 판단
-    const allTrades = await prisma.tradeHistory.findMany({
+    const allTrades = await db.tradeHistory.findMany({
       where: {
         status: { notIn: ['CANCELLED', 'FAILED'] },
       },
@@ -33,7 +25,7 @@ export async function GET() {
 
     // ── 2. 포지션 기반 실현 손익 계산 ──
     // Position 테이블의 realizedPnL 필드 활용 + SELL 거래의 profitRate
-    const positions = await prisma.position.findMany();
+    const positions = await db.position.findMany();
 
     // SELL 거래에서 실현 손익 추출
     const realizedTrades: Array<{

@@ -5,7 +5,8 @@
 // findFirst + update/create 방식으로 upsert unique 제약 의존성 제거
 
 import { NextResponse } from 'next/server';
-import { prisma, getAppSetting, setAppSetting, isPrismaAvailable, ensurePrismaConnected, getAllAppSettings } from '@/lib/prisma';
+import { db } from '@/lib/db';
+import { getAppSetting, setAppSetting, isPrismaAvailable, ensurePrismaConnected, getAllAppSettings } from '@/lib/prisma';
 import { getEffectiveTradingSettings } from '@/lib/effective-settings';
 
 const SETTINGS_DB_KEY = 'trading_settings';
@@ -159,9 +160,9 @@ export async function DELETE() {
     let overrideDeleted = false;
     try {
       await ensurePrismaConnected();
-      const existing = await prisma.appSetting.findFirst({ where: { key: OVERRIDE_KEY } });
+      const existing = await db.appSetting.findFirst({ where: { key: OVERRIDE_KEY } });
       if (existing) {
-        await prisma.appSetting.delete({ where: { id: existing.id } });
+        await db.appSetting.delete({ where: { id: existing.id } });
         overrideDeleted = true;
         console.log('[TestMode] override 키 삭제 성공');
       } else {
