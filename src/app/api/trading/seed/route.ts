@@ -1,20 +1,34 @@
 // 샘플 거래내역 시드 API
 // InMemory DB가 비어있을 때 데모 데이터를 생성
-// POST /api/trading/seed
+// GET  /api/trading/seed         — 상태 확인
+// GET  /api/trading/seed?reset=1 — 기존 데이터 삭제 후 재시드
+// POST /api/trading/seed         — 시드 실행
+// POST /api/trading/seed?reset=1 — 기존 데이터 삭제 후 재시드
 
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { db, getDbType } from '@/lib/db';
 
-export async function POST() {
+// 샘플 거래내역 데이터 생성 함수
+async function seedTrades(forceReset: boolean) {
   try {
     // 기존 거래내역 확인
     const existing = await db.tradeHistory.findMany({ take: 1 });
-    if (existing.length > 0) {
+
+    if (existing.length > 0 && !forceReset) {
+      const totalCount = await db.tradeHistory.count();
       return NextResponse.json({
         success: false,
-        message: '이미 거래내역이 존재합니다. 시드를 건너뜁니다.',
-        existingCount: existing.length,
+        message: '이미 거래내역이 존재합니다. 재시드하려면 ?reset=1 을 추가하세요.',
+        existingCount: totalCount,
+        dbType: getDbType(),
+        hint: 'GET /api/trading/seed?reset=1 또는 POST /api/trading/seed?reset=1',
       });
+    }
+
+    // 강제 리셋: 기존 데이터 삭제
+    if (forceReset && existing.length > 0) {
+      await db.tradeHistory.deleteMany({});
+      console.log('[Seed] 기존 거래내역 삭제 완료');
     }
 
     const now = new Date();
@@ -142,8 +156,11 @@ export async function POST() {
 
     return NextResponse.json({
       success: true,
-      message: `${created}개의 샘플 거래내역이 생성되었습니다.`,
+      message: forceReset
+        ? `기존 데이터 삭제 후 ${created}개의 샘플 거래내역이 재생성되었습니다.`
+        : `${created}개의 샘플 거래내역이 생성되었습니다.`,
       created,
+      reset: forceReset,
       dbType: getDbType(),
     });
   } catch (error) {
@@ -154,4 +171,18 @@ export async function POST() {
       { status: 500 }
     );
   }
+}
+
+// GET: 브라우저에서 직접 열 수 있도록 지원
+export async function GET(request: NextRequest) {
+  const { searchParams } = new URL(request.url);
+  const reset = searchParams.get('reset') === '1';
+  return seedTrades(reset);
+}
+
+// POST: API 호출용
+export async function POST(request: NextRequest) {
+  const { searchParams } = new URL(request.url);
+  const reset = searchParams.get('reset') === '1';
+  return seedTrades(reset);
 }

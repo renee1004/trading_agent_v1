@@ -1,7 +1,7 @@
 {
   "TradeHistory": [
     {
-      "id": "clmq9csd7x03kwy8",
+      "id": "clmq9fbrw8wfzhhh",
       "stockCode": "005930",
       "stockName": "삼성전자",
       "tradeType": "BUY",
@@ -22,12 +22,12 @@
       "filledPrice": 72300,
       "avgFillPrice": 72300,
       "slippagePercent": 0,
-      "tradedAt": "2026-06-11T09:27:05.325Z",
-      "createdAt": "2026-06-11T10:27:05.325Z",
-      "updatedAt": "2026-06-11T10:27:05.325Z"
+      "tradedAt": "2026-06-11T10:38:10.040Z",
+      "createdAt": "2026-06-11T11:38:10.040Z",
+      "updatedAt": "2026-06-11T11:38:10.040Z"
     },
     {
-      "id": "clmq9csd7xz054y0",
+      "id": "clmq9fbrw9vvq2dr",
       "stockCode": "000660",
       "stockName": "SK하이닉스",
       "tradeType": "BUY",
@@ -48,12 +48,12 @@
       "filledPrice": 178500,
       "avgFillPrice": 178500,
       "slippagePercent": 0,
-      "tradedAt": "2026-06-11T08:27:05.325Z",
-      "createdAt": "2026-06-11T10:27:05.325Z",
-      "updatedAt": "2026-06-11T10:27:05.325Z"
+      "tradedAt": "2026-06-11T09:38:10.040Z",
+      "createdAt": "2026-06-11T11:38:10.041Z",
+      "updatedAt": "2026-06-11T11:38:10.041Z"
     },
     {
-      "id": "clmq9csd7ykwexpl",
+      "id": "clmq9fbrw9sok8vz",
       "stockCode": "035720",
       "stockName": "카카오",
       "tradeType": "SELL",
@@ -76,12 +76,12 @@
       "slippagePercent": -0.47,
       "profitLoss": 40000,
       "profitRate": 4.94,
-      "tradedAt": "2026-06-11T07:27:05.325Z",
-      "createdAt": "2026-06-11T10:27:05.326Z",
-      "updatedAt": "2026-06-11T10:27:05.326Z"
+      "tradedAt": "2026-06-11T08:38:10.040Z",
+      "createdAt": "2026-06-11T11:38:10.041Z",
+      "updatedAt": "2026-06-11T11:38:10.041Z"
     },
     {
-      "id": "clmq9csd7y0tpgwn",
+      "id": "clmq9fbrw9yz2uzv",
       "stockCode": "051910",
       "stockName": "LG화학",
       "tradeType": "BUY",
@@ -99,12 +99,12 @@
       "orderExecutionMode": "DRY_RUN",
       "currentPrice": 351000,
       "orderPrice": 350000,
-      "tradedAt": "2026-06-11T09:57:05.325Z",
-      "createdAt": "2026-06-11T10:27:05.326Z",
-      "updatedAt": "2026-06-11T10:27:05.326Z"
+      "tradedAt": "2026-06-11T11:08:10.040Z",
+      "createdAt": "2026-06-11T11:38:10.041Z",
+      "updatedAt": "2026-06-11T11:38:10.041Z"
     },
     {
-      "id": "clmq9csd7z98s8sx",
+      "id": "clmq9fbrwa1bxwq1",
       "stockCode": "006400",
       "stockName": "삼성SDI",
       "tradeType": "BUY",
@@ -123,12 +123,12 @@
       "currentPrice": 285000,
       "orderPrice": 285000,
       "msg1": "주문 차단: 장외 시간 주문 제한",
-      "tradedAt": "2026-06-11T06:27:05.325Z",
-      "createdAt": "2026-06-11T10:27:05.327Z",
-      "updatedAt": "2026-06-11T10:27:05.327Z"
+      "tradedAt": "2026-06-11T07:38:10.040Z",
+      "createdAt": "2026-06-11T11:38:10.042Z",
+      "updatedAt": "2026-06-11T11:38:10.042Z"
     },
     {
-      "id": "clmq9csd7znmreke",
+      "id": "clmq9fbrwa0egg4e",
       "stockCode": "373220",
       "stockName": "LG에너지솔루션",
       "tradeType": "BUY",
@@ -149,12 +149,12 @@
       "rtCd": "1",
       "msgCd": "EGW00101",
       "msg1": "KIS 미연결: 접근토큰 없음",
-      "tradedAt": "2026-06-11T05:27:05.325Z",
-      "createdAt": "2026-06-11T10:27:05.327Z",
-      "updatedAt": "2026-06-11T10:27:05.327Z"
+      "tradedAt": "2026-06-11T06:38:10.040Z",
+      "createdAt": "2026-06-11T11:38:10.042Z",
+      "updatedAt": "2026-06-11T11:38:10.042Z"
     },
     {
-      "id": "clmq9csd7z9czhbc",
+      "id": "clmq9fbrwa434tvy",
       "stockCode": "NVDA",
       "stockName": "NVIDIA",
       "tradeType": "BUY",
@@ -175,12 +175,12 @@
       "filledPrice": 135.5,
       "avgFillPrice": 135.5,
       "slippagePercent": -0.52,
-      "tradedAt": "2026-06-11T08:57:05.325Z",
-      "createdAt": "2026-06-11T10:27:05.327Z",
-      "updatedAt": "2026-06-11T10:27:05.327Z"
+      "tradedAt": "2026-06-11T10:08:10.040Z",
+      "createdAt": "2026-06-11T11:38:10.042Z",
+      "updatedAt": "2026-06-11T11:38:10.042Z"
     },
     {
-      "id": "clmq9csd7zrrwpmq",
+      "id": "clmq9fbrwa4r0z8r",
       "stockCode": "AAPL",
       "stockName": "Apple",
       "tradeType": "SELL",
@@ -203,12 +203,12 @@
       "slippagePercent": -0.38,
       "profitLoss": 45.75,
       "profitRate": 4.83,
-      "tradedAt": "2026-06-11T07:57:05.325Z",
-      "createdAt": "2026-06-11T10:27:05.327Z",
-      "updatedAt": "2026-06-11T10:27:05.327Z"
+      "tradedAt": "2026-06-11T09:08:10.040Z",
+      "createdAt": "2026-06-11T11:38:10.042Z",
+      "updatedAt": "2026-06-11T11:38:10.042Z"
     },
     {
-      "id": "clmq9csd7zexlt0o",
+      "id": "clmq9fbrwbd0494x",
       "stockCode": "005380",
       "stockName": "현대자동차",
       "tradeType": "BUY",
@@ -231,12 +231,12 @@
       "slippagePercent": 0,
       "profitLoss": 16000,
       "profitRate": 0.78,
-      "tradedAt": "2026-06-10T10:27:05.325Z",
-      "createdAt": "2026-06-11T10:27:05.327Z",
-      "updatedAt": "2026-06-11T10:27:05.327Z"
+      "tradedAt": "2026-06-10T11:38:10.040Z",
+      "createdAt": "2026-06-11T11:38:10.043Z",
+      "updatedAt": "2026-06-11T11:38:10.043Z"
     },
     {
-      "id": "clmq9csd80gkpgzt",
+      "id": "clmq9fbrwbo2vt46",
       "stockCode": "068270",
       "stockName": "셀트리온",
       "tradeType": "BUY",
@@ -259,9 +259,9 @@
       "slippagePercent": 0,
       "profitLoss": -22500,
       "profitRate": -0.82,
-      "tradedAt": "2026-06-09T10:27:05.325Z",
-      "createdAt": "2026-06-11T10:27:05.328Z",
-      "updatedAt": "2026-06-11T10:27:05.328Z"
+      "tradedAt": "2026-06-09T11:38:10.040Z",
+      "createdAt": "2026-06-11T11:38:10.043Z",
+      "updatedAt": "2026-06-11T11:38:10.043Z"
     }
   ]
 }
