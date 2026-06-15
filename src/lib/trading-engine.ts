@@ -190,16 +190,22 @@ export class TradingEngine {
       indicatorValues['bbWidth'] = bbWidth;
 
       if (lastClose > bbMiddle) {
-        buyScore += 15;
         if (lastClose > bbUpper * 0.98) {
-          sellScore += 10; // 상단 접근 시 익절
+          // 상단 접근 시 매도 우위 (매수 점수 없음)
+          sellScore += 15;
           reasons.push('BB 상단 접근');
+        } else {
+          // 중간~상단 사이: 약한 매수
+          buyScore += 10;
         }
       }
       
       if (lastClose < bbLower) {
         sellScore += 20; // 하단 이탈
         reasons.push('BB 하단 이탈');
+      } else if (lastClose < bbMiddle && lastClose >= bbLower) {
+        // 하단~중간: 평균 회귀 매수 기회
+        buyScore += 10;
       }
       
       // 밴드폭 축소 후 돌파 (변동성 돌파)
@@ -387,8 +393,27 @@ export class TradingEngine {
       };
     }
 
-    // 매도 조건 (보유 중인 경우) - 시장별 손절 폭 적용
-    if (todayClose < yesterdayClose * (1 - (params.stopLoss || defaultStopLoss))) {
+    // 매도 조건 (보유 중인 경우) - 진입가 대비 손절
+    // 전일 종가 대비가 아닌, 당일 고가 대비 역전 시 매도
+    const todayHigh = candles[len - 1].high;
+    const todayLow = candles[len - 1].low;
+    if (todayClose < todayLow * (1 + (params.stopLoss || defaultStopLoss)) && todayClose < todayOpen) {
+      // 당일 저가 대비 추가 하락 + 시가 대비 하락 = 약세 확인
+      return {
+        stockCode,
+        stockName,
+        signalType: 'SELL',
+        strategy: 'VOLATILITY_BREAKOUT',
+        confidence: 65,
+        price: todayClose,
+        reason: '돌파 실패 역전 (당일 저가 이탈)',
+        indicators: indicatorValues,
+        timestamp: new Date(),
+      };
+    }
+
+    // 전일 대비 급락 시 매도 (엄격한 손절)
+    if (todayClose < yesterdayClose * (1 - ((params.stopLoss || defaultStopLoss) * 2))) {
       return {
         stockCode,
         stockName,
@@ -396,7 +421,7 @@ export class TradingEngine {
         strategy: 'VOLATILITY_BREAKOUT',
         confidence: 75,
         price: todayClose,
-        reason: '손절가 이탈',
+        reason: '급락 손절 (전일 대비)',
         indicators: indicatorValues,
         timestamp: new Date(),
       };
@@ -518,7 +543,69 @@ export class TradingEngine {
       };
     }
 
-    // 추세 유지 중
+    // 추세 유지 중 — MACD/RSI 확인 시 약한 신호 생성
+    // 전환만 감지하면 대부분 HOLD가 되므로, 추세 지속 중에도
+    // 보조 지표가 강하게 확증하면 약한 BUY/SELL 신호 발행
+    if (stDirection === 'UP') {
+      let upConfidence = 35;
+      const upReasons: string[] = [`SuperTrend UP 유지`];
+      if (!isNaN(macdHist) && macdHist > 0) {
+        upConfidence += 15;
+        upReasons.push('MACD 양수');
+      }
+      if (!isNaN(rsi) && rsi < 45) {
+        upConfidence += 10;
+        upReasons.push(`RSI 저위(${rsi.toFixed(1)})`);
+      }
+      if (!isNaN(prevMacdHist) && prevMacdHist <= 0 && macdHist > 0) {
+        upConfidence += 10;
+        upReasons.push('MACD 골든크로스');
+      }
+      if (upConfidence >= 50) {
+        return {
+          stockCode,
+          stockName,
+          signalType: 'BUY',
+          strategy: 'SUPER_TREND',
+          confidence: Math.min(70, upConfidence),
+          price: lastClose,
+          reason: upReasons.join(' | '),
+          indicators: indicatorValues,
+          timestamp: new Date(),
+        };
+      }
+    }
+
+    if (stDirection === 'DOWN') {
+      let downConfidence = 35;
+      const downReasons: string[] = [`SuperTrend DOWN 유지`];
+      if (!isNaN(macdHist) && macdHist < 0) {
+        downConfidence += 15;
+        downReasons.push('MACD 음수');
+      }
+      if (!isNaN(rsi) && rsi > 55) {
+        downConfidence += 10;
+        downReasons.push(`RSI 고위(${rsi.toFixed(1)})`);
+      }
+      if (!isNaN(prevMacdHist) && prevMacdHist >= 0 && macdHist < 0) {
+        downConfidence += 10;
+        downReasons.push('MACD 데드크로스');
+      }
+      if (downConfidence >= 50) {
+        return {
+          stockCode,
+          stockName,
+          signalType: 'SELL',
+          strategy: 'SUPER_TREND',
+          confidence: Math.min(70, downConfidence),
+          price: lastClose,
+          reason: downReasons.join(' | '),
+          indicators: indicatorValues,
+          timestamp: new Date(),
+        };
+      }
+    }
+
     return {
       stockCode,
       stockName,

@@ -113,18 +113,18 @@ export class RiskManager {
    * - 손절폭(stopDistance) = ATR × multiplier (변동성 기반) 또는 고정 %
    * - 포지션 수량 = 허용 손실 / 손절폭
    * 
-   * PIPELINE_TEST 모드에서는 항상 1주 반환
+   * 기본 1.0% 리스크 기반 포지션 사이즈 계산
    */
   calculatePositionSize(
     accountBalance: number,
     price: number,
     confidence: number,
     atrValue?: number,
-    accountRiskPercent: number = 0.3,
+    accountRiskPercent: number = 1.0,
     useATRStop: boolean = false,
   ): number {
-    // PIPELINE_TEST: 항상 1주
-    if (accountRiskPercent <= 0.3 && !useATRStop) {
+    // accountRiskPercent가 0 이하이면 1주 반환 (안전장치)
+    if (accountRiskPercent <= 0) {
       return 1;
     }
 

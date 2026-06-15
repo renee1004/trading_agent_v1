@@ -82,3 +82,4 @@ server.log
 # Caddy
 Caddyfile---
 .github/workflows/
+tool-results/

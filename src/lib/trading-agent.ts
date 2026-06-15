@@ -855,12 +855,19 @@ async function monitorPositions(
   for (const position of positions) {
     try {
       // 손절/익절 체크
+      // highSinceEntry: 실제 추적값이 없으면 현재가와 진입가 중 높은 값 사용
+      // (과거 고점을 모르면 현재가를 고점으로 간주 — 트레일링 스톱이 과도하게 조이는 것 방지)
+      const estimatedHighSinceEntry = Math.max(position.currentPrice, position.avgPrice);
+      // 전략 감지: stockCode 접두사가 아닌 DB의 position.strategy 필드 사용
+      const positionStrategy = (position as any).strategy ||
+        (market === 'DOMESTIC' ? 'COMPOSITE' : 'SUPER_TREND');
+
       const exitCheck = riskManager.checkPositionExit(
         position,
         position.currentPrice,
         position.avgPrice,
-        Math.max(position.currentPrice, position.avgPrice * 1.1), // highSinceEntry 추정치
-        position.stockCode.startsWith('0') ? 'COMPOSITE' : 'SUPER_TREND' // 시장별 기본 전략
+        estimatedHighSinceEntry,
+        positionStrategy
       );
 
       if (exitCheck.shouldExit) {
