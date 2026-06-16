@@ -803,90 +803,88 @@ export default function TradingDashboard() {
   const [tradeLoadError, setTradeLoadError] = useState<string>('');
   const [tradeLoadRetrying, setTradeLoadRetrying] = useState(false);
   const [tradeDataSource, setTradeDataSource] = useState<'api' | 'fallback'>('api');
-  
-  useEffect(() => {
-    let cancelled = false;
-    const loadTradeHistory = async () => {
-      setTradeLoadRetrying(true);
-      for (let attempt = 0; attempt < 3; attempt++) {
-        if (cancelled) return;
-        try {
-          const res = await fetch('/api/trading/history?limit=20', { cache: 'no-store' });
-          if (!res.ok) {
-            console.warn(`[TradeHistory] HTTP ${res.status}, retry ${attempt + 1}/3`);
-            if (attempt < 2) { await new Promise(r => setTimeout(r, 1500 * (attempt + 1))); continue; }
-            // 모든 시도 실패 → 폴백 데이터 사용
-            if (!cancelled) {
-              setTrades(FALLBACK_TRADES);
-              setTradeDataSource('fallback');
-              setTradeLoadError('서버 연결 실패 — 샘플 데이터 표시 중');
-            }
-            return;
-          }
-          const data = await res.json();
-          if (data.success && data.data?.trades && data.data.trades.length > 0) {
-            if (!cancelled) {
-              setTrades(data.data.trades);
-              setTradeDataSource('api');
-              setTradeLoadError('');
-            }
-            return;
-          } else if (data.success && data.data?.trades && data.data.trades.length === 0) {
-            // DB에 데이터가 없음 — 시드 API 호출 시도
-            console.log('[TradeHistory] No trades in DB, attempting seed...');
-            try {
-              const seedRes = await fetch('/api/trading/seed', { method: 'POST' });
-              if (seedRes.ok) {
-                const retryRes = await fetch('/api/trading/history?limit=20', { cache: 'no-store' });
-                if (retryRes.ok) {
-                  const retryData = await retryRes.json();
-                  if (retryData.success && retryData.data?.trades && retryData.data.trades.length > 0) {
-                    if (!cancelled) {
-                      setTrades(retryData.data.trades);
-                      setTradeDataSource('api');
-                      setTradeLoadError('');
-                    }
-                    return;
-                  }
-                }
-              }
-            } catch (seedErr) {
-              console.warn('[TradeHistory] Seed attempt failed:', seedErr);
-            }
-            // 시드 실패 → 폴백 데이터 사용
-            if (!cancelled) {
-              setTrades(FALLBACK_TRADES);
-              setTradeDataSource('fallback');
-              setTradeLoadError('거래내역이 없어 샘플 데이터를 표시합니다');
-            }
-            return;
-          } else {
-            console.warn(`[TradeHistory] success:false, retry ${attempt + 1}/3`, data.error || '');
-            if (attempt < 2) { await new Promise(r => setTimeout(r, 1500 * (attempt + 1))); continue; }
-            // 실패 → 폴백
-            if (!cancelled) {
-              setTrades(FALLBACK_TRADES);
-              setTradeDataSource('fallback');
-              setTradeLoadError('데이터 조회 실패 — 샘플 데이터 표시 중');
-            }
-          }
-        } catch (err) {
-          console.warn(`[TradeHistory] fetch error, retry ${attempt + 1}/3:`, err);
-          if (attempt < 2) { await new Promise(r => setTimeout(r, 1500 * (attempt + 1))); continue; }
-          // 네트워크 에러 → 폴백
-          if (!cancelled) {
-            setTrades(FALLBACK_TRADES);
-            setTradeDataSource('fallback');
-            setTradeLoadError('서버 연결 실패 — 샘플 데이터 표시 중');
-          }
+  const tradesCountRef = useRef(0);
+
+  // 거래내역 새로고침 함수 (여러 곳에서 재사용)
+  const refreshTradeHistory = useCallback(async () => {
+    setTradeLoadRetrying(true);
+    setTradeLoadError('');
+    try {
+      const res = await fetch('/api/trading/history?limit=20', { cache: 'no-store' });
+      if (!res.ok) {
+        const errText = `서버 응답 오류 (HTTP ${res.status})`;
+        console.warn(`[TradeHistory] ${errText}`);
+        // HTTP 에러 시 기존 데이터가 없으면 폴백 사용
+        if (tradesCountRef.current === 0) {
+          setTrades(FALLBACK_TRADES);
+          setTradeDataSource('fallback');
         }
+        setTradeLoadError(errText);
+        return;
       }
-    };
-    loadTradeHistory().finally(() => { if (!cancelled) setTradeLoadRetrying(false); });
-    // 30초마다 거래내역 자동 갱신 (서버가 살아있으면 API 데이터로 교체)
-    const interval = setInterval(loadTradeHistory, 30000);
-    return () => { cancelled = true; clearInterval(interval); };
+      const data = await res.json();
+      if (data.success && data.data?.trades && data.data.trades.length > 0) {
+        tradesCountRef.current = data.data.trades.length;
+        setTrades(data.data.trades);
+        setTradeDataSource('api');
+        setTradeLoadError('');
+      } else if (data.success && data.data?.trades && data.data.trades.length === 0) {
+        // DB에 데이터가 없음 — 시드 API 호출 시도
+        console.log('[TradeHistory] No trades in DB, attempting seed...');
+        try {
+          const seedRes = await fetch('/api/trading/seed', { method: 'POST' });
+          if (seedRes.ok) {
+            const retryRes = await fetch('/api/trading/history?limit=20', { cache: 'no-store' });
+            if (retryRes.ok) {
+              const retryData = await retryRes.json();
+              if (retryData.success && retryData.data?.trades && retryData.data.trades.length > 0) {
+                tradesCountRef.current = retryData.data.trades.length;
+                setTrades(retryData.data.trades);
+                setTradeDataSource('api');
+                setTradeLoadError('');
+                return;
+              }
+            }
+          }
+        } catch (seedErr) {
+          console.warn('[TradeHistory] Seed attempt failed:', seedErr);
+        }
+        // 시드 실패 → 폴백 데이터 사용
+        tradesCountRef.current = FALLBACK_TRADES.length;
+        setTrades(FALLBACK_TRADES);
+        setTradeDataSource('fallback');
+        setTradeLoadError('거래내역이 없어 샘플 데이터를 표시합니다');
+      } else {
+        // success: false 또는 기타 오류
+        const errMsg = data.error || '데이터 조회 실패';
+        console.warn('[TradeHistory] API error:', errMsg);
+        if (tradesCountRef.current === 0) {
+          tradesCountRef.current = FALLBACK_TRADES.length;
+          setTrades(FALLBACK_TRADES);
+          setTradeDataSource('fallback');
+        }
+        setTradeLoadError(errMsg);
+      }
+    } catch (err) {
+      const errMsg = '서버 연결 실패 — 네트워크를 확인하세요';
+      console.warn('[TradeHistory] fetch error:', err);
+      if (tradesCountRef.current === 0) {
+        tradesCountRef.current = FALLBACK_TRADES.length;
+        setTrades(FALLBACK_TRADES);
+        setTradeDataSource('fallback');
+      }
+      setTradeLoadError(errMsg);
+    } finally {
+      setTradeLoadRetrying(false);
+    }
   }, []);
+
+  useEffect(() => {
+    refreshTradeHistory();
+    // 30초마다 거래내역 자동 갱신
+    const interval = setInterval(refreshTradeHistory, 30000);
+    return () => { clearInterval(interval); };
+  }, [refreshTradeHistory]);
 
   // 자동 사이클: 에이전트 실행 중 + 자동사이클 활성화 시 60초마다 실행
   useEffect(() => {
@@ -1652,12 +1650,26 @@ export default function TradingDashboard() {
                     <CardTitle className="text-base">최근 거래 내역</CardTitle>
                     <CardDescription>자동매매 실행 기록</CardDescription>
                   </div>
-                  <Badge variant="outline">
-                    {trades.length}건
-                    {tradeDataSource === 'fallback' && (
-                      <span className="ml-1 text-amber-500">⋅샘플</span>
+                  <div className="flex items-center gap-2">
+                    {tradeLoadError && (
+                      <span className="text-xs text-amber-600 dark:text-amber-400">{tradeLoadError}</span>
                     )}
-                  </Badge>
+                    <Badge variant="outline">
+                      {trades.length}건
+                      {tradeDataSource === 'fallback' && (
+                        <span className="ml-1 text-amber-500">⋅샘플</span>
+                      )}
+                    </Badge>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={refreshTradeHistory}
+                      disabled={tradeLoadRetrying}
+                      className="h-7 px-2"
+                    >
+                      <RefreshCw className={`h-3.5 w-3.5 ${tradeLoadRetrying ? 'animate-spin' : ''}`} />
+                    </Button>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>
@@ -1758,26 +1770,9 @@ export default function TradingDashboard() {
                           <p className="text-sm">거래 내역이 없습니다</p>
                           <p className="text-xs mt-1 text-muted-foreground/70">자동매매 실행 시 거래 내역이 여기에 표시됩니다</p>
                           <button
-                            onClick={async () => {
-                              setTradeLoadRetrying(true);
-                              setTradeLoadError('');
-                              try {
-                                const res = await fetch('/api/trading/history?limit=20', { cache: 'no-store' });
-                                if (res.ok) {
-                                  const data = await res.json();
-                                  if (data.success && data.data?.trades && data.data.trades.length > 0) {
-                                    setTrades(data.data.trades);
-                                    setTradeDataSource('api');
-                                    setTradeLoadError('');
-                                  }
-                                }
-                              } catch {
-                                // 실패해도 이미 폴백 데이터가 있으면 유지
-                              } finally {
-                                setTradeLoadRetrying(false);
-                              }
-                            }}
-                            className="mt-3 px-4 py-2 text-xs bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors flex items-center gap-1.5"
+                            onClick={refreshTradeHistory}
+                            disabled={tradeLoadRetrying}
+                            className="mt-3 px-4 py-2 text-xs bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors flex items-center gap-1.5 disabled:opacity-50"
                           >
                             <RefreshCw className="h-3 w-3" />
                             거래내역 새로고침
