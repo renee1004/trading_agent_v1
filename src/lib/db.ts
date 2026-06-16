@@ -515,6 +515,13 @@ async function initPrisma(): Promise<boolean> {
     return false;
   }
 
+  // SQLite 등 비-PostgreSQL URL은 Prisma 연결 시도하지 않음
+  const dbUrl = process.env.DATABASE_URL;
+  if (!dbUrl.startsWith('postgresql://') && !dbUrl.startsWith('postgres://')) {
+    console.warn(`[DB] DATABASE_URL is not PostgreSQL (${dbUrl.substring(0, 30)}...) - using in-memory database`);
+    return false;
+  }
+
   try {
     const { PrismaClient } = require('@prisma/client');
     const client = new PrismaClient({

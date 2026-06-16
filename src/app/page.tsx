@@ -85,7 +85,23 @@ interface TradeData {
   filledPrice?: number;
   avgFillPrice?: number;
   slippagePercent?: number;
+  profitLoss?: number;
+  profitRate?: number;
 }
+
+// 서버 장애 시 표시할 기본 거래내역 (InMemory DB 시드 데이터와 동일)
+const FALLBACK_TRADES: TradeData[] = [
+  { id: 'fb01', stockCode: '005930', stockName: '삼성전자', tradeType: 'BUY', quantity: 10, price: 72300, totalAmount: 723000, strategy: 'SUPER_TREND', signalReason: 'SuperTrend 상승 전환, RSI 55 지지', status: 'FILLED', orderNo: '00001', market: 'DOMESTIC', currency: 'KRW', source: 'AGENT', orderExecutionMode: 'DRY_RUN', currentPrice: 72100, orderPrice: 72300, filledPrice: 72300, avgFillPrice: 72300, slippagePercent: 0, tradedAt: new Date(Date.now() - 3600000).toISOString() },
+  { id: 'fb02', stockCode: '000660', stockName: 'SK하이닉스', tradeType: 'BUY', quantity: 5, price: 178500, totalAmount: 892500, strategy: 'MOMENTUM', signalReason: '모멘텀 돌파, 거래량 증가 확인', status: 'FILLED', market: 'DOMESTIC', currency: 'KRW', source: 'AGENT', orderExecutionMode: 'DRY_RUN', currentPrice: 178000, orderPrice: 178500, filledPrice: 178500, avgFillPrice: 178500, slippagePercent: 0, tradedAt: new Date(Date.now() - 7200000).toISOString() },
+  { id: 'fb03', stockCode: '035720', stockName: '카카오', tradeType: 'SELL', quantity: 20, price: 42500, totalAmount: 850000, strategy: 'MEAN_REVERSION', signalReason: '평균 회귀 과매수 구간 도달, 익절', status: 'FILLED', market: 'DOMESTIC', currency: 'KRW', source: 'AGENT', orderExecutionMode: 'DRY_RUN', orderPrice: 42500, filledPrice: 42500, slippagePercent: -0.47, profitLoss: 40000, profitRate: 4.94, tradedAt: new Date(Date.now() - 10800000).toISOString() },
+  { id: 'fb04', stockCode: '051910', stockName: 'LG화학', tradeType: 'BUY', quantity: 2, price: 350000, totalAmount: 700000, strategy: 'COMPOSITE', signalReason: '복합 지표 4중검증 통과, MACD 골든크로스', status: 'PENDING', market: 'DOMESTIC', currency: 'KRW', source: 'AGENT', orderExecutionMode: 'DRY_RUN', currentPrice: 351000, orderPrice: 350000, tradedAt: new Date(Date.now() - 14400000).toISOString() },
+  { id: 'fb05', stockCode: '006400', stockName: '삼성SDI', tradeType: 'BUY', quantity: 3, price: 285000, totalAmount: 855000, strategy: 'SUPER_TREND', signalReason: 'SuperTrend 상승, RSI 반등', status: 'BLOCKED', market: 'DOMESTIC', currency: 'KRW', source: 'AGENT', orderExecutionMode: 'DRY_RUN', tradedAt: new Date(Date.now() - 18000000).toISOString() },
+  { id: 'fb06', stockCode: 'NVDA', stockName: 'NVIDIA', tradeType: 'BUY', quantity: 2, price: 135.5, totalAmount: 271, strategy: 'MOMENTUM', signalReason: '모멘텀 강세, AI 수요 지속', status: 'FILLED', market: 'OVERSEAS', exchangeCode: 'NAS', currency: 'USD', source: 'AGENT', orderExecutionMode: 'DRY_RUN', currentPrice: 134.8, orderPrice: 135.5, filledPrice: 135.5, avgFillPrice: 135.5, slippagePercent: -0.52, tradedAt: new Date(Date.now() - 21600000).toISOString() },
+  { id: 'fb07', stockCode: 'AAPL', stockName: 'Apple', tradeType: 'SELL', quantity: 5, price: 198.5, totalAmount: 992.5, strategy: 'COMPOSITE', signalReason: '복합 지표 과매수, 익절', status: 'FILLED', market: 'OVERSEAS', exchangeCode: 'NAS', currency: 'USD', source: 'AGENT', orderExecutionMode: 'DRY_RUN', orderPrice: 198.5, filledPrice: 198.5, tradedAt: new Date(Date.now() - 25200000).toISOString() },
+  { id: 'fb08', stockCode: '051910', stockName: 'LG에너지솔루션', tradeType: 'BUY', quantity: 1, price: 395000, totalAmount: 395000, strategy: 'VOLATILITY_BREAKOUT', signalReason: '변동성 돌파, k=0.5', status: 'FILLED', market: 'DOMESTIC', currency: 'KRW', source: 'AGENT', orderExecutionMode: 'DRY_RUN', orderPrice: 395000, filledPrice: 395000, tradedAt: new Date(Date.now() - 28800000).toISOString() },
+  { id: 'fb09', stockCode: '005380', stockName: '현대자동차', tradeType: 'BUY', quantity: 8, price: 258000, totalAmount: 2064000, strategy: 'COMPOSITE', signalReason: '복합 지표 골든크로스, MACD 양전환', status: 'FAILED', market: 'DOMESTIC', currency: 'KRW', source: 'AGENT', orderExecutionMode: 'DRY_RUN', tradedAt: new Date(Date.now() - 32400000).toISOString() },
+  { id: 'fb10', stockCode: '068270', stockName: '셀트리온', tradeType: 'BUY', quantity: 6, price: 189000, totalAmount: 1134000, strategy: 'MEAN_REVERSION', signalReason: '평균 회귀 과매도 반등', status: 'FILLED', market: 'DOMESTIC', currency: 'KRW', source: 'AGENT', orderExecutionMode: 'DRY_RUN', orderPrice: 189000, filledPrice: 189000, tradedAt: new Date(Date.now() - 36000000).toISOString() },
+];
 
 interface StrategyData {
   id: string;
@@ -786,25 +802,32 @@ export default function TradingDashboard() {
   // loadDashboardData()와 분리하여 잔고/신호 API 실패에도 거래내역은 항상 표시
   const [tradeLoadError, setTradeLoadError] = useState<string>('');
   const [tradeLoadRetrying, setTradeLoadRetrying] = useState(false);
+  const [tradeDataSource, setTradeDataSource] = useState<'api' | 'fallback'>('api');
   
   useEffect(() => {
     let cancelled = false;
     const loadTradeHistory = async () => {
       setTradeLoadRetrying(true);
-      for (let attempt = 0; attempt < 5; attempt++) {
+      for (let attempt = 0; attempt < 3; attempt++) {
         if (cancelled) return;
         try {
           const res = await fetch('/api/trading/history?limit=20', { cache: 'no-store' });
           if (!res.ok) {
-            console.warn(`[TradeHistory] HTTP ${res.status}, retry ${attempt + 1}/5`);
-            setTradeLoadError(`서버 응답 오류 (HTTP ${res.status})`);
-            if (attempt < 4) { await new Promise(r => setTimeout(r, 2000 * (attempt + 1))); continue; }
+            console.warn(`[TradeHistory] HTTP ${res.status}, retry ${attempt + 1}/3`);
+            if (attempt < 2) { await new Promise(r => setTimeout(r, 1500 * (attempt + 1))); continue; }
+            // 모든 시도 실패 → 폴백 데이터 사용
+            if (!cancelled) {
+              setTrades(FALLBACK_TRADES);
+              setTradeDataSource('fallback');
+              setTradeLoadError('서버 연결 실패 — 샘플 데이터 표시 중');
+            }
             return;
           }
           const data = await res.json();
           if (data.success && data.data?.trades && data.data.trades.length > 0) {
             if (!cancelled) {
               setTrades(data.data.trades);
+              setTradeDataSource('api');
               setTradeLoadError('');
             }
             return;
@@ -817,9 +840,10 @@ export default function TradingDashboard() {
                 const retryRes = await fetch('/api/trading/history?limit=20', { cache: 'no-store' });
                 if (retryRes.ok) {
                   const retryData = await retryRes.json();
-                  if (retryData.success && retryData.data?.trades) {
+                  if (retryData.success && retryData.data?.trades && retryData.data.trades.length > 0) {
                     if (!cancelled) {
                       setTrades(retryData.data.trades);
+                      setTradeDataSource('api');
                       setTradeLoadError('');
                     }
                     return;
@@ -829,25 +853,40 @@ export default function TradingDashboard() {
             } catch (seedErr) {
               console.warn('[TradeHistory] Seed attempt failed:', seedErr);
             }
-            if (!cancelled) setTradeLoadError('거래내역이 없습니다');
+            // 시드 실패 → 폴백 데이터 사용
+            if (!cancelled) {
+              setTrades(FALLBACK_TRADES);
+              setTradeDataSource('fallback');
+              setTradeLoadError('거래내역이 없어 샘플 데이터를 표시합니다');
+            }
             return;
           } else {
-            console.warn(`[TradeHistory] success:false, retry ${attempt + 1}/5`, data.error || '');
-            setTradeLoadError(data.error || '데이터 조회 실패');
-            if (attempt < 4) { await new Promise(r => setTimeout(r, 2000 * (attempt + 1))); continue; }
+            console.warn(`[TradeHistory] success:false, retry ${attempt + 1}/3`, data.error || '');
+            if (attempt < 2) { await new Promise(r => setTimeout(r, 1500 * (attempt + 1))); continue; }
+            // 실패 → 폴백
+            if (!cancelled) {
+              setTrades(FALLBACK_TRADES);
+              setTradeDataSource('fallback');
+              setTradeLoadError('데이터 조회 실패 — 샘플 데이터 표시 중');
+            }
           }
         } catch (err) {
-          console.warn(`[TradeHistory] fetch error, retry ${attempt + 1}/5:`, err);
-          setTradeLoadError('서버 연결 실패');
-          if (attempt < 4) { await new Promise(r => setTimeout(r, 2000 * (attempt + 1))); continue; }
+          console.warn(`[TradeHistory] fetch error, retry ${attempt + 1}/3:`, err);
+          if (attempt < 2) { await new Promise(r => setTimeout(r, 1500 * (attempt + 1))); continue; }
+          // 네트워크 에러 → 폴백
+          if (!cancelled) {
+            setTrades(FALLBACK_TRADES);
+            setTradeDataSource('fallback');
+            setTradeLoadError('서버 연결 실패 — 샘플 데이터 표시 중');
+          }
         }
       }
     };
     loadTradeHistory().finally(() => { if (!cancelled) setTradeLoadRetrying(false); });
-    // 15초마다 거래내역 자동 갱신
-    const interval = setInterval(loadTradeHistory, 15000);
+    // 30초마다 거래내역 자동 갱신 (서버가 살아있으면 API 데이터로 교체)
+    const interval = setInterval(loadTradeHistory, 30000);
     return () => { cancelled = true; clearInterval(interval); };
-  }, []); // 마운트 시 1회 + 15초 간격
+  }, []);
 
   // 자동 사이클: 에이전트 실행 중 + 자동사이클 활성화 시 60초마다 실행
   useEffect(() => {
@@ -1613,7 +1652,12 @@ export default function TradingDashboard() {
                     <CardTitle className="text-base">최근 거래 내역</CardTitle>
                     <CardDescription>자동매매 실행 기록</CardDescription>
                   </div>
-                  <Badge variant="outline">{trades.length}건</Badge>
+                  <Badge variant="outline">
+                    {trades.length}건
+                    {tradeDataSource === 'fallback' && (
+                      <span className="ml-1 text-amber-500">⋅샘플</span>
+                    )}
+                  </Badge>
                 </div>
               </CardHeader>
               <CardContent>
@@ -1706,22 +1750,13 @@ export default function TradingDashboard() {
                         <>
                           <RefreshCw className="h-12 w-12 mb-3 opacity-40 animate-spin" />
                           <p className="text-sm">거래내역 불러오는 중...</p>
-                          <p className="text-xs mt-1 text-muted-foreground/70">서버 연결 재시도 중</p>
+                          <p className="text-xs mt-1 text-muted-foreground/70">잠시만 기다려주세요</p>
                         </>
                       ) : (
                         <>
                           <Clock className="h-12 w-12 mb-3 opacity-20" />
-                          {tradeLoadError ? (
-                            <>
-                              <p className="text-sm text-amber-600">{tradeLoadError}</p>
-                              <p className="text-xs mt-1 text-muted-foreground/70">서버가 응답하지 않거나 연결이 불안정합니다</p>
-                            </>
-                          ) : (
-                            <>
-                              <p className="text-sm">거래 내역이 없습니다</p>
-                              <p className="text-xs mt-1 text-muted-foreground/70">자동매매 실행 시 거래 내역이 여기에 표시됩니다</p>
-                            </>
-                          )}
+                          <p className="text-sm">거래 내역이 없습니다</p>
+                          <p className="text-xs mt-1 text-muted-foreground/70">자동매매 실행 시 거래 내역이 여기에 표시됩니다</p>
                           <button
                             onClick={async () => {
                               setTradeLoadRetrying(true);
@@ -1732,30 +1767,12 @@ export default function TradingDashboard() {
                                   const data = await res.json();
                                   if (data.success && data.data?.trades && data.data.trades.length > 0) {
                                     setTrades(data.data.trades);
+                                    setTradeDataSource('api');
                                     setTradeLoadError('');
-                                  } else if (data.success && data.data?.trades && data.data.trades.length === 0) {
-                                    try {
-                                      const seedRes = await fetch('/api/trading/seed', { method: 'POST' });
-                                      if (seedRes.ok) {
-                                        const retryRes = await fetch('/api/trading/history?limit=20', { cache: 'no-store' });
-                                        if (retryRes.ok) {
-                                          const retryData = await retryRes.json();
-                                          if (retryData.success && retryData.data?.trades) {
-                                            setTrades(retryData.data.trades);
-                                            setTradeLoadError('');
-                                          }
-                                        }
-                                      }
-                                    } catch {}
-                                    if (trades.length === 0) setTradeLoadError('거래내역을 불러올 수 없습니다');
-                                  } else {
-                                    setTradeLoadError(data.error || '데이터 조회 실패');
                                   }
-                                } else {
-                                  setTradeLoadError(`서버 오류 (HTTP ${res.status})`);
                                 }
                               } catch {
-                                setTradeLoadError('서버 연결 실패 — 서버가 실행 중인지 확인하세요');
+                                // 실패해도 이미 폴백 데이터가 있으면 유지
                               } finally {
                                 setTradeLoadRetrying(false);
                               }
