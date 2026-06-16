@@ -324,3 +324,32 @@ Stage Summary:
 - Quick-switch buttons use /api/settings/trading/mode for reliable mode transitions
 - maxDomesticOrderAmount raised to 1,000,000 KRW as requested
 - Build verified successfully
+
+---
+Task ID: 1
+Agent: Main Agent
+Task: Fix trade history HTTP 500 error and stuck loading spinner
+
+Work Log:
+- Investigated /api/trading/history API route code - found it properly handles errors with try/catch
+- Tested API directly with curl - returns HTTP 200 with correct data (InMemory DB has 10 trade records)
+- The HTTP 500 was likely caused by server not running or Prisma connection attempt failure in previous sessions
+- Identified stuck loading spinner root cause: loadTradeHistory used cancelled flag in finally() that could prevent tradeLoadRetrying from being reset
+- Identified trades.length dependency in useCallback causing potential infinite re-render loops
+- Refactored loadTradeHistory into useCallback refreshTradeHistory with stable empty dependency array
+- Used tradesCountRef (useRef) instead of trades.length to avoid dependency cycles
+- Added tradeLoadError display in the UI header area (amber-colored text)
+- Added refresh button (RefreshCw icon) in trade history header for easy reloading
+- Replaced inline fetch in "거래내역 새로고침" button with shared refreshTradeHistory function
+- Added disabled state to refresh buttons during loading
+- Ensured finally() always sets tradeLoadRetrying(false) regardless of outcome
+- Built successfully with npx next build
+- Tested API returns correct data
+- Pushed to GitHub: commit 4210f24
+
+Stage Summary:
+- API /api/trading/history works correctly (InMemory DB has data)
+- Loading spinner stuck bug fixed - finally() always resets tradeLoadRetrying
+- No more infinite loops from trades.length dependency
+- Trade history header now shows error messages and refresh button
+- GitHub push successful
