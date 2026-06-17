@@ -98,6 +98,22 @@ export async function GET() {
       ? Math.abs(lossTrades.reduce((sum, t) => sum + t.profitRate, 0) / lossTrades.length)
       : 0;
 
+    // 절대금액 기반 평균 수익/손실 (KRW/USD 혼합이므로 통화별 분리)
+    const krwRealized = realizedTrades.filter(t => t.market === 'DOMESTIC');
+    const usdRealized = realizedTrades.filter(t => t.market === 'OVERSEAS');
+    const krwWins = krwRealized.filter(t => t.profitLoss > 0);
+    const krwLosses = krwRealized.filter(t => t.profitLoss < 0);
+    const usdWins = usdRealized.filter(t => t.profitLoss > 0);
+    const usdLosses = usdRealized.filter(t => t.profitLoss < 0);
+    const avgWinAmountKRW = krwWins.length > 0
+      ? krwWins.reduce((s, t) => s + t.profitLoss, 0) / krwWins.length : 0;
+    const avgLossAmountKRW = krwLosses.length > 0
+      ? Math.abs(krwLosses.reduce((s, t) => s + t.profitLoss, 0) / krwLosses.length) : 0;
+    const avgWinAmountUSD = usdWins.length > 0
+      ? usdWins.reduce((s, t) => s + t.profitLoss, 0) / usdWins.length : 0;
+    const avgLossAmountUSD = usdLosses.length > 0
+      ? Math.abs(usdLosses.reduce((s, t) => s + t.profitLoss, 0) / usdLosses.length) : 0;
+
     // 손익비 (평균 수익률 / 평균 손실률)
     const profitFactor = avgLossRate > 0 ? avgWinRate / avgLossRate : avgWinRate > 0 ? Infinity : 0;
 
@@ -217,7 +233,66 @@ export async function GET() {
     const strategyPerformance = Array.from(strategyPnLMap.values())
       .sort((a, b) => b.totalProfitLoss - a.totalProfitLoss);
 
-    // ── 7. 현재 미청산 포지션 ──
+    // ── 7. 청산 사유별 손익 ──
+    // signalReason / msg1 텍스트에서 청산 사유 추출
+    function detectExitType(reason: string | null, msg1: string | null): string {
+      const text = `${reason || ''} ${msg1 || ''}`.toLowerCase();
+      if (text.includes('트레일링') || text.includes('trailing')) return 'TRAILING_STOP';
+      if (text.includes('손절') || text.includes('stop loss') || text.includes('stoploss')) return 'STOP_LOSS';
+      if (text.includes('익절') || text.includes('take profit') || text.includes('목표가') || text.includes('수익 실현')) return 'TAKE_PROFIT';
+      if (reason) return 'SIGNAL';
+      return 'UNKNOWN';
+    }
+
+    const exitReasonPnLMap = new Map<string, {
+      exitReasonType: string;
+      count: number;
+      winCount: number;
+      lossCount: number;
+      totalProfitLoss: number;
+      avgProfitLoss: number;
+      avgProfitRate: number;
+    }>();
+
+    for (const trade of realizedTrades) {
+      // SELL 거래의 signalReason에서 사유 추출 — 매칭된 SELL 거래를 찾아야 함
+      // realizedTrades는 SELL 기준이므로, SELL의 원본 trade를 다시 검색
+      const sellTrade = sellTrades.find(s =>
+        s.stockCode === trade.stockCode &&
+        s.strategy === trade.strategy &&
+        Math.abs((s.profitRate || 0) - trade.profitRate) < 0.01
+      );
+      const exitType = detectExitType(sellTrade?.signalReason || null, sellTrade?.msg1 || null);
+      const existing = exitReasonPnLMap.get(exitType);
+      if (existing) {
+        existing.count++;
+        if (trade.profitLoss > 0) existing.winCount++;
+        else if (trade.profitLoss < 0) existing.lossCount++;
+        existing.totalProfitLoss += trade.profitLoss;
+        existing.avgProfitLoss = existing.totalProfitLoss / existing.count;
+        existing.avgProfitRate = (existing.avgProfitRate * (existing.count - 1) + trade.profitRate) / existing.count;
+      } else {
+        exitReasonPnLMap.set(exitType, {
+          exitReasonType: exitType,
+          count: 1,
+          winCount: trade.profitLoss > 0 ? 1 : 0,
+          lossCount: trade.profitLoss < 0 ? 1 : 0,
+          totalProfitLoss: trade.profitLoss,
+          avgProfitLoss: trade.profitLoss,
+          avgProfitRate: trade.profitRate,
+        });
+      }
+    }
+    const exitReasonPerformance = Array.from(exitReasonPnLMap.values())
+      .map(e => ({
+        ...e,
+        totalProfitLoss: parseFloat(e.totalProfitLoss.toFixed(2)),
+        avgProfitLoss: parseFloat(e.avgProfitLoss.toFixed(2)),
+        avgProfitRate: parseFloat(e.avgProfitRate.toFixed(2)),
+      }))
+      .sort((a, b) => b.totalProfitLoss - a.totalProfitLoss);
+
+    // ── 8. 현재 미청산 포지션 ──
     const openPositions = positions.map(p => ({
       stockCode: p.stockCode,
       stockName: p.stockName,
@@ -236,10 +311,11 @@ export async function GET() {
       realizedPnL: p.realizedPnL,
     }));
 
-    // ── 8. 응답 구성 ──
+    // ── 9. 응답 구성 ──
     return NextResponse.json({
       success: true,
       summary: {
+        // 기본 통계
         totalTrades,
         buyCount: buyTrades.length,
         sellCount: sellTrades.length,
@@ -247,18 +323,28 @@ export async function GET() {
         winCount: winTrades.length,
         lossCount: lossTrades.length,
         evenCount: evenTrades.length,
+        // 승률/손익비/기대값 (% 기반)
         winRate: parseFloat(winRate.toFixed(2)),
         avgProfitRate: parseFloat(avgWinRate.toFixed(2)),
         avgLossRate: parseFloat(avgLossRate.toFixed(2)),
         profitFactor: profitFactor === Infinity ? 'Infinity' : parseFloat(profitFactor.toFixed(2)),
         expectedValue: parseFloat(expectedValue.toFixed(2)),
+        // 절대금액 기반 평균 수익/손실 (통화별)
+        avgWinAmountKRW: parseFloat(avgWinAmountKRW.toFixed(0)),
+        avgLossAmountKRW: parseFloat(avgLossAmountKRW.toFixed(0)),
+        avgWinAmountUSD: parseFloat(avgWinAmountUSD.toFixed(2)),
+        avgLossAmountUSD: parseFloat(avgLossAmountUSD.toFixed(2)),
+        // 누적 손익 / MDD
         maxDrawdown: parseFloat(maxDrawdown.toFixed(0)),
         totalRealizedPnL: parseFloat(cumulativePnL.toFixed(0)),
+        // 미청산 포지션
         openPositionCount: positions.length,
         openPositionUnrealizedPnL: parseFloat(
           positions.reduce((sum, p) => sum + (p.profitLoss || 0), 0).toFixed(0)
         ),
       },
+      // 청산 사유별 손익 (TRAILING_STOP / STOP_LOSS / TAKE_PROFIT / SIGNAL / UNKNOWN)
+      exitReasonPerformance,
       stockPerformance,
       strategyPerformance,
       openPositions,

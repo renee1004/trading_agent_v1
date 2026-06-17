@@ -38,15 +38,22 @@ function createInMemoryDb() {
   function matchesWhere(record: any, where: any): boolean {
     if (!where) return true;
     return Object.entries(where).every(([key, value]) => {
+      if (value === null || value === undefined) {
+        return record[key] === null || record[key] === undefined;
+      }
       if (typeof value === 'object' && value !== null) {
         const op = value as any;
         if (op.equals !== undefined) return record[key] === op.equals;
+        if (op.not !== undefined) return record[key] !== op.not;
         if (op.contains !== undefined) return String(record[key] || '').toLowerCase().includes(String(op.contains).toLowerCase());
+        if (op.startsWith !== undefined) return String(record[key] || '').startsWith(String(op.startsWith));
+        if (op.endsWith !== undefined) return String(record[key] || '').endsWith(String(op.endsWith));
         if (op.gt !== undefined) return record[key] > op.gt;
         if (op.gte !== undefined) return record[key] >= op.gte;
         if (op.lt !== undefined) return record[key] < op.lt;
         if (op.lte !== undefined) return record[key] <= op.lte;
         if (op.in !== undefined) return Array.isArray(op.in) && op.in.includes(record[key]);
+        if (op.notIn !== undefined) return Array.isArray(op.notIn) && !op.notIn.includes(record[key]);
       }
       return record[key] === value;
     });
