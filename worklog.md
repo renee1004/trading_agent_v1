@@ -353,3 +353,55 @@ Stage Summary:
 - No more infinite loops from trades.length dependency
 - Trade history header now shows error messages and refresh button
 - GitHub push successful
+
+---
+Task ID: 2
+Agent: Main Agent
+Task: 거래 상세 분석 API + 성과 요약 보강 + InMemory DB notIn 버그 수정
+
+Work Log:
+- 사용자 요청: 거래내역 손익 -50 발생, 전략 평가용 상세 분석 API 추가
+- 요청 필드 21개: tradeId, stockCode, stockName, buyTime, sellTime, holdingMinutes,
+  entryPrice, exitPrice, quantity, grossPnL, fee, tax, netPnL, profitRate,
+  entryReason, exitReason, strategy, buyScore, sellScore, marketCondition,
+  wasTrailingStop, wasStopLoss, wasTakeProfit
+- /api/performance/summary 보강: 총거래수, 승률, 평균수익/손실, 손익비, 기대값,
+  청산 사유별 손익, 종목별 손익
+
+구현:
+- /api/trading/analysis/route.ts 신규 생성
+  - BUY-SELL 쌍 매칭 (종목+전략 기준 FIFO)
+  - 수수료: 국내 0.015% 양쪽, 해외 max($1, 0.0025%)
+  - 세금: 국내 매도 0.23%, 해외 없음
+  - signalReason에서 신뢰도 점수 추출 (정규식)
+  - 청산 사유 텍스트 분석 (손절/익절/트레일링)
+  - marketCondition 추정 (TREND/RANGE/VOLATILE/MEAN_REVERSION)
+  - exitReasonBreakdown + summary(승률/평균/손익비/기대값) 포함
+
+- /api/performance/summary/route.ts 보강
+  - 절대금액 기반 avgWinAmountKRW/avgLossAmountKRW/avgWinAmountUSD/avgLossAmountUSD 추가
+  - exitReasonPerformance (TRAILING_STOP/STOP_LOSS/TAKE_PROFIT/SIGNAL/UNKNOWN) 추가
+  - 기존 stockPerformance, strategyPerformance 유지
+
+- src/lib/db.ts 치명적 버그 수정
+  - InMemory DB matchesWhere에 notIn 연산자 미지원
+  - notIn 사용 시 모든 레코드가 필터링되어 빈 결과 반환
+  - notIn, not, startsWith, endsWith 연산자 추가
+  - null/undefined 값 처리 개선
+
+- /api/trading/seed/route.ts 보강
+  - 7개 BUY-SELL 쌍 + 1개 미청산 + 3개 대기/차단/실패 = 18건
+  - 각 쌍별 익절/손절/트레일링스탑 사유 명시
+  - signalReason에 (신뢰도 NN) 패턴 포함
+
+검증 결과:
+- 분석 API: 7건 매칭 성공 (승률 71.43%, totalNetPnL -12,237.75)
+- 청산 사유별: TAKE_PROFIT 3건 +70,840 / STOP_LOSS 2건 -181,496 / TRAILING_STOP 2건 +98,418
+- 손실 원인: 셀트리온 STOP_LOSS -134,286원이 전체 손실의 주원인
+- 성과 요약: 정상 동작, exitReasonPerformance/stockPerformance/strategyPerformance 모두 표시
+
+Stage Summary:
+- /api/trading/analysis 신규 API 동작 확인
+- /api/performance/summary 보강 완료
+- InMemory DB notIn 버그 수정 (치명적 - 모든 notIn 쿼리가 빈 결과 반환하던 버그)
+- GitHub 푸시: commit 4090dd0
