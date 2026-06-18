@@ -508,6 +508,13 @@ export async function getEffectiveTradingSettings(): Promise<EffectiveSettingsRe
     ) {
       // 임계값: strategyAggressiveness가 DB(또는 override)에서 왔으면 'db'
       sources[key] = 'db';
+    } else if (
+      (key === 'accountRiskPercent' || key === 'useATRStop' || key === 'partialTakeProfit' || key === 'indexFilter') &&
+      (dbSettings?.strategyAggressiveness !== undefined || overrideAggressiveness !== null)
+    ) {
+      // v2 임계값: strategyAggressiveness가 DB(또는 override)에서 왔으면
+      // 임계값 매핑(AGGRESSIVENESS_THRESHOLDS)을 통해 자동 계산되므로 'db'로 표시
+      sources[key] = 'db';
     } else {
       sources[key] = 'default';
     }

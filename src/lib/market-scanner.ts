@@ -33,6 +33,28 @@ const DOMESTIC_BLUE_CHIPS: Array<{ code: string; name: string }> = [
 ];
 
 /**
+ * 저가 ETF 후보군 — TEST 모드(PIPELINE_TEST, STRATEGY_TEST)에서
+ * 고가주(SK하이닉스/삼성전기 등)가 position sizing 후
+ * maxDomesticOrderAmount(1M KRW)를 초과해 차단되는 문제를
+ * 해결하기 위해 별도 후보군 운영.
+ *
+ * ETF는 1좌 가격이 보통 1만원~10만원대라 position sizing이
+ * 여러 좌를 계산해도 maxDomesticOrderAmount 이내로 안전하게 주문 가능.
+ */
+const DOMESTIC_ETF_CANDIDATES: Array<{ code: string; name: string }> = [
+  { code: '069500', name: 'KODEX 200' },
+  { code: '232080', name: 'TIGER 코스피200' },
+  { code: '102110', name: 'TIGER 반도체TOP10' },
+  { code: '091160', name: 'TIGER 코스닥150' },
+  { code: '114800', name: 'KOSEF 200' },
+  { code: '251350', name: 'TIGER 2차전지테마' },
+  { code: '305540', name: 'TIGER 은행TOP5' },
+  { code: '294380', name: 'KODEX 반도체' },
+  { code: '140700', name: 'TIGER 바이오KTOP' },
+  { code: '266240', name: 'TIGER 미국S&P500' },
+];
+
+/**
  * 해외 우량 대형주 풀 (거래대금 상위 기준)
  */
 const OVERSEAS_BLUE_CHIPS: Array<{ code: string; name: string; exchange: string }> = [
@@ -84,12 +106,15 @@ export interface ScanResult {
     watchlist: number;
     positions: number;
     blueChips: number;
+    etfs: number;  // TEST 모드 저가 ETF 후보군
   };
   /** 스코어링 후 제외된 종목 수 (API 호출 한도 초과 시) */
   filtered: {
     domesticFiltered: number;
     overseasFiltered: number;
   };
+  /** TEST 모드에서 고가주로 인해 차단된 종목 (사용자 진단용) */
+  highPriceSkipped?: Array<{ code: string; name: string; reason: string }>;
 }
 
 /**
@@ -104,9 +129,24 @@ export interface ScanResult {
  * 4. 동점 시 종목코드 오름차순 (안정적 정렬)
  */
 export async function scanTargetStocks(
-  kisClient: KisApiClient | null
+  kisClient: KisApiClient | null,
+  options?: {
+    /** TEST 모드(PIPELINE_TEST, STRATEGY_TEST)에서 저가 ETF 후보군 포함 여부
+     * 기본값: true — TEST 모드에서는 항상 ETF 후보 포함 */
+    includeEtfs?: boolean;
+    /** maxDomesticOrderAmount (KRW) — 이 값보다 1주 가격이 높은 BLUE_CHIP 종목은 후보에서 제외
+     * 기본값: 0 (필터링 안 함) */
+    maxDomesticOrderAmount?: number;
+    /** 현재가 조회 함수 (없으면 BLUE_CHIP 전체 포함) */
+    getStockPrice?: (code: string) => Promise<number | null>;
+  }
 ): Promise<ScanResult> {
-  const sources = { watchlist: 0, positions: 0, blueChips: 0 };
+  const includeEtfs = options?.includeEtfs ?? true;
+  const maxDomesticOrderAmount = options?.maxDomesticOrderAmount ?? 0;
+  const getStockPrice = options?.getStockPrice;
+  const highPriceSkipped: Array<{ code: string; name: string; reason: string }> = [];
+
+  const sources = { watchlist: 0, positions: 0, blueChips: 0, etfs: 0 };
   const domesticSeen = new Set<string>();
   const overseasSeen = new Set<string>();
   const domesticScored: ScoredDomesticStock[] = [];
@@ -191,8 +231,26 @@ export async function scanTargetStocks(
   }
 
   // 3. 우량 대형주 풀 (관심종목/보유종목에 없는 것만 추가)
+  // maxDomesticOrderAmount가 주어지면 1주 가격이 한도 초과하는 종목은 제외
   for (const stock of DOMESTIC_BLUE_CHIPS) {
     if (!domesticSeen.has(stock.code)) {
+      // 가격 기반 고가주 필터링 (TEST 모드에서만)
+      if (maxDomesticOrderAmount > 0 && getStockPrice) {
+        try {
+          const currentPrice = await getStockPrice(stock.code);
+          if (currentPrice !== null && currentPrice > maxDomesticOrderAmount) {
+            highPriceSkipped.push({
+              code: stock.code,
+              name: stock.name,
+              reason: `1주 가격 ${currentPrice.toLocaleString()}원 > 최대 주문금액 ${maxDomesticOrderAmount.toLocaleString()}원`,
+            });
+            console.log(`[Market Scanner] 고가주 제외: ${stock.name} (${stock.code}) — 1주 ${currentPrice.toLocaleString()}원 > 한도 ${maxDomesticOrderAmount.toLocaleString()}원`);
+            continue;
+          }
+        } catch (e) {
+          // 가격 조회 실패 시 종목 포함 (안전한 기본 동작)
+        }
+      }
       domesticSeen.add(stock.code);
       domesticScored.push({
         code: stock.code,
@@ -201,6 +259,23 @@ export async function scanTargetStocks(
         source: 'BLUE_CHIP',
       });
       sources.blueChips++;
+    }
+  }
+
+  // 3-1. 저가 ETF 후보군 추가 (TEST 모드에서 고가주 차단 문제 해결)
+  // ETF는 1좌 가격이 1만원~10만원대라 maxDomesticOrderAmount 이내 안전 주문 가능
+  if (includeEtfs) {
+    for (const etf of DOMESTIC_ETF_CANDIDATES) {
+      if (!domesticSeen.has(etf.code)) {
+        domesticSeen.add(etf.code);
+        domesticScored.push({
+          code: etf.code,
+          name: etf.name,
+          score: SOURCE_PRIORITY.BLUE_CHIP,  // 우량주와 동일 우선순위
+          source: 'BLUE_CHIP',
+        });
+        sources.etfs++;
+      }
     }
   }
 
@@ -252,5 +327,5 @@ export async function scanTargetStocks(
     );
   }
 
-  return { domestic, overseas, sources, filtered };
+  return { domestic, overseas, sources, filtered, highPriceSkipped };
 }

@@ -169,14 +169,57 @@ async function loadKisConfig(): Promise<KisConfig | null> {
  * 분석 대상 종목 로드
  * 보유종목 + 관심종목 + 우량 대형주 풀 병합 (market-scanner 사용)
  * 중복 자동 제거, 보유종목 우선
+ *
+ * TEST 모드(PIPELINE_TEST, STRATEGY_TEST)에서는:
+ * - 저가 ETF 후보군 자동 포함 (고가주 차단 문제 해결)
+ * - maxDomesticOrderAmount 기반 고가주 자동 제외
  */
 async function loadTargetStocks(
-  kisClient: KisApiClient | null
+  kisClient: KisApiClient | null,
+  settings?: EffectiveTradingSettings
 ): Promise<{
   domestic: Array<{ code: string; name: string }>;
   overseas: Array<{ code: string; name: string; exchange: string }>;
 }> {
-  const result = await scanTargetStocks(kisClient);
+  // TEST 모드 판단
+  const isTestMode = settings?.strategyAggressiveness === 'PIPELINE_TEST'
+    || settings?.strategyAggressiveness === 'STRATEGY_TEST';
+
+  // 고가주 필터링은 TEST 모드 + PAPER 모드에서만 수행
+  // (DRY_RUN은 분석만 하므로 모든 종목 포함, LIVE는 별도 안전장치)
+  const shouldFilterHighPrice = isTestMode
+    && settings?.orderExecutionMode === 'PAPER'
+    && (settings?.maxDomesticOrderAmount ?? 0) > 0;
+
+  // 현재가 조회 함수 (KIS 클라이언트가 있을 때만)
+  const getStockPrice = kisClient
+    ? async (code: string): Promise<number | null> => {
+        try {
+          const stockPrice = await kisClient.getStockPrice(code);
+          return stockPrice.currentPrice || null;
+        } catch {
+          return null;
+        }
+      }
+    : undefined;
+
+  const result = await scanTargetStocks(kisClient, {
+    includeEtfs: true,  // 항상 ETF 후보 포함
+    maxDomesticOrderAmount: shouldFilterHighPrice ? settings!.maxDomesticOrderAmount : 0,
+    getStockPrice,
+  });
+
+  // 고가주 차단 로깅 (사용자 진단용)
+  if (result.highPriceSkipped && result.highPriceSkipped.length > 0) {
+    addLog('INFO', 'DOMESTIC',
+      `⚠️ ${result.highPriceSkipped.length}개 고가주 후보 제외 (1주 가격 > maxDomesticOrderAmount=${settings!.maxDomesticOrderAmount.toLocaleString()}원)`,
+      {
+        skipped: result.highPriceSkipped.map(s => ({ code: s.code, name: s.name, reason: s.reason })),
+        hint: '저가 ETF 후보군이 자동으로 대체 포함됨',
+      }
+    );
+  }
+
   return {
     domestic: result.domestic,
     overseas: result.overseas,
@@ -943,9 +986,47 @@ async function reconcilePositions(
     );
 
     // DB에서 현재 마켓의 포지션 조회
-    const dbPositions = await db.position.findMany({
-      where: { market },
-    });
+    // 스키마 mismatch(highSinceEntry 등 v2 컬럼 누락) 시에도 동기화가 멈추지 않도록
+    // select로 안전한 컬럼만 명시적으로 지정
+    let dbPositions: any[] = [];
+    try {
+      dbPositions = await db.position.findMany({
+        where: { market },
+        // v2 컬럼이 DB에 없을 수 있으므로 명시적 select 사용
+        // (Prisma는 스키마에 정의된 모든 컬럼을 SELECT 하는데,
+        //  DB에 컬럼이 없으면 에러 → select로 안전한 컬럼만 지정)
+        select: {
+          id: true,
+          stockCode: true,
+          stockName: true,
+          quantity: true,
+          avgPrice: true,
+          currentPrice: true,
+          profitLoss: true,
+          profitRate: true,
+          strategy: true,
+          market: true,
+          exchangeCode: true,
+          currency: true,
+          openedAt: true,
+          updatedAt: true,
+        },
+      });
+    } catch (posQueryError) {
+      const errMsg = posQueryError instanceof Error ? posQueryError.message : String(posQueryError);
+      // 스키마 mismatch 감지: Position v2 컬럼이 DB에 없는 경우
+      if (errMsg.includes('does not exist') || errMsg.includes('column') || errMsg.includes('highSinceEntry')) {
+        addLog('ERROR', market,
+          `⚠️ Position 테이블 스키마 불일치 — Railway DB에 v2 컬럼이 없습니다. ` +
+          `start.sh의 prisma migrate deploy가 실행되었는지 확인하세요. 동기화를 건너뜁니다.`,
+          { error: errMsg, hint: 'prisma migrate deploy 실행 필요' }
+        );
+      } else {
+        addLog('ERROR', market, '포지션 DB 조회 실패 — 동기화 건너뜀', { error: errMsg });
+      }
+      // 동기화 실패해도 에이전트 사이클은 계속 진행
+      return { synced: 0, added: 0, removed: 0 };
+    }
 
     // 1. 잔고에 없는 포지션 삭제 (전량 매도 또는 체결 실패)
     for (const dbPos of dbPositions) {
@@ -1152,7 +1233,7 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
   }
 
   // 2. 분석 대상 종목 로드 (보유종목 + 관심종목 + 우량 대형주)
-  const { domestic: domesticStocks, overseas: overseasStocks } = await loadTargetStocks(kisClient);
+  const { domestic: domesticStocks, overseas: overseasStocks } = await loadTargetStocks(kisClient, effectiveSettings);
   addLog('INFO', 'DOMESTIC', `분석 대상: 국내 ${domesticStocks.length}개, 해외 ${overseasStocks.length}개`);
 
   // 3. 리스크 매니저 초기화 (DB 저장 리스크 설정 + strategyAggressiveness 기반 신뢰도 임계값)
@@ -1381,7 +1462,26 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
             quantity = 1;
           }
 
-          // 주문금액이 maxDomesticOrderAmount 초과 시 1주도 안 되면 건너뛰고 다음 후보로
+          // STRATEGY_TEST 모드에서 주문금액이 maxDomesticOrderAmount 초과 시
+          // 1주 가격이 한도 이내면 1주로 자동 조정 (PIPELINE_TEST와 동일한 fallback)
+          // — 고가주(SK하이닉스, 삼성전기 등)가 position sizing 후 차단되는 문제 해결
+          const oneShareAmount = finalSignal.price * 1;
+          const isStrategyTestPaper = effectiveSettings.strategyAggressiveness === 'STRATEGY_TEST'
+            && effectiveSettings.orderExecutionMode === 'PAPER';
+          if (isStrategyTestPaper
+            && quantity > 1
+            && (finalSignal.price * quantity) > effectiveSettings.maxDomesticOrderAmount
+            && oneShareAmount <= effectiveSettings.maxDomesticOrderAmount) {
+            const originalQty = quantity;
+            quantity = 1;
+            addLog('INFO', 'DOMESTIC',
+              `${stock.name} 수량 자동 조정: ${originalQty}주 → 1주 ` +
+              `(원래 주문금액 ${(finalSignal.price * originalQty).toLocaleString()}원 > 최대 ${effectiveSettings.maxDomesticOrderAmount.toLocaleString()}원, 1주 ${oneShareAmount.toLocaleString()}원은 허용)`,
+              { originalQuantity: originalQty, adjustedQuantity: 1, price: finalSignal.price }
+            );
+          }
+
+          // 주문금액이 maxDomesticOrderAmount 초과 시 (수량 조정 후에도 1주가 한도 초과면 건너뜀)
           const estimatedAmount = finalSignal.price * quantity;
           if (estimatedAmount > effectiveSettings.maxDomesticOrderAmount) {
             signalsBlockedReasons.push(`${stock.name}: 주문금액 초과 (${estimatedAmount.toLocaleString()} > ${effectiveSettings.maxDomesticOrderAmount.toLocaleString()})`);

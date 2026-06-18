@@ -405,3 +405,78 @@ Stage Summary:
 - /api/performance/summary 보강 완료
 - InMemory DB notIn 버그 수정 (치명적 - 모든 notIn 쿼리가 빈 결과 반환하던 버그)
 - GitHub 푸시: commit 4090dd0
+
+---
+Task ID: 3
+Agent: Main Agent
+Task: Railway DB Position v2 마이그레이션 + settingsSources v2 필드 노출 + 고가주 매수 제한 해결
+
+Work Log:
+- 사용자 요청: Position.highSinceEntry does not exist 오류 + STRATEGY_TEST settingsSources 누락 + 고가주 차단
+
+구현 1: Position v2 마이그레이션 파일 생성
+- prisma/migrations/20250618000000_position_v2_fields/migration.sql 신규
+- ADD COLUMN IF NOT EXISTS로 안전하게 7개 v2 필드 추가:
+  highSinceEntry, stopLossPrice, takeProfitPrice, trailingStopPrice,
+  entryATR, partialExitCount, realizedPnL
+- 백필 UPDATE: highSinceEntry = avgPrice (트레일링스탑 과도한 조임 방지)
+
+구현 2: start.sh DB 초기화 순서 변경
+- 1순위: prisma migrate deploy (마이그레이션 파일 기반, 가장 안전)
+- 2순위: prisma db push (직접 스키마 반영, 폴백)
+- 3순위: 인메모리 DB 폴백
+- Position v2 컬럼 존재 여부 검증 SQL 추가 (information_schema)
+
+구현 3: syncPositionsFromKis 스키마 mismatch 방어
+- findMany에 select 명시 (v2 컬럼 누락 시에도 안전한 컬럼만 지정)
+- 컬럼 없음 에러 감지 시 명확한 로그 + 동기화 건너뜀 (에이전트 사이클은 계속)
+- "Position 테이블 스키마 불일치 — Railway DB에 v2 컬럼이 없습니다" 안내
+
+구현 4: settingsSources v2 필드 추적 수정
+- accountRiskPercent, useATRStop, partialTakeProfit, indexFilter를
+  strategyAggressiveness가 DB/override에서 왔으면 'db'로 표시
+  (AGGRESSIVENESS_THRESHOLDS 매핑을 통해 자동 계산되므로)
+- 이전: 항상 'default'로 표시 → 사용자에게 잘못된 정보 노출
+- 이후: STRATEGY_TEST 적용 시 4개 필드 모두 'db'로 정확히 표시
+
+구현 5: /api/agent/status effectiveSettings에 v2 필드 노출
+- accountRiskPercent, useATRStop, partialTakeProfit, indexFilter 추가
+
+구현 6: 고가주 매수 제한 해결 (저가 ETF 후보군 추가)
+- market-scanner.ts: DOMESTIC_ETF_CANDIDATES 10종목 신규 정의
+  (KODEX 200, TIGER 반도체TOP10, TIGER 은행TOP5 등)
+- scanTargetStocks에 options 파라미터 추가:
+  - includeEtfs: ETF 후보 포함 여부 (기본 true)
+  - maxDomesticOrderAmount: 1주 가격 초과 종목 자동 제외
+  - getStockPrice: 현재가 조회 콜백
+- ScanResult.highPriceSkipped 추가 (사용자 진단용)
+- sources.etfs 추가 (ETF 출처 카운트)
+
+구현 7: trading-agent.ts loadTargetStocks 개선
+- settings 매개변수 추가 (TEST 모드 판단)
+- TEST+PAPER 모드에서 자동으로 maxDomesticOrderAmount 기반 고가주 필터링
+- 고가주 차단 시 명확한 로그 + ETF 대체 포함 안내
+- getStockPrice 콜백으로 KIS API 현재가 조회
+
+구현 8: STRATEGY_TEST 수량 자동 조정 (1주 캡)
+- PIPELINE_TEST 외에 STRATEGY_TEST에서도
+  estimatedAmount > maxDomesticOrderAmount인 경우
+  1주 가격이 한도 이내면 1주로 자동 조정
+- 고가주(SK하이닉스, 삼성전기 등) position sizing 후 차단 문제 해결
+- 1주도 안 되면 여전히 다음 후보로 이동 (기존 동작 유지)
+
+검증:
+- TypeScript 컴파일 에러 없음 (수정 파일 기준)
+- Next.js 빌드 성공
+- prisma format 정상 동작
+- migration 파일 유효
+
+Stage Summary:
+- Position v2 필드 마이그레이션 파일 추가 (Railway 배포 시 자동 적용)
+- start.sh에서 migrate deploy 우선 실행하도록 변경
+- syncPositionsFromKis가 스키마 mismatch 시에도 동작 (graceful degradation)
+- STRATEGY_TEST 적용 시 settingsSources에 4개 v2 필드 정확히 'db'로 표시
+- /api/agent/status effectiveSettings에 v2 필드 노출
+- 저가 ETF 10종목 후보군 자동 포함 (KODEX 200 등)
+- TEST+PAPER 모드에서 1주 가격 > maxDomesticOrderAmount인 종목 자동 제외
+- STRATEGY_TEST에서 고가주 position sizing 시 1주로 자동 조정

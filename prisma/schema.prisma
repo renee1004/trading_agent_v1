@@ -8,23 +8,23 @@ datasource db {
 }
 
 model KisConfig {
-  id            String   @id @default(cuid())
-  appKey        String
-  appSecret     String
-  accountNo     String
-  isDemo        Boolean  @default(true)
-  accessToken   String?
+  id             String    @id @default(cuid())
+  appKey         String
+  appSecret      String
+  accountNo      String
+  isDemo         Boolean   @default(true)
+  accessToken    String?
   tokenExpiresAt DateTime?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 }
 
 model TradingStrategy {
   id          String   @id @default(cuid())
   name        String
   description String?
-  type        String   // COMPOSITE, VOLATILITY_BREAKOUT, SUPER_TREND, MEAN_REVERSION
-  parameters  String   // JSON string
+  type        String // COMPOSITE, VOLATILITY_BREAKOUT, SUPER_TREND, MEAN_REVERSION
+  parameters  String // JSON string
   isActive    Boolean  @default(false)
   profitRate  Float?
   winRate     Float?
@@ -38,43 +38,43 @@ model WatchlistItem {
   stockName    String
   sector       String?
   market       String   @default("DOMESTIC") // DOMESTIC, OVERSEAS
-  exchangeCode String?  // NAS, NYS, AMS (해외주식용)
+  exchangeCode String? // NAS, NYS, AMS (해외주식용)
   isActive     Boolean  @default(true)
   createdAt    DateTime @default(now())
 }
 
 model TradeHistory {
-  id                  String   @id @default(cuid())
-  stockCode           String
-  stockName           String
-  tradeType           String   // BUY, SELL
-  quantity            Int
-  price               Float    // 신호 발생 시 가격 (분석 기준가)
-  totalAmount         Float    // price * quantity
-  strategy            String?
-  profitLoss          Float?
-  profitRate          Float?
-  status              String   @default("PENDING") // PENDING, FILLED, CANCELLED, FAILED
-  orderNo             String?
-  signalReason        String?
-  market              String   @default("DOMESTIC") // DOMESTIC, OVERSEAS
-  exchangeCode        String?  // NAS, NYS, AMS
-  currency            String   @default("KRW")
+  id                 String   @id @default(cuid())
+  stockCode          String
+  stockName          String
+  tradeType          String // BUY, SELL
+  quantity           Int
+  price              Float // 신호 발생 시 가격 (분석 기준가)
+  totalAmount        Float // price * quantity
+  strategy           String?
+  profitLoss         Float?
+  profitRate         Float?
+  status             String   @default("PENDING") // PENDING, FILLED, CANCELLED, FAILED
+  orderNo            String?
+  signalReason       String?
+  market             String   @default("DOMESTIC") // DOMESTIC, OVERSEAS
+  exchangeCode       String? // NAS, NYS, AMS
+  currency           String   @default("KRW")
   // 주문 출처 및 실행 모드
-  source              String   @default("AGENT")   // AGENT, MANUAL, TEST
-  orderExecutionMode  String   @default("DRY_RUN") // DRY_RUN, PAPER, LIVE
+  source             String   @default("AGENT") // AGENT, MANUAL, TEST
+  orderExecutionMode String   @default("DRY_RUN") // DRY_RUN, PAPER, LIVE
   // 가격 상세
-  currentPrice        Float?   // 주문 직전 실시간 현재가
-  orderPrice          Float?   // 주문 입력 가격
-  filledPrice         Float?   // 체결 가격
-  avgFillPrice        Float?   // 평균 체결 가격
-  slippagePercent     Float?   // 슬리피지 (%): (filledPrice - orderPrice) / orderPrice * 100
+  currentPrice       Float? // 주문 직전 실시간 현재가
+  orderPrice         Float? // 주문 입력 가격
+  filledPrice        Float? // 체결 가격
+  avgFillPrice       Float? // 평균 체결 가격
+  slippagePercent    Float? // 슬리피지 (%): (filledPrice - orderPrice) / orderPrice * 100
   // KIS API 응답
-  rtCd                String?  // KIS rt_cd
-  msgCd               String?  // KIS msg_cd
-  msg1                String?  // KIS msg1
-  tradedAt            DateTime @default(now())
-  createdAt           DateTime @default(now())
+  rtCd               String? // KIS rt_cd
+  msgCd              String? // KIS msg_cd
+  msg1               String? // KIS msg1
+  tradedAt           DateTime @default(now())
+  createdAt          DateTime @default(now())
 }
 
 model Position {
@@ -88,45 +88,45 @@ model Position {
   profitRate        Float?
   strategy          String?
   market            String   @default("DOMESTIC") // DOMESTIC, OVERSEAS
-  exchangeCode      String?  // NAS, NYS, AMS
+  exchangeCode      String? // NAS, NYS, AMS
   currency          String   @default("KRW")
   // ── 청산 관리 필드 ──
-  highSinceEntry    Float?   // 진입 후 최고가 (트레일링스탑용)
-  stopLossPrice     Float?   // 손절가
-  takeProfitPrice   Float?   // 익절가
-  trailingStopPrice Float?   // 트레일링스탑 현재 가격
-  entryATR          Float?   // 진입 시 ATR (ATR 기반 손절폭 계산용)
+  highSinceEntry    Float? // 진입 후 최고가 (트레일링스탑용)
+  stopLossPrice     Float? // 손절가
+  takeProfitPrice   Float? // 익절가
+  trailingStopPrice Float? // 트레일링스탑 현재 가격
+  entryATR          Float? // 진입 시 ATR (ATR 기반 손절폭 계산용)
   partialExitCount  Int      @default(0) // 분할 익절 횟수
   // ── 성과 추적 ──
-  realizedPnL       Float?   // 분할 청산 실현 손익
+  realizedPnL       Float? // 분할 청산 실현 손익
   openedAt          DateTime @default(now())
   updatedAt         DateTime @updatedAt
 }
 
 model TradingSession {
-  id             String   @id @default(cuid())
-  status         String   @default("STOPPED") // RUNNING, STOPPED, PAUSED
-  strategyId     String?
-  startedAt      DateTime?
-  stoppedAt      DateTime?
-  totalProfit    Float    @default(0)
-  totalTrades    Int      @default(0)
-  winTrades      Int      @default(0)
-  lossTrades     Int      @default(0)
-  maxDrawdown    Float    @default(0)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id          String    @id @default(cuid())
+  status      String    @default("STOPPED") // RUNNING, STOPPED, PAUSED
+  strategyId  String?
+  startedAt   DateTime?
+  stoppedAt   DateTime?
+  totalProfit Float     @default(0)
+  totalTrades Int       @default(0)
+  winTrades   Int       @default(0)
+  lossTrades  Int       @default(0)
+  maxDrawdown Float     @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 }
 
 model RiskConfig {
   id                  String   @id @default(cuid())
-  maxPositionSize     Float    @default(0.1)   // Max 10% per position
-  maxDailyLoss        Float    @default(0.03)   // Max 3% daily loss
-  maxTotalLoss        Float    @default(0.1)    // Max 10% total loss
+  maxPositionSize     Float    @default(0.1) // Max 10% per position
+  maxDailyLoss        Float    @default(0.03) // Max 3% daily loss
+  maxTotalLoss        Float    @default(0.1) // Max 10% total loss
   maxOpenPositions    Int      @default(5)
-  stopLossPercent     Float    @default(0.05)   // 5% stop loss
-  takeProfitPercent   Float    @default(0.15)   // 15% take profit
-  trailingStopPercent Float    @default(0.03)   // 3% trailing stop
+  stopLossPercent     Float    @default(0.05) // 5% stop loss
+  takeProfitPercent   Float    @default(0.15) // 15% take profit
+  trailingStopPercent Float    @default(0.03) // 3% trailing stop
   isActive            Boolean  @default(true)
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
@@ -142,40 +142,40 @@ model MarketData {
   close        Float
   volume       Int
   market       String   @default("DOMESTIC") // DOMESTIC, OVERSEAS
-  exchangeCode String?  // NAS, NYS, AMS
+  exchangeCode String? // NAS, NYS, AMS
   currency     String   @default("KRW")
-  exchangeRate Float?   // 해외주식 환율
+  exchangeRate Float? // 해외주식 환율
   createdAt    DateTime @default(now())
 
   @@unique([stockCode, date])
 }
 
 model AgentConfig {
-  id                  String   @id @default(cuid())
-  isRunning           Boolean  @default(false)
-  currentSessionId    String?
-  schedulerMode       String   @default("SERVER")   // SERVER, BROWSER
-  cycleIntervalMs     Int      @default(60000)      // 사이클 주기 (ms)
-  tradeOnlyMarketHours Boolean @default(true)       // 장시간에만 거래
-  domesticMarketOpen  String   @default("09:00")    // 국내 장 시작
-  domesticMarketClose String   @default("15:30")    // 국내 장 종료
-  overseasMarketOpen  String   @default("23:30")    // 해외 장 시작 (한국시간)
-  overseasMarketClose String   @default("06:00")    // 해외 장 종료 (한국시간)
-  totalCycles         Int      @default(0)
-  totalTrades         Int      @default(0)
-  dailyPnL            Float    @default(0)
-  lastCycleAt         DateTime?
-  lastCycleResult     String?  // JSON string
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  id                   String    @id @default(cuid())
+  isRunning            Boolean   @default(false)
+  currentSessionId     String?
+  schedulerMode        String    @default("SERVER") // SERVER, BROWSER
+  cycleIntervalMs      Int       @default(60000) // 사이클 주기 (ms)
+  tradeOnlyMarketHours Boolean   @default(true) // 장시간에만 거래
+  domesticMarketOpen   String    @default("09:00") // 국내 장 시작
+  domesticMarketClose  String    @default("15:30") // 국내 장 종료
+  overseasMarketOpen   String    @default("23:30") // 해외 장 시작 (한국시간)
+  overseasMarketClose  String    @default("06:00") // 해외 장 종료 (한국시간)
+  totalCycles          Int       @default(0)
+  totalTrades          Int       @default(0)
+  dailyPnL             Float     @default(0)
+  lastCycleAt          DateTime?
+  lastCycleResult      String? // JSON string
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
 }
 
 model AgentLog {
   id        String   @id @default(cuid())
-  type      String   // INFO, SIGNAL, TRADE, RISK, ERROR, EXIT
-  market    String   // DOMESTIC, OVERSEAS
+  type      String // INFO, SIGNAL, TRADE, RISK, ERROR, EXIT
+  market    String // DOMESTIC, OVERSEAS
   message   String
-  details   String?  // JSON string
+  details   String? // JSON string
   sessionId String?
   createdAt DateTime @default(now())
 }
@@ -183,7 +183,7 @@ model AgentLog {
 model AppSetting {
   id        String   @id @default(cuid())
   key       String   @unique
-  value     Json     // JSON 값 (설정 데이터)
+  value     Json // JSON 값 (설정 데이터)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }

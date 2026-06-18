@@ -214,6 +214,11 @@ export async function GET() {
           signalThreshold: effectiveSettings.signalThreshold,
           weakSignalThreshold: effectiveSettings.weakSignalThreshold,
           minConfidenceThreshold: effectiveSettings.minConfidenceThreshold,
+          // ── v2 고급 전략 필드 (STRATEGY_TEST / AGGRESSIVE_STRATEGY에서 활성화) ──
+          accountRiskPercent: effectiveSettings.accountRiskPercent,
+          useATRStop: effectiveSettings.useATRStop,
+          partialTakeProfit: effectiveSettings.partialTakeProfit,
+          indexFilter: effectiveSettings.indexFilter,
         },
         settingsSource,
         settingsSources,
