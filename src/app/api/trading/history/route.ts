@@ -31,18 +31,53 @@ export async function GET(request: NextRequest) {
         where,
         orderBy: { tradedAt: 'desc' },
         take: limit,
+        // 스키마 mismatch(TradeHistory.source 등 v2 컬럼 누락) 시에도
+        // API가 500으로 죽지 않도록 명시적 select 사용.
+        // DB에 컬럼이 없으면 Prisma는 자동으로 모든 컬럼을 SELECT 하는데,
+        // 이때 스키마에 정의된 컬럼이 DB에 없으면 에러 발생.
+        // select로 안전한 v1 컬럼만 지정 → 마이그레이션 누락 시에도 동작.
+        select: {
+          id: true,
+          stockCode: true,
+          stockName: true,
+          tradeType: true,
+          quantity: true,
+          price: true,
+          totalAmount: true,
+          strategy: true,
+          profitLoss: true,
+          profitRate: true,
+          status: true,
+          orderNo: true,
+          signalReason: true,
+          market: true,
+          exchangeCode: true,
+          currency: true,
+          tradedAt: true,
+          createdAt: true,
+        },
       });
     } catch (dbErr) {
       const errMsg = dbErr instanceof Error ? dbErr.message : String(dbErr);
       console.error('[TradeHistory] DB query failed:', errMsg);
       dbError = errMsg;
+
+      // 스키마 mismatch 감지: 명확한 사용자 안내
+      const isSchemaMismatch = errMsg.includes('does not exist') || errMsg.includes('column');
+      const hint = isSchemaMismatch
+        ? 'Railway DB에 TradeHistory v2 컬럼(source, orderExecutionMode, currentPrice 등)이 없습니다. '
+          + 'Railway 서버 재배포 또는 "npx prisma migrate deploy" 실행 필요. '
+          + '마이그레이션 파일: prisma/migrations/20250618010000_tradehistory_v2_fields/'
+        : 'DB 연결 또는 쿼리 오류';
+
       // DB 조회 실패 시 명확하게 오류 반환
       return NextResponse.json({
         success: false,
         error: '거래내역 DB 조회 실패',
-        code: 'DB_QUERY_FAILED',
+        code: isSchemaMismatch ? 'SCHEMA_MISMATCH' : 'DB_QUERY_FAILED',
         diagnostics: dbDiagnostics,
         dbError: errMsg,
+        hint,
         data: {
           trades: [],
           stats: { totalTrades: 0, buyTrades: 0, sellTrades: 0, krw: { totalBuyAmount: 0, totalSellAmount: 0, realizedPL: 0 }, usd: { totalBuyAmount: 0, totalSellAmount: 0, realizedPL: 0 } },

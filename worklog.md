@@ -480,3 +480,46 @@ Stage Summary:
 - 저가 ETF 10종목 후보군 자동 포함 (KODEX 200 등)
 - TEST+PAPER 모드에서 1주 가격 > maxDomesticOrderAmount인 종목 자동 제외
 - STRATEGY_TEST에서 고가주 position sizing 시 1주로 자동 조정
+
+---
+Task ID: 4
+Agent: Main Agent
+Task: TradeHistory.source 컬럼 누락 HTTP 500 해결 — v2 마이그레이션 파일 추가
+
+Work Log:
+- 사용자 요청: /api/trading/history HTTP 500 (TradeHistory.source does not exist)
+- 원인: Railway DB에는 v1 스키마만 있고, Prisma schema에는 v2 컬럼(source, orderExecutionMode,
+  currentPrice, orderPrice, filledPrice, avgFillPrice, slippagePercent, rtCd, msgCd, msg1)이 정의됨
+- 이전 Position v2 마이그레이션(20250618000000)에서 TradeHistory 누락
+
+구현 1: TradeHistory v2 마이그레이션 파일 생성
+- prisma/migrations/20250618010000_tradehistory_v2_fields/migration.sql 신규
+- ADD COLUMN IF NOT EXISTS로 10개 컬럼 안전하게 추가:
+  source (default 'AGENT'), orderExecutionMode (default 'DRY_RUN'),
+  currentPrice, orderPrice, filledPrice, avgFillPrice, slippagePercent,
+  rtCd, msgCd, msg1
+- NOT NULL 컬럼은 기본값 지정하여 기존 데이터 손상 없음
+
+구현 2: start.sh 강화 — 마이그레이션 후 컬럼 존재 검증
+- Position v2 + TradeHistory v2 컬럼 검증 SQL 추가 (information_schema.columns)
+- 마이그레이션 성공/실패 명확한 로그 (✅/❌)
+- if/then 구조로 가독성 개선
+
+구현 3: /api/trading/history defensive coding
+- findMany에 select 명시 (안전한 v1 컬럼만)
+  → DB에 v2 컬럼이 없어도 쿼리 정상 동작
+- 스키마 mismatch 감지 (errMsg.includes('does not exist'))
+- code: 'SCHEMA_MISMATCH'로 명확한 분기
+- hint 필드로 사용자에게 해결 방법 안내:
+  "Railway 서버 재배포 또는 npx prisma migrate deploy 실행 필요"
+
+검증:
+- TypeScript 컴파일 에러 없음
+- Next.js 빌드 성공
+- 마이그레이션 파일 유효 (prisma format 통과)
+
+Stage Summary:
+- TradeHistory v2 마이그레이션 파일 추가 (Railway 재배포 시 자동 적용)
+- /api/trading/history가 스키마 mismatch 시에도 select로 동작 (500 → 200)
+- start.sh에서 Position v2 + TradeHistory v2 컬럼 검증 추가
+- Railway 재배포 후 /api/trading/history?limit=20 정상 응답 예상
