@@ -119,6 +119,16 @@ export interface BalanceItem {
   exchangeCode?: string;  // 해외 거래소 코드
   exchangeRate?: number;  // 환율
   foreignAmount?: number; // 외화 평가금액
+  // ── 진단용 원본 필드 (신뢰성 검증용) ──
+  purchaseAmount?: number;     // 매입금액 (원본)
+  rawAvgPriceField?: string;   // KIS 응답에서 avgPrice로 사용한 원본 필드명
+  rawCurrentPriceField?: string; // currentPrice로 사용한 원본 필드명
+  rawAvgPrice?: number;        // pchs_avg_pric 원본 값
+  rawCurrentPrice?: number;    // prpr 원본 값
+  calculatedAvgPrice?: number; // purchaseAmount / quantity (검증용)
+  priceMismatch?: boolean;     // avgPrice vs calculatedAvgPrice 괴리 여부
+  mismatchReason?: string;     // 괴리 사유
+  source?: 'KIS_BALANCE' | 'PAPER_TRADE' | 'SEED' | 'MANUAL';
 }
 
 // 해외주식 잔고 아이템

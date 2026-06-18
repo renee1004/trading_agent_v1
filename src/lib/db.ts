@@ -610,6 +610,7 @@ async function initPrisma(): Promise<boolean> {
             "stockCode" TEXT NOT NULL, "stockName" TEXT NOT NULL, "quantity" INTEGER NOT NULL,
             "avgPrice" DOUBLE PRECISION NOT NULL, "currentPrice" DOUBLE PRECISION, "profitLoss" DOUBLE PRECISION, "profitRate" DOUBLE PRECISION,
             "strategy" TEXT, "market" TEXT NOT NULL DEFAULT 'DOMESTIC', "exchangeCode" TEXT, "currency" TEXT NOT NULL DEFAULT 'KRW',
+            "source" TEXT NOT NULL DEFAULT 'KIS_BALANCE',
             "openedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
           )`,
           `CREATE TABLE IF NOT EXISTS "TradingSession" (

@@ -600,3 +600,35 @@ Stage Summary:
 - UI에 3개 필터 버튼 (체결됨/전체/미체결) — 기본 체결됨
 - 미체결 행은 회색 + line-through + 사유 표시
 - 삼성전자 price=50000 (FAILED) 더 이상 체결 단가로 오인되지 않음
+
+---
+Task ID: 5
+Agent: Main Agent
+Task: 보유포지션 단가 신뢰성 문제 해결 — autoExit 추가, KIS 필드 매핑 검증, 진단/재동기화 API, source 추적, UI 개선
+
+Work Log:
+- effective-settings.ts: autoExitEnabled 설정 추가 (기본 true, DB/env 어느 한쪽이 false면 false). monitorPositions가 false이면 자동 청산 금지.
+- /api/system/safe-mode: POST {enabled:true} 한 번에 autoDomesticOrderEnabled=false, autoExitEnabled=false, killSwitchEnabled=true, allowReal*=false 일괄 적용. GET 현재 상태 조회.
+- types.ts: BalanceItem에 진단 필드 추가 (purchaseAmount, rawAvgPriceField, rawCurrentPriceField, rawAvgPrice, rawCurrentPrice, calculatedAvgPrice, priceMismatch, mismatchReason, source)
+- kis-api.ts getAccountBalance(): KIS 국내잔고 응답 필드 매핑 재검증. pchs_avg_pric=평균단가, prpr/stck_prpr=현재가, hldg_qty=수량, pchs_amt=매입금액. avgPrice 우선순위: pchs_avg_pric > 매입금액/수량 > 0(신뢰불가). 30% 괴리 시 priceMismatch=true.
+- /api/positions/diagnostics: DB Position.avgPrice vs KIS avgPrice vs 계산단가 비교. 종목별 recommendation(정상/재동기화 필요/삭제 필요) 제공. orphanKisPositions(KIS에만 있는 종목) 별도 표시.
+- /api/positions/resync: DB Position을 KIS 잔고 기준으로 재동기화. dryRun 모드 지원. 사전 로그(dbBefore/kisAfter) 남긴 후 DELETE/CREATE/UPDATE/SKIP_MISMATCH 실행.
+- trading-agent.ts reconcilePositions: 단가 sanity check 추가 (avgPrice<=0 저장금지, priceMismatch=true 저장금지, currentPrice를 avgPrice로 저장 방지). Position.source 필드 upsert에 포함.
+- prisma/schema.prisma: Position.source 필드 추가 (기본 KIS_BALANCE).
+- 마이그레이션 20250618020000_position_source_field/migration.sql: ADD COLUMN IF NOT EXISTS source TEXT NOT NULL DEFAULT 'KIS_BALANCE' + strategy=MANUAL인 포지션은 source=MANUAL로 마이그레이션.
+- /api/agent/status: effectiveSettings에 autoExitEnabled 노출.
+- /api/settings/trading: DEFAULT_SETTINGS에 autoExitEnabled 추가 (안전 기본값 true).
+- src/app/page.tsx: 보유포지션 테이블 개선. 평균단가/현재가/출처 컬럼 추가. avgPrice<=0 또는 priceMismatch=true 시 "단가 확인 필요" + 사유 표시. source별 라벨/색상(KIS잔고/모의/시드/수동/미정).
+- PositionData 인터페이스 확장: source, priceMismatch, mismatchReason, purchaseAmount 추가.
+- InMemory DB Position CREATE TABLE에 source 컬럼 추가.
+- npx next build 성공 — 모든 신규 API 라우트 빌드됨.
+
+Stage Summary:
+- 자동매수/자동청산 즉시 중단 가능: POST /api/system/safe-mode {enabled:true}
+- 단가 신뢰성 진단: GET /api/positions/diagnostics — 종목별 DB vs KIS 비교 + recommendation
+- 단가 재동기화: POST /api/positions/resync {dryRun:true|false} — 변경 사전 로그 + 안전장치
+- KIS 응답 필드 매핑 표준화: pchs_avg_pric=평균단가, prpr=현재가, pchs_amt=매입금액
+- Position.source 추적: KIS_BALANCE/PAPER_TRADE/SEED/MANUAL — UI에서 색상 라벨로 표시
+- 단가 sanity check: avgPrice<=0 또는 30% 괴리 시 DB 저장 금지
+- UI: 보유포지션에서 avgPrice 신뢰 불가 시 "단가 확인 필요" 표시, 수익률 "계산 불가"
+- Railway DB 마이그레이션 필요: prisma migrate deploy가 새 source 컬럼 자동 추가

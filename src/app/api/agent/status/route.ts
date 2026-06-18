@@ -203,6 +203,7 @@ export async function GET() {
           allowRealDomesticOrder: effectiveSettings.allowRealDomesticOrder,
           allowRealOverseasOrder: effectiveSettings.allowRealOverseasOrder,
           killSwitchEnabled: effectiveSettings.killSwitchEnabled,
+          autoExitEnabled: effectiveSettings.autoExitEnabled,
           maxDomesticOrderAmount: effectiveSettings.maxDomesticOrderAmount,
           maxOverseasOrderAmount: effectiveSettings.maxOverseasOrderAmount,
           maxDailyDomesticOrders: effectiveSettings.maxDailyDomesticOrders,

@@ -61,6 +61,10 @@ interface PositionData {
   profitLoss: number;
   profitRate: number;
   evaluationAmount: number;
+  source?: 'KIS_BALANCE' | 'PAPER_TRADE' | 'SEED' | 'MANUAL';
+  priceMismatch?: boolean;
+  mismatchReason?: string;
+  purchaseAmount?: number;
 }
 
 interface TradeData {
@@ -1694,8 +1698,20 @@ export default function TradingDashboard() {
               {/* 보유 포지션 */}
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-base">보유 포지션</CardTitle>
-                  <CardDescription>현재 보유 중인 주식 현황</CardDescription>
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <CardTitle className="text-base">보유 포지션</CardTitle>
+                      <CardDescription>
+                        현재 보유 중인 주식 현황 · 단가는 KIS 평균단가(pchs_avg_pric) 기준
+                      </CardDescription>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <span className="inline-flex items-center gap-1">
+                        <span className="inline-block w-2 h-2 rounded-full bg-amber-500"></span>
+                        단가 확인 필요
+                      </span>
+                    </div>
+                  </div>
                 </CardHeader>
                 <CardContent>
                   <ScrollArea className="h-[400px]">
@@ -1706,26 +1722,75 @@ export default function TradingDashboard() {
                         <TableRow>
                           <TableHead>종목</TableHead>
                           <TableHead className="text-right">수량</TableHead>
+                          <TableHead className="text-right">평균단가</TableHead>
+                          <TableHead className="text-right">현재가</TableHead>
                           <TableHead className="text-right">평가금</TableHead>
                           <TableHead className="text-right">수익률</TableHead>
+                          <TableHead className="text-center">출처</TableHead>
                         </TableRow>
                       </TableHeader>
                         <TableBody>
-                          {positions.map((pos) => (
+                          {positions.map((pos) => {
+                            // 단가 신뢰성 검사: avgPrice <= 0 또는 priceMismatch=true 면 "단가 확인 필요"
+                            const avgPriceUnreliable = !pos.avgPrice || pos.avgPrice <= 0 || pos.priceMismatch === true;
+                            // source별 라벨/색상
+                            const sourceLabel = pos.source === 'KIS_BALANCE' ? 'KIS잔고'
+                              : pos.source === 'PAPER_TRADE' ? '모의'
+                              : pos.source === 'SEED' ? '시드'
+                              : pos.source === 'MANUAL' ? '수동'
+                              : '미정';
+                            const sourceColor = pos.source === 'KIS_BALANCE' ? 'text-emerald-600'
+                              : pos.source === 'PAPER_TRADE' ? 'text-blue-600'
+                              : pos.source === 'SEED' ? 'text-purple-600'
+                              : pos.source === 'MANUAL' ? 'text-amber-600'
+                              : 'text-muted-foreground';
+                            return (
                             <TableRow key={pos.stockCode}>
                               <TableCell>
                                 <div className="font-medium">{pos.stockName}</div>
                                 <div className="text-xs text-muted-foreground">{pos.stockCode}</div>
                               </TableCell>
                               <TableCell className="text-right">{pos.quantity}주</TableCell>
+                              <TableCell className="text-right">
+                                {avgPriceUnreliable ? (
+                                  <div className="flex flex-col items-end">
+                                    <span className="text-amber-600 font-medium">단가 확인 필요</span>
+                                    <span className="text-xs text-muted-foreground" title={pos.mismatchReason}>
+                                      {pos.mismatchReason || `avgPrice=${pos.avgPrice ?? 0}`}
+                                    </span>
+                                  </div>
+                                ) : (
+                                  <div className="flex flex-col items-end">
+                                    <span className="font-medium">{pos.avgPrice.toLocaleString()}원</span>
+                                    <span className="text-xs text-muted-foreground">
+                                      총매입 {(pos.avgPrice * pos.quantity).toLocaleString()}원
+                                    </span>
+                                  </div>
+                                )}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                {pos.currentPrice ? (
+                                  <span>{pos.currentPrice.toLocaleString()}원</span>
+                                ) : (
+                                  <span className="text-muted-foreground">—</span>
+                                )}
+                              </TableCell>
                               <TableCell className="text-right">{formatMoney(pos.evaluationAmount)}원</TableCell>
                               <TableCell className="text-right">
-                                <span className={pos.profitRate >= 0 ? 'text-emerald-600' : 'text-red-600'}>
-                                  {pos.profitRate >= 0 ? '+' : ''}{pos.profitRate.toFixed(1)}%
-                                </span>
+                                {avgPriceUnreliable ? (
+                                  <span className="text-amber-600 text-xs">계산 불가</span>
+                                ) : (
+                                  <span className={pos.profitRate >= 0 ? 'text-emerald-600' : 'text-red-600'}>
+                                    {pos.profitRate >= 0 ? '+' : ''}{pos.profitRate.toFixed(1)}%
+                                  </span>
+                                )}
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <span className={`text-xs font-medium ${sourceColor}`}>{sourceLabel}</span>
                               </TableCell>
                             </TableRow>
-                          ))}
+                            );
+                          })}
                       </TableBody>
                     </Table>
                     </div>

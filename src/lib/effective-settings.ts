@@ -112,6 +112,7 @@ export interface EffectiveTradingSettings {
   allowRealDomesticOrder: boolean;                        // 기본 false — 실전 국내 주문 허용
   allowRealOverseasOrder: boolean;                        // 기본 false — 실전 해외 주문 허용
   killSwitchEnabled: boolean;                             // 기본 false — true면 모든 주문 차단
+  autoExitEnabled: boolean;                               // 기본 true — false면 자동 청산(손절/익절/트레일링) 금지. 포지션 모니터링만.
   maxDomesticOrderAmount: number;                         // 국내 1회 최대 주문금액 (KRW)
   maxOverseasOrderAmount: number;                         // 해외 1회 최대 주문금액 (USD)
   maxDailyDomesticOrders: number;                         // 국내 일일 최대 주문 건수
@@ -161,6 +162,7 @@ const DEFAULT_SETTINGS: EffectiveTradingSettings = {
   allowRealDomesticOrder: false,
   allowRealOverseasOrder: false,
   killSwitchEnabled: false,
+  autoExitEnabled: true, // 기본 true — false면 자동 청산 금지
   maxDomesticOrderAmount: 1000000,   // KRW 100만원 (1일 매수 금액한도)
   maxOverseasOrderAmount: 500,       // USD 500달러
   maxDailyDomesticOrders: 5,         // 일일 최대 5건
@@ -364,6 +366,12 @@ export async function getEffectiveTradingSettings(): Promise<EffectiveSettingsRe
   if (process.env.AUTO_DOMESTIC_ORDER_ENABLED === 'false') {
     envValues.autoDomesticOrderEnabled = false;
   }
+  if (process.env.AUTO_EXIT_ENABLED === 'false') {
+    envValues.autoExitEnabled = false;
+  }
+  if (process.env.AUTO_EXIT_ENABLED === 'true') {
+    envValues.autoExitEnabled = true;
+  }
 
   // 최종 설정 병합: 기본값 < DB < 환경변수
   const settings: EffectiveTradingSettings = {
@@ -434,6 +442,13 @@ export async function getEffectiveTradingSettings(): Promise<EffectiveSettingsRe
   const dbKillSwitch = dbSettings?.killSwitchEnabled === true;
   const envKillSwitch = process.env.KILL_SWITCH_ENABLED === 'true';
   settings.killSwitchEnabled = dbKillSwitch || envKillSwitch;
+
+  // autoExitEnabled: DB가 명시적으로 false이거나 env가 false이면 false (안전장치 — 어느 한쪽이 false면 false)
+  const dbAutoExitOff = dbSettings?.autoExitEnabled === false;
+  const envAutoExitOff = process.env.AUTO_EXIT_ENABLED === 'false';
+  if (dbAutoExitOff || envAutoExitOff) {
+    settings.autoExitEnabled = false;
+  }
 
   // orderExecutionMode: 열거형 유효성 검증
   const validModes = ['DRY_RUN', 'PAPER', 'LIVE'];

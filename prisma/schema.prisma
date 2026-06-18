@@ -90,6 +90,8 @@ model Position {
   market            String   @default("DOMESTIC") // DOMESTIC, OVERSEAS
   exchangeCode      String? // NAS, NYS, AMS
   currency          String   @default("KRW")
+  // ── 출처 추적 (단가 신뢰성 진단용) ──
+  source            String   @default("KIS_BALANCE") // KIS_BALANCE, PAPER_TRADE, SEED, MANUAL
   // ── 청산 관리 필드 ──
   highSinceEntry    Float? // 진입 후 최고가 (트레일링스탑용)
   stopLossPrice     Float? // 손절가

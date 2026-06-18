@@ -890,6 +890,16 @@ async function monitorPositions(
 ): Promise<number> {
   let exitsExecuted = 0;
 
+  // autoExitEnabled=false 이면 자동 청산(손절/익절/트레일링) 금지 — 포지션 모니터링만 수행
+  // (단가 신뢰성 문제가 해결될 때까지 안전장치)
+  if (settings.autoExitEnabled === false) {
+    addLog('INFO', market,
+      `자동 청산 비활성화(autoExitEnabled=false) — 포지션 모니터링만 수행, 손절/익절/트레일링 주문 없음`,
+      { autoExitEnabled: false }
+    );
+    return 0;
+  }
+
   const riskConfig = buildRiskConfigFromSettings(settings, market);
   const riskManager = new RiskManager(riskConfig, market);
 
@@ -1008,6 +1018,7 @@ async function reconcilePositions(
           market: true,
           exchangeCode: true,
           currency: true,
+          source: true,
           openedAt: true,
           updatedAt: true,
         },
@@ -1044,6 +1055,36 @@ async function reconcilePositions(
       const positionId = `${market}-${pos.exchangeCode || 'KR'}-${pos.stockCode}`;
       const dbPos = dbPositions.find(p => p.id === positionId);
 
+      // ── 단가 sanity check ──
+      // avgPrice <= 0 이면 저장/갱신 금지 (잘못된 단가가 퍼지는 것 방지)
+      if (!pos.avgPrice || pos.avgPrice <= 0) {
+        addLog('RISK', market,
+          `${pos.stockName}(${pos.stockCode}) avgPrice가 유효하지 않음 (${pos.avgPrice}) — 저장 건너뜀`,
+          { stockCode: pos.stockCode, avgPrice: pos.avgPrice, rawAvgPriceField: (pos as any).rawAvgPriceField }
+        );
+        continue;
+      }
+
+      // 단가 괴리 (avgPrice vs calculatedAvgPrice from 매입금액/수량) 30% 초과 시 저장 금지
+      if ((pos as any).priceMismatch === true) {
+        addLog('RISK', market,
+          `${pos.stockName}(${pos.stockCode}) 단가 괴리 감지 — 저장 건너뜀: ${(pos as any).mismatchReason}`,
+          {
+            stockCode: pos.stockCode,
+            avgPrice: pos.avgPrice,
+            calculatedAvgPrice: (pos as any).calculatedAvgPrice,
+            purchaseAmount: (pos as any).purchaseAmount,
+            reason: (pos as any).mismatchReason,
+          }
+        );
+        continue;
+      }
+
+      // currentPrice를 avgPrice로 저장하지 않는 안전장치
+      // (pos.avgPrice가 KIS pchs_avg_pric에서 온 값이므로 pos.currentPrice와 다름)
+      const safeAvgPrice = pos.avgPrice;
+      const safeCurrentPrice = pos.currentPrice ?? null;
+
       if (!dbPos) {
         // DB에 없는 새 포지션 (수동 매수 또는 이전 세션에서 보유)
         await db.position.create({
@@ -1052,28 +1093,33 @@ async function reconcilePositions(
             stockCode: pos.stockCode,
             stockName: pos.stockName,
             quantity: pos.quantity,
-            avgPrice: pos.avgPrice,
-            currentPrice: pos.currentPrice,
+            avgPrice: safeAvgPrice,
+            currentPrice: safeCurrentPrice,
             profitLoss: pos.profitLoss,
             profitRate: pos.profitRate,
             strategy: 'MANUAL',
             market,
             exchangeCode: pos.exchangeCode || null,
             currency: pos.currency || (market === 'OVERSEAS' ? 'USD' : 'KRW'),
+            source: (pos as any).source || 'KIS_BALANCE',
           },
         }).catch(() => {});
         added++;
       } else {
         // 수량/가격 업데이트
-        if (dbPos.quantity !== pos.quantity || Math.abs(dbPos.currentPrice - pos.currentPrice) > 0) {
+        if (dbPos.quantity !== pos.quantity
+          || Math.abs(dbPos.currentPrice - pos.currentPrice) > 0
+          || Math.abs(dbPos.avgPrice - pos.avgPrice) > 0
+          || (dbPos as any).source !== ((pos as any).source || 'KIS_BALANCE')) {
           await db.position.update({
             where: { id: positionId },
             data: {
               quantity: pos.quantity,
-              avgPrice: pos.avgPrice,
-              currentPrice: pos.currentPrice,
+              avgPrice: safeAvgPrice,
+              currentPrice: safeCurrentPrice,
               profitLoss: pos.profitLoss,
               profitRate: pos.profitRate,
+              source: (pos as any).source || 'KIS_BALANCE',
             },
           }).catch(() => {});
           synced++;

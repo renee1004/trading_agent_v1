@@ -784,18 +784,80 @@ export class KisApiClient {
 
     const positions: BalanceItem[] = holdings
       .filter((item: Record<string, string>) => safeNumber(item.hldg_qty) > 0)
-      .map((item: Record<string, string>) => ({
-        stockCode: item.pdno || '',
-        stockName: item.prdt_name || item.prdt_abrv_name || '',
-        quantity: safeNumber(item.hldg_qty),
-        avgPrice: safeNumber(item.pchs_avg_pric),
-        currentPrice: safeNumber(item.prpr || item.stck_prpr),
-        profitLoss: safeNumber(item.evlu_pfls_amt),
-        profitRate: safeNumber(item.evlu_pfls_rt),
-        evaluationAmount: safeNumber(item.evlu_amt),
-        market: 'DOMESTIC' as const,
-        currency: 'KRW',
-      }));
+      .map((item: Record<string, string>) => {
+        // KIS 국내잔고 응답 필드 매핑 (한국투자증권 OpenAPI 표준):
+        // - pchs_avg_pric: 매입평균가격 (평균단가) ← avgPrice에 사용
+        // - prpr / stck_prpr: 현재가 ← currentPrice에 사용
+        // - hldg_qty: 보유수량
+        // - pchs_amt: 개별 매입금액 (검증용)
+        // - evlu_amt: 평가금액
+        // - evlu_pfls_amt: 평가손익
+        // - evlu_pfls_rt: 평가손익률
+        const rawAvgPrice = safeNumber(item.pchs_avg_pric);
+        const rawCurrentPrice = safeNumber(item.prpr || item.stck_prpr || item.cur_price);
+        const rawPurchaseAmount = safeNumber(item.pchs_amt);
+        const quantity = safeNumber(item.hldg_qty);
+
+        // avgPrice 우선순위:
+        // 1) pchs_avg_pric > 0 이면 그대로 사용
+        // 2) 매입금액/수량으로 계산
+        // 3) 0이면 신뢰 불가 (priceMismatch=true)
+        let avgPrice = rawAvgPrice;
+        let rawAvgPriceField = 'pchs_avg_pric';
+        let priceMismatch = false;
+        let mismatchReason = '';
+
+        if (avgPrice <= 0 && rawPurchaseAmount > 0 && quantity > 0) {
+          avgPrice = rawPurchaseAmount / quantity;
+          rawAvgPriceField = 'pchs_amt/hldg_qty (computed)';
+          mismatchReason = 'pchs_avg_pric이 0/없음 — 매입금액/수량으로 계산';
+        }
+
+        // calculatedAvgPrice = 매입금액 / 수량 (검증용)
+        const calculatedAvgPrice = rawPurchaseAmount > 0 && quantity > 0
+          ? rawPurchaseAmount / quantity
+          : 0;
+
+        // 괴리 검증: avgPrice vs calculatedAvgPrice
+        if (calculatedAvgPrice > 0 && avgPrice > 0) {
+          const gapPercent = Math.abs(avgPrice - calculatedAvgPrice) / calculatedAvgPrice;
+          if (gapPercent > 0.30) {
+            priceMismatch = true;
+            mismatchReason = mismatchReason || `avgPrice(${avgPrice}) vs 계산단가(${calculatedAvgPrice}) 괴리 ${(gapPercent * 100).toFixed(1)}%`;
+          }
+        }
+        if (avgPrice <= 0) {
+          priceMismatch = true;
+          mismatchReason = mismatchReason || '평균단가 0 또는 음수 — 신뢰 불가';
+        }
+
+        // currentPrice 필드명 추적
+        const rawCurrentPriceField = item.prpr
+          ? 'prpr'
+          : (item.stck_prpr ? 'stck_prpr' : (item.cur_price ? 'cur_price' : 'unknown'));
+
+        return {
+          stockCode: item.pdno || '',
+          stockName: item.prdt_name || item.prdt_abrv_name || '',
+          quantity,
+          avgPrice,
+          currentPrice: rawCurrentPrice,
+          profitLoss: safeNumber(item.evlu_pfls_amt),
+          profitRate: safeNumber(item.evlu_pfls_rt),
+          evaluationAmount: safeNumber(item.evlu_amt),
+          market: 'DOMESTIC' as const,
+          currency: 'KRW',
+          purchaseAmount: rawPurchaseAmount,
+          rawAvgPriceField,
+          rawCurrentPriceField,
+          rawAvgPrice,
+          rawCurrentPrice,
+          calculatedAvgPrice,
+          priceMismatch,
+          mismatchReason,
+          source: 'KIS_BALANCE' as const,
+        };
+      });
 
     const stockEvaluation = safeNumber(summary.scts_evlu_amt);
     const totalEvaluation =

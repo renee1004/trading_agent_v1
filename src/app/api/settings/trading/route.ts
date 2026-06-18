@@ -40,6 +40,7 @@ const DEFAULT_SETTINGS: EffectiveTradingSettings = {
   allowRealDomesticOrder: false,
   allowRealOverseasOrder: false,
   killSwitchEnabled: false,
+  autoExitEnabled: true,
   maxDomesticOrderAmount: 1000000,
   maxOverseasOrderAmount: 500,
   maxDailyDomesticOrders: 5,
