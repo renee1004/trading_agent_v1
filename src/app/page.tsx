@@ -87,6 +87,14 @@ interface TradeData {
   slippagePercent?: number;
   profitLoss?: number;
   profitRate?: number;
+  orderNo?: string;
+  // ── v2 표시 필드 (API에서 계산) ──
+  signalPrice?: number;          // 신호 발생 시 가격 (= price)
+  displayPrice?: number;          // UI 표시 우선순위 적용 가격
+  displayPriceType?: 'avgFillPrice' | 'filledPrice' | 'orderPrice' | 'signalPrice';
+  displayLabel?: string;          // UI 라벨 (체결가/주문가/주문가(미체결))
+  isExecuted?: boolean;           // 체결 여부 (FILLED/SUBMITTED)
+  isNonExecuted?: boolean;        // 미체결 여부 (FAILED/BLOCKED/CANCELLED)
 }
 
 // 서버 장애 시 표시할 기본 거래내역 (InMemory DB 시드 데이터와 동일)
@@ -102,6 +110,57 @@ const FALLBACK_TRADES: TradeData[] = [
   { id: 'fb09', stockCode: '005380', stockName: '현대자동차', tradeType: 'BUY', quantity: 8, price: 258000, totalAmount: 2064000, strategy: 'COMPOSITE', signalReason: '복합 지표 골든크로스, MACD 양전환', status: 'FAILED', market: 'DOMESTIC', currency: 'KRW', source: 'AGENT', orderExecutionMode: 'DRY_RUN', tradedAt: new Date(Date.now() - 32400000).toISOString() },
   { id: 'fb10', stockCode: '068270', stockName: '셀트리온', tradeType: 'BUY', quantity: 6, price: 189000, totalAmount: 1134000, strategy: 'MEAN_REVERSION', signalReason: '평균 회귀 과매도 반등', status: 'FILLED', market: 'DOMESTIC', currency: 'KRW', source: 'AGENT', orderExecutionMode: 'DRY_RUN', orderPrice: 189000, filledPrice: 189000, tradedAt: new Date(Date.now() - 36000000).toISOString() },
 ];
+
+/**
+ * TradeData에서 displayPrice/displayLabel/isExecuted/isNonExecuted 계산
+ * - API에서 제공된 필드가 있으면 그대로 사용
+ * - 없으면 (fallback 데이터 등) 여기서 계산
+ *
+ * 표시 우선순위:
+ *   FILLED: avgFillPrice ?? filledPrice ?? price → "체결가"
+ *   SUBMITTED/PENDING: orderPrice ?? price      → "주문가"
+ *   FAILED/BLOCKED/CANCELLED: price (참고용)     → "주문가(미체결)"
+ */
+function computeTradeDisplayFields(t: TradeData): {
+  displayPrice: number;
+  displayPriceType: 'avgFillPrice' | 'filledPrice' | 'orderPrice' | 'signalPrice';
+  displayLabel: string;
+  isExecuted: boolean;
+  isNonExecuted: boolean;
+} {
+  // API에서 이미 계산된 값이 있으면 그대로 사용
+  if (t.displayPrice != null && t.displayLabel) {
+    return {
+      displayPrice: t.displayPrice,
+      displayPriceType: t.displayPriceType || 'signalPrice',
+      displayLabel: t.displayLabel,
+      isExecuted: t.isExecuted ?? false,
+      isNonExecuted: t.isNonExecuted ?? false,
+    };
+  }
+
+  const status = (t.status || '').toUpperCase();
+  if (status === 'FILLED') {
+    if (t.avgFillPrice != null) {
+      return { displayPrice: t.avgFillPrice, displayPriceType: 'avgFillPrice', displayLabel: '체결가', isExecuted: true, isNonExecuted: false };
+    }
+    if (t.filledPrice != null) {
+      return { displayPrice: t.filledPrice, displayPriceType: 'filledPrice', displayLabel: '체결가', isExecuted: true, isNonExecuted: false };
+    }
+    return { displayPrice: t.price, displayPriceType: 'signalPrice', displayLabel: '체결가(추정)', isExecuted: true, isNonExecuted: false };
+  }
+  if (status === 'SUBMITTED' || status === 'PENDING') {
+    if (t.orderPrice != null) {
+      return { displayPrice: t.orderPrice, displayPriceType: 'orderPrice', displayLabel: '주문가', isExecuted: true, isNonExecuted: false };
+    }
+    return { displayPrice: t.price, displayPriceType: 'signalPrice', displayLabel: '주문가(추정)', isExecuted: true, isNonExecuted: false };
+  }
+  // FAILED / BLOCKED / CANCELLED
+  if (t.orderPrice != null) {
+    return { displayPrice: t.orderPrice, displayPriceType: 'orderPrice', displayLabel: '주문가(미체결)', isExecuted: false, isNonExecuted: true };
+  }
+  return { displayPrice: t.price, displayPriceType: 'signalPrice', displayLabel: '신호가(미체결)', isExecuted: false, isNonExecuted: true };
+}
 
 interface StrategyData {
   id: string;
@@ -803,14 +862,26 @@ export default function TradingDashboard() {
   const [tradeLoadError, setTradeLoadError] = useState<string>('');
   const [tradeLoadRetrying, setTradeLoadRetrying] = useState(false);
   const [tradeDataSource, setTradeDataSource] = useState<'api' | 'fallback'>('api');
+  // 거래내역 필터: 'EXECUTED' (FILLED/SUBMITTED), 'ALL', 'FAILED' (FAILED/BLOCKED/CANCELLED)
+  const [tradeFilter, setTradeFilter] = useState<'EXECUTED' | 'ALL' | 'FAILED'>('EXECUTED');
   const tradesCountRef = useRef(0);
 
   // 거래내역 새로고침 함수 (여러 곳에서 재사용)
+  // tradeFilter에 따라 API query parameter 변경
   const refreshTradeHistory = useCallback(async () => {
     setTradeLoadRetrying(true);
     setTradeLoadError('');
     try {
-      const res = await fetch('/api/trading/history?limit=20', { cache: 'no-store' });
+      // 필터에 따라 쿼리 파라미터 구성
+      const params = new URLSearchParams({ limit: '20' });
+      if (tradeFilter === 'EXECUTED') {
+        params.set('executedOnly', 'true');
+      } else if (tradeFilter === 'FAILED') {
+        // FAILED/BLOCKED/CANCELLED만 조회
+        // API가 status notIn을 직접 지원하지 않으므로, 여기서는 전체 조회 후 클라이언트 필터링
+        // 단, status=FAILED를 직접 지정할 수는 없으니 (여러 상태) 전체 조회 후 필터링
+      }
+      const res = await fetch(`/api/trading/history?${params.toString()}`, { cache: 'no-store' });
       if (!res.ok) {
         const errText = `서버 응답 오류 (HTTP ${res.status})`;
         console.warn(`[TradeHistory] ${errText}`);
@@ -824,8 +895,16 @@ export default function TradingDashboard() {
       }
       const data = await res.json();
       if (data.success && data.data?.trades && data.data.trades.length > 0) {
-        tradesCountRef.current = data.data.trades.length;
-        setTrades(data.data.trades);
+        // 클라이언트 사이드 필터링 (FAILED 필터용)
+        let filteredTrades = data.data.trades as TradeData[];
+        if (tradeFilter === 'FAILED') {
+          filteredTrades = filteredTrades.filter(t => {
+            const s = (t.status || '').toUpperCase();
+            return s === 'FAILED' || s === 'BLOCKED' || s === 'CANCELLED';
+          });
+        }
+        tradesCountRef.current = filteredTrades.length;
+        setTrades(filteredTrades);
         setTradeDataSource('api');
         setTradeLoadError('');
       } else if (data.success && data.data?.trades && data.data.trades.length === 0) {
@@ -834,12 +913,19 @@ export default function TradingDashboard() {
         try {
           const seedRes = await fetch('/api/trading/seed', { method: 'POST' });
           if (seedRes.ok) {
-            const retryRes = await fetch('/api/trading/history?limit=20', { cache: 'no-store' });
+            const retryRes = await fetch(`/api/trading/history?${params.toString()}`, { cache: 'no-store' });
             if (retryRes.ok) {
               const retryData = await retryRes.json();
               if (retryData.success && retryData.data?.trades && retryData.data.trades.length > 0) {
-                tradesCountRef.current = retryData.data.trades.length;
-                setTrades(retryData.data.trades);
+                let filteredRetryTrades = retryData.data.trades as TradeData[];
+                if (tradeFilter === 'FAILED') {
+                  filteredRetryTrades = filteredRetryTrades.filter(t => {
+                    const s = (t.status || '').toUpperCase();
+                    return s === 'FAILED' || s === 'BLOCKED' || s === 'CANCELLED';
+                  });
+                }
+                tradesCountRef.current = filteredRetryTrades.length;
+                setTrades(filteredRetryTrades);
                 setTradeDataSource('api');
                 setTradeLoadError('');
                 return;
@@ -849,9 +935,21 @@ export default function TradingDashboard() {
         } catch (seedErr) {
           console.warn('[TradeHistory] Seed attempt failed:', seedErr);
         }
-        // 시드 실패 → 폴백 데이터 사용
-        tradesCountRef.current = FALLBACK_TRADES.length;
-        setTrades(FALLBACK_TRADES);
+        // 시드 실패 → 폴백 데이터 사용 (필터 적용)
+        let filteredFallback = FALLBACK_TRADES;
+        if (tradeFilter === 'EXECUTED') {
+          filteredFallback = FALLBACK_TRADES.filter(t => {
+            const s = (t.status || '').toUpperCase();
+            return s === 'FILLED' || s === 'SUBMITTED' || s === 'PENDING';
+          });
+        } else if (tradeFilter === 'FAILED') {
+          filteredFallback = FALLBACK_TRADES.filter(t => {
+            const s = (t.status || '').toUpperCase();
+            return s === 'FAILED' || s === 'BLOCKED' || s === 'CANCELLED';
+          });
+        }
+        tradesCountRef.current = filteredFallback.length;
+        setTrades(filteredFallback);
         setTradeDataSource('fallback');
         setTradeLoadError('거래내역이 없어 샘플 데이터를 표시합니다');
       } else {
@@ -877,7 +975,7 @@ export default function TradingDashboard() {
     } finally {
       setTradeLoadRetrying(false);
     }
-  }, []);
+  }, [tradeFilter]);
 
   useEffect(() => {
     refreshTradeHistory();
@@ -1648,9 +1746,47 @@ export default function TradingDashboard() {
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <CardTitle className="text-base">최근 거래 내역</CardTitle>
-                    <CardDescription>자동매매 실행 기록</CardDescription>
+                    <CardDescription>
+                      체결 내역(FILLED/SUBMITTED) · 미체결(FAILED/BLOCKED) 별도 표시
+                    </CardDescription>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    {/* 필터 버튼 그룹 */}
+                    <div className="inline-flex rounded-md border border-gray-200 dark:border-gray-700 overflow-hidden">
+                      <button
+                        onClick={() => setTradeFilter('EXECUTED')}
+                        className={`px-2.5 py-1 text-xs font-medium transition-colors ${
+                          tradeFilter === 'EXECUTED'
+                            ? 'bg-emerald-500 text-white'
+                            : 'bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
+                        }`}
+                        title="체결된 거래만 (FILLED, SUBMITTED, PENDING)"
+                      >
+                        체결됨
+                      </button>
+                      <button
+                        onClick={() => setTradeFilter('ALL')}
+                        className={`px-2.5 py-1 text-xs font-medium transition-colors border-l border-gray-200 dark:border-gray-700 ${
+                          tradeFilter === 'ALL'
+                            ? 'bg-blue-500 text-white'
+                            : 'bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
+                        }`}
+                        title="모든 거래 (체결 + 미체결)"
+                      >
+                        전체
+                      </button>
+                      <button
+                        onClick={() => setTradeFilter('FAILED')}
+                        className={`px-2.5 py-1 text-xs font-medium transition-colors border-l border-gray-200 dark:border-gray-700 ${
+                          tradeFilter === 'FAILED'
+                            ? 'bg-red-500 text-white'
+                            : 'bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
+                        }`}
+                        title="미체결 거래만 (FAILED, BLOCKED, CANCELLED)"
+                      >
+                        미체결
+                      </button>
+                    </div>
                     {tradeLoadError && (
                       <span className="text-xs text-amber-600 dark:text-amber-400">{tradeLoadError}</span>
                     )}
@@ -1682,8 +1818,8 @@ export default function TradingDashboard() {
                           <TableHead>시간</TableHead>
                           <TableHead>종목</TableHead>
                           <TableHead>구분</TableHead>
-                          <TableHead>수량</TableHead>
-                          <TableHead>가격</TableHead>
+                          <TableHead className="text-right">수량</TableHead>
+                          <TableHead className="text-right">표시단가</TableHead>
                           <TableHead>출처</TableHead>
                           <TableHead>전략</TableHead>
                           <TableHead>상태</TableHead>
@@ -1692,18 +1828,34 @@ export default function TradingDashboard() {
                       <TableBody>
                         {trades.map((trade) => {
                           const isOverseas = trade.currency === 'USD' || trade.market === 'OVERSEAS';
-                          const displayPrice = trade.filledPrice ?? trade.orderPrice ?? trade.price;
+                          // displayPrice 우선순위: FILLED → avgFillPrice ?? filledPrice ?? price
+                          //                       SUBMITTED/PENDING → orderPrice ?? price
+                          //                       FAILED/BLOCKED → price (참고용 주문가)
+                          const display = computeTradeDisplayFields(trade);
                           const currencySymbol = isOverseas ? '$' : '원';
-                          const formatPrice = isOverseas
-                            ? `$${displayPrice.toFixed(2)}`
-                            : `${formatFullMoney(displayPrice)}원`;
+                          const formatDisplayPrice = isOverseas
+                            ? `$${display.displayPrice.toFixed(2)}`
+                            : `${formatFullMoney(display.displayPrice)}원`;
+                          // 상태별 라벨/색상
+                          const status = (trade.status || '').toUpperCase();
+                          const isNonExecuted = display.isNonExecuted;
+                          const statusLabel = status === 'FILLED' ? '체결'
+                            : status === 'SUBMITTED' ? '접수'
+                            : status === 'PENDING' ? '대기'
+                            : status === 'BLOCKED' ? '차단'
+                            : status === 'FAILED' ? '실패'
+                            : status === 'CANCELLED' ? '취소'
+                            : status;
+                          // 미체결 행은 흐리게 표시
+                          const rowOpacity = isNonExecuted ? 'opacity-60' : '';
                           return (
-                          <TableRow key={trade.id}>
+                          <TableRow key={trade.id} className={rowOpacity}>
                             <TableCell className="text-xs">
                               {new Date(trade.tradedAt).toLocaleString('ko-KR')}
                             </TableCell>
                             <TableCell>
                               <div className="font-medium">{trade.stockName}</div>
+                              <div className="text-xs text-muted-foreground">{trade.stockCode}</div>
                               {isOverseas && trade.exchangeCode && (
                                 <div className="text-xs text-muted-foreground">{trade.exchangeCode}</div>
                               )}
@@ -1711,12 +1863,36 @@ export default function TradingDashboard() {
                             <TableCell>
                               <SignalBadge type={trade.tradeType} />
                             </TableCell>
-                            <TableCell>{trade.quantity}주</TableCell>
-                            <TableCell>
-                              <div>{formatPrice}</div>
-                              {trade.slippagePercent != null && Math.abs(trade.slippagePercent) > 0.01 && (
+                            <TableCell className="text-right">{trade.quantity}주</TableCell>
+                            <TableCell className="text-right">
+                              {/* displayLabel: 체결가 / 주문가 / 주문가(미체결) / 신호가(미체결) */}
+                              <div className={isNonExecuted ? 'text-muted-foreground line-through opacity-70' : ''}>
+                                {formatDisplayPrice}
+                              </div>
+                              <div className={`text-xs ${
+                                display.displayPriceType === 'avgFillPrice' ? 'text-emerald-600 dark:text-emerald-400'
+                                : display.displayPriceType === 'filledPrice' ? 'text-emerald-600 dark:text-emerald-400'
+                                : display.displayPriceType === 'orderPrice' ? 'text-blue-600 dark:text-blue-400'
+                                : 'text-amber-600 dark:text-amber-400'
+                              }`}>
+                                {display.displayLabel}
+                              </div>
+                              {/* 참고용: 원래 신호가 (displayPrice와 다를 때만) */}
+                              {!isNonExecuted && trade.price != null && Math.abs(trade.price - display.displayPrice) > 0.01 && (
+                                <div className="text-xs text-muted-foreground">
+                                  신호가 {isOverseas ? `$${trade.price.toFixed(2)}` : `${formatFullMoney(trade.price)}원`}
+                                </div>
+                              )}
+                              {/* 슬리피지 (체결된 경우만) */}
+                              {!isNonExecuted && trade.slippagePercent != null && Math.abs(trade.slippagePercent) > 0.01 && (
                                 <div className={`text-xs ${trade.slippagePercent > 0 ? 'text-red-500' : 'text-emerald-500'}`}>
                                   슬리피지 {trade.slippagePercent > 0 ? '+' : ''}{trade.slippagePercent.toFixed(2)}%
+                                </div>
+                              )}
+                              {/* 미체결 사유 */}
+                              {isNonExecuted && trade.signalReason && (
+                                <div className="text-xs text-red-500/80 dark:text-red-400/80 max-w-[180px] truncate" title={trade.signalReason}>
+                                  {trade.signalReason}
                                 </div>
                               )}
                             </TableCell>
@@ -1742,13 +1918,26 @@ export default function TradingDashboard() {
                               <StrategyTypeBadge type={trade.strategy} />
                             </TableCell>
                             <TableCell>
-                              {trade.status === 'FILLED' ? (
-                                <CheckCircle className="h-4 w-4 text-emerald-500" />
-                              ) : trade.status === 'PENDING' ? (
-                                <Clock className="h-4 w-4 text-amber-500" />
-                              ) : (
-                                <XCircle className="h-4 w-4 text-red-500" />
-                              )}
+                              {/* 상태 라벨 + 색상 + 아이콘 */}
+                              <div className="flex items-center gap-1.5">
+                                {status === 'FILLED' ? (
+                                  <CheckCircle className="h-4 w-4 text-emerald-500" />
+                                ) : status === 'SUBMITTED' ? (
+                                  <CheckCircle className="h-4 w-4 text-blue-500" />
+                                ) : status === 'PENDING' ? (
+                                  <Clock className="h-4 w-4 text-amber-500" />
+                                ) : (
+                                  <XCircle className="h-4 w-4 text-red-500" />
+                                )}
+                                <span className={`text-xs font-medium ${
+                                  status === 'FILLED' ? 'text-emerald-600 dark:text-emerald-400'
+                                  : status === 'SUBMITTED' ? 'text-blue-600 dark:text-blue-400'
+                                  : status === 'PENDING' ? 'text-amber-600 dark:text-amber-400'
+                                  : 'text-red-600 dark:text-red-400'
+                                }`}>
+                                  {statusLabel}
+                                </span>
+                              </div>
                             </TableCell>
                           </TableRow>
                           );
@@ -1767,8 +1956,16 @@ export default function TradingDashboard() {
                       ) : (
                         <>
                           <Clock className="h-12 w-12 mb-3 opacity-20" />
-                          <p className="text-sm">거래 내역이 없습니다</p>
-                          <p className="text-xs mt-1 text-muted-foreground/70">자동매매 실행 시 거래 내역이 여기에 표시됩니다</p>
+                          <p className="text-sm">
+                            {tradeFilter === 'EXECUTED' && '체결된 거래 내역이 없습니다'}
+                            {tradeFilter === 'FAILED' && '미체결(FAILED/BLOCKED) 거래가 없습니다'}
+                            {tradeFilter === 'ALL' && '거래 내역이 없습니다'}
+                          </p>
+                          <p className="text-xs mt-1 text-muted-foreground/70">
+                            {tradeFilter === 'EXECUTED' && '자동매매 실행 시 체결 내역이 여기에 표시됩니다'}
+                            {tradeFilter === 'FAILED' && '주문 차단/실패 시 이곳에 표시됩니다'}
+                            {tradeFilter === 'ALL' && '자동매매 실행 시 거래 내역이 여기에 표시됩니다'}
+                          </p>
                           <button
                             onClick={refreshTradeHistory}
                             disabled={tradeLoadRetrying}
@@ -1777,6 +1974,15 @@ export default function TradingDashboard() {
                             <RefreshCw className="h-3 w-3" />
                             거래내역 새로고침
                           </button>
+                          {/* EXECUTED에서 데이터 없을 때 미체결 버튼 유도 */}
+                          {tradeFilter === 'EXECUTED' && (
+                            <button
+                              onClick={() => setTradeFilter('FAILED')}
+                              className="mt-2 text-xs text-red-500 hover:text-red-700 underline"
+                            >
+                              미체결(FAILED/BLOCKED) 내역 확인 →
+                            </button>
+                          )}
                         </>
                       )}
                     </div>

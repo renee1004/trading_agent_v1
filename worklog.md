@@ -523,3 +523,80 @@ Stage Summary:
 - /api/trading/history가 스키마 mismatch 시에도 select로 동작 (500 → 200)
 - start.sh에서 Position v2 + TradeHistory v2 컬럼 검증 추가
 - Railway 재배포 후 /api/trading/history?limit=20 정상 응답 예상
+
+---
+Task ID: 5
+Agent: Main Agent
+Task: 거래내역 UI 혼란 해결 — displayPrice 우선순위 + 상태별 라벨 + 필터 분리
+
+Work Log:
+- 사용자 요청: 삼성전자 단가가 이상하게 보임 — FAILED 거래의 price=50000을 체결 단가처럼 표시
+- 원인: UI가 filledPrice ?? orderPrice ?? price로 단일 표시 → FAILED/BLOCKED도 price가 표시됨
+- 해결: 7가지 요구사항 모두 구현
+
+구현 1: /api/trading/history 응답에 displayPrice/displayLabel/isExecuted 추가
+- computeDisplayPrice 함수로 status별 표시 가격 계산:
+  - FILLED: avgFillPrice ?? filledPrice ?? price → "체결가"
+  - SUBMITTED/PENDING: orderPrice ?? price → "주문가"
+  - FAILED/BLOCKED/CANCELLED: price → "주문가(미체결)" 또는 "신호가(미체결)"
+- 각 trade에 signalPrice, displayPrice, displayPriceType, displayLabel, isExecuted, isNonExecuted 추가
+- fieldLegend 응답 추가 (UI 개발자 가이드용)
+
+구현 2: 통계에서 FAILED/BLOCKED 제외
+- EXECUTED_STATUSES = {FILLED, SUBMITTED}만 통계에 포함
+- krwStats/usdStats의 totalBuyAmount, totalSellAmount, realizedPL을 executedTrades 기반으로 계산
+- stats에 executedCount, nonExecutedCount 추가
+
+구현 3: 스키마 mismatch 시 v1 컬럼으로 자동 재시도
+- v2 컬럼 조회 실패 시 v1 컬럼만 select하여 재시도
+- v2 필드는 null로 채워서 응답 (UI 정상 동작)
+
+구현 4: 쿼리 파라미터 추가
+- executedOnly=true: FILLED/SUBMITTED만 조회 (기본 필터용)
+- excludeFailed=true: FAILED/BLOCKED/CANCELLED 제외
+
+구현 5: UI 필터 버튼 그룹 추가
+- tradeFilter state: 'EXECUTED' | 'ALL' | 'FAILED'
+- 기본값 EXECUTED (체결된 거래만)
+- 헤더에 3개 버튼 (체결됨/전체/미체결) 추가
+- EXECUTED: emerald, ALL: blue, FAILED: red 색상 코딩
+
+구현 6: 표시단가 컬럼 개편
+- 헤더 "가격" → "표시단가"
+- displayPrice 사용 (기존: filledPrice ?? orderPrice ?? price)
+- displayLabel을 색상과 함께 표시:
+  - avgFillPrice/filledPrice: emerald (체결가)
+  - orderPrice: blue (주문가)
+  - signalPrice: amber (신호가)
+- 미체결 행은 opacity-60, 단가에 line-through
+- 신호가가 displayPrice와 다르면 "신호가 XXX원" 참고 표시
+- 슬리피지는 체결된 경우만 표시
+- 미체결 사유(signalReason)를 빨간 글씨로 표시
+
+구현 7: 상태 라벨 + 색상 + 아이콘 일원화
+- FILLED: 체결 + emerald CheckCircle
+- SUBMITTED: 접수 + blue CheckCircle
+- PENDING: 대기 + amber Clock
+- BLOCKED: 차단 + red XCircle
+- FAILED: 실패 + red XCircle
+- CANCELLED: 취소 + red XCircle
+
+구현 8: 빈 상태 메시지 필터별 분기
+- EXECUTED 빈 상태: "체결된 거래 내역이 없습니다" + "미체결 내역 확인 →" 버튼
+- FAILED 빈 상태: "미체결(FAILED/BLOCKED) 거래가 없습니다"
+- ALL 빈 상태: "거래 내역이 없습니다"
+
+구현 9: computeTradeDisplayFields 헬퍼 (fallback 데이터용)
+- FALLBACK_TRADES에 displayPrice가 없어도 UI에서 동일 로직 적용
+- API 응답에 displayPrice가 있으면 그대로 사용, 없으면 계산
+
+검증:
+- TypeScript 컴파일 에러 없음 (page.tsx orderNo 에러도 해결 — TradeData에 orderNo 추가)
+- Next.js 빌드 성공
+
+Stage Summary:
+- /api/trading/history가 displayPrice, displayLabel, isExecuted, isNonExecuted 반환
+- 통계(손익/평균단가/총매수금액)에서 FAILED/BLOCKED 자동 제외
+- UI에 3개 필터 버튼 (체결됨/전체/미체결) — 기본 체결됨
+- 미체결 행은 회색 + line-through + 사유 표시
+- 삼성전자 price=50000 (FAILED) 더 이상 체결 단가로 오인되지 않음
