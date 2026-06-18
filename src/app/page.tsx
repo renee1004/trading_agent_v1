@@ -96,9 +96,13 @@ interface TradeData {
   signalPrice?: number;          // 신호 발생 시 가격 (= price)
   displayPrice?: number;          // UI 표시 우선순위 적용 가격
   displayPriceType?: 'avgFillPrice' | 'filledPrice' | 'orderPrice' | 'signalPrice';
-  displayLabel?: string;          // UI 라벨 (체결가/주문가/주문가(미체결))
+  displayLabel?: string;          // UI 라벨 (체결가/가상체결가/주문가/주문가(미체결))
+  displayStatus?: string;         // UI 표시용 상태 (DRY_RUN+FILLED → "가상체결")
   isExecuted?: boolean;           // 체결 여부 (FILLED/SUBMITTED)
   isNonExecuted?: boolean;        // 미체결 여부 (FAILED/BLOCKED/CANCELLED)
+  isRealExecution?: boolean;      // 실제 주문/체결 여부 (PAPER/LIVE=true, DRY_RUN=false)
+  simulatedFillPrice?: number | null; // DRY_RUN 가상 체결가
+  priceSource?: string;           // displayPrice 출처 (tooltip용)
 }
 
 // 서버 장애 시 표시할 기본 거래내역 (InMemory DB 시드 데이터와 동일)
@@ -129,8 +133,11 @@ function computeTradeDisplayFields(t: TradeData): {
   displayPrice: number;
   displayPriceType: 'avgFillPrice' | 'filledPrice' | 'orderPrice' | 'signalPrice';
   displayLabel: string;
+  displayStatus: string;
   isExecuted: boolean;
   isNonExecuted: boolean;
+  isRealExecution: boolean;
+  simulatedFillPrice: number | null;
 } {
   // API에서 이미 계산된 값이 있으면 그대로 사용
   if (t.displayPrice != null && t.displayLabel) {
@@ -138,32 +145,66 @@ function computeTradeDisplayFields(t: TradeData): {
       displayPrice: t.displayPrice,
       displayPriceType: t.displayPriceType || 'signalPrice',
       displayLabel: t.displayLabel,
+      displayStatus: t.displayStatus || (t.status || ''),
       isExecuted: t.isExecuted ?? false,
       isNonExecuted: t.isNonExecuted ?? false,
+      isRealExecution: t.isRealExecution ?? (t.orderExecutionMode === 'PAPER' || t.orderExecutionMode === 'LIVE'),
+      simulatedFillPrice: t.simulatedFillPrice ?? null,
     };
   }
 
+  // 폴백 데이터 등 — 클라이언트에서 계산
   const status = (t.status || '').toUpperCase();
+  const mode = (t.orderExecutionMode || 'DRY_RUN').toUpperCase();
+  const isReal = mode === 'PAPER' || mode === 'LIVE';
+  const simulatedFillPrice = mode === 'DRY_RUN' ? (t.price ?? null) : null;
+
+  // displayStatus 계산
+  let displayStatus = status;
   if (status === 'FILLED') {
+    displayStatus = mode === 'DRY_RUN' ? '가상체결' : '체결';
+  } else if (status === 'SUBMITTED') displayStatus = '접수';
+  else if (status === 'PENDING') displayStatus = '대기';
+  else if (status === 'FAILED') displayStatus = '실패';
+  else if (status === 'BLOCKED') displayStatus = '차단';
+  else if (status === 'CANCELLED') displayStatus = '취소';
+
+  if (status === 'FILLED') {
+    if (mode === 'DRY_RUN') {
+      // DRY_RUN: 가상체결가
+      if (t.avgFillPrice != null) {
+        return { displayPrice: t.avgFillPrice, displayPriceType: 'avgFillPrice', displayLabel: '가상체결가', displayStatus, isExecuted: true, isNonExecuted: false, isRealExecution: false, simulatedFillPrice: t.avgFillPrice };
+      }
+      if (t.filledPrice != null) {
+        return { displayPrice: t.filledPrice, displayPriceType: 'filledPrice', displayLabel: '가상체결가', displayStatus, isExecuted: true, isNonExecuted: false, isRealExecution: false, simulatedFillPrice: t.filledPrice };
+      }
+      return { displayPrice: t.price, displayPriceType: 'signalPrice', displayLabel: '가상체결가', displayStatus, isExecuted: true, isNonExecuted: false, isRealExecution: false, simulatedFillPrice: t.price ?? null };
+    }
+    // PAPER / LIVE
     if (t.avgFillPrice != null) {
-      return { displayPrice: t.avgFillPrice, displayPriceType: 'avgFillPrice', displayLabel: '체결가', isExecuted: true, isNonExecuted: false };
+      return { displayPrice: t.avgFillPrice, displayPriceType: 'avgFillPrice', displayLabel: '체결가', displayStatus, isExecuted: true, isNonExecuted: false, isRealExecution: true, simulatedFillPrice: null };
     }
     if (t.filledPrice != null) {
-      return { displayPrice: t.filledPrice, displayPriceType: 'filledPrice', displayLabel: '체결가', isExecuted: true, isNonExecuted: false };
+      return { displayPrice: t.filledPrice, displayPriceType: 'filledPrice', displayLabel: '체결가', displayStatus, isExecuted: true, isNonExecuted: false, isRealExecution: true, simulatedFillPrice: null };
     }
-    return { displayPrice: t.price, displayPriceType: 'signalPrice', displayLabel: '체결가(추정)', isExecuted: true, isNonExecuted: false };
+    if (mode === 'PAPER' && t.orderPrice != null) {
+      return { displayPrice: t.orderPrice, displayPriceType: 'orderPrice', displayLabel: '체결가(주문가)', displayStatus, isExecuted: true, isNonExecuted: false, isRealExecution: true, simulatedFillPrice: null };
+    }
+    return { displayPrice: t.price, displayPriceType: 'signalPrice', displayLabel: '체결가(추정)', displayStatus, isExecuted: true, isNonExecuted: false, isRealExecution: true, simulatedFillPrice: null };
   }
   if (status === 'SUBMITTED' || status === 'PENDING') {
     if (t.orderPrice != null) {
-      return { displayPrice: t.orderPrice, displayPriceType: 'orderPrice', displayLabel: '주문가', isExecuted: true, isNonExecuted: false };
+      const label = mode === 'DRY_RUN' ? '주문가(시뮬)' : '주문가';
+      return { displayPrice: t.orderPrice, displayPriceType: 'orderPrice', displayLabel: label, displayStatus, isExecuted: true, isNonExecuted: false, isRealExecution: isReal, simulatedFillPrice };
     }
-    return { displayPrice: t.price, displayPriceType: 'signalPrice', displayLabel: '주문가(추정)', isExecuted: true, isNonExecuted: false };
+    const label = mode === 'DRY_RUN' ? '주문가(시뮬,추정)' : '주문가(추정)';
+    return { displayPrice: t.price, displayPriceType: 'signalPrice', displayLabel: label, displayStatus, isExecuted: true, isNonExecuted: false, isRealExecution: isReal, simulatedFillPrice };
   }
   // FAILED / BLOCKED / CANCELLED
   if (t.orderPrice != null) {
-    return { displayPrice: t.orderPrice, displayPriceType: 'orderPrice', displayLabel: '주문가(미체결)', isExecuted: false, isNonExecuted: true };
+    return { displayPrice: t.orderPrice, displayPriceType: 'orderPrice', displayLabel: '주문가(미체결)', displayStatus, isExecuted: false, isNonExecuted: true, isRealExecution: isReal, simulatedFillPrice };
   }
-  return { displayPrice: t.price, displayPriceType: 'signalPrice', displayLabel: '신호가(미체결)', isExecuted: false, isNonExecuted: true };
+  return { displayPrice: t.price, displayPriceType: 'signalPrice', displayLabel: '신호가(미체결)', displayStatus, isExecuted: false, isNonExecuted: true, isRealExecution: isReal, simulatedFillPrice };
 }
 
 interface StrategyData {
@@ -868,6 +909,8 @@ export default function TradingDashboard() {
   const [tradeDataSource, setTradeDataSource] = useState<'api' | 'fallback'>('api');
   // 거래내역 필터: 'EXECUTED' (FILLED/SUBMITTED), 'ALL', 'FAILED' (FAILED/BLOCKED/CANCELLED)
   const [tradeFilter, setTradeFilter] = useState<'EXECUTED' | 'ALL' | 'FAILED'>('EXECUTED');
+  // 실행모드 필터: 'ALL' | 'DRY_RUN' | 'PAPER' | 'LIVE'
+  const [executionModeFilter, setExecutionModeFilter] = useState<'ALL' | 'DRY_RUN' | 'PAPER' | 'LIVE'>('ALL');
   const tradesCountRef = useRef(0);
 
   // 거래내역 새로고침 함수 (여러 곳에서 재사용)
@@ -884,6 +927,9 @@ export default function TradingDashboard() {
         // FAILED/BLOCKED/CANCELLED만 조회
         // API가 status notIn을 직접 지원하지 않으므로, 여기서는 전체 조회 후 클라이언트 필터링
         // 단, status=FAILED를 직접 지정할 수는 없으니 (여러 상태) 전체 조회 후 필터링
+      }
+      if (executionModeFilter !== 'ALL') {
+        params.set('executionMode', executionModeFilter);
       }
       const res = await fetch(`/api/trading/history?${params.toString()}`, { cache: 'no-store' });
       if (!res.ok) {
@@ -942,15 +988,20 @@ export default function TradingDashboard() {
         // 시드 실패 → 폴백 데이터 사용 (필터 적용)
         let filteredFallback = FALLBACK_TRADES;
         if (tradeFilter === 'EXECUTED') {
-          filteredFallback = FALLBACK_TRADES.filter(t => {
+          filteredFallback = filteredFallback.filter(t => {
             const s = (t.status || '').toUpperCase();
             return s === 'FILLED' || s === 'SUBMITTED' || s === 'PENDING';
           });
         } else if (tradeFilter === 'FAILED') {
-          filteredFallback = FALLBACK_TRADES.filter(t => {
+          filteredFallback = filteredFallback.filter(t => {
             const s = (t.status || '').toUpperCase();
             return s === 'FAILED' || s === 'BLOCKED' || s === 'CANCELLED';
           });
+        }
+        if (executionModeFilter !== 'ALL') {
+          filteredFallback = filteredFallback.filter(t =>
+            (t.orderExecutionMode || 'DRY_RUN') === executionModeFilter
+          );
         }
         tradesCountRef.current = filteredFallback.length;
         setTrades(filteredFallback);
@@ -979,7 +1030,7 @@ export default function TradingDashboard() {
     } finally {
       setTradeLoadRetrying(false);
     }
-  }, [tradeFilter]);
+  }, [tradeFilter, executionModeFilter]);
 
   useEffect(() => {
     refreshTradeHistory();
@@ -1702,7 +1753,7 @@ export default function TradingDashboard() {
                     <div>
                       <CardTitle className="text-base">보유 포지션</CardTitle>
                       <CardDescription>
-                        현재 보유 중인 주식 현황 · 단가는 KIS 평균단가(pchs_avg_pric) 기준
+                        평균매입가는 KIS 평균단가(pchs_avg_pric) 기준 · 체결가 아님 (여러 매수 누적 평균)
                       </CardDescription>
                     </div>
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -1722,9 +1773,9 @@ export default function TradingDashboard() {
                         <TableRow>
                           <TableHead>종목</TableHead>
                           <TableHead className="text-right">수량</TableHead>
-                          <TableHead className="text-right">평균단가</TableHead>
+                          <TableHead className="text-right">평균매입가</TableHead>
                           <TableHead className="text-right">현재가</TableHead>
-                          <TableHead className="text-right">평가금</TableHead>
+                          <TableHead className="text-right">평가손익</TableHead>
                           <TableHead className="text-right">수익률</TableHead>
                           <TableHead className="text-center">출처</TableHead>
                         </TableRow>
@@ -1733,6 +1784,13 @@ export default function TradingDashboard() {
                           {positions.map((pos) => {
                             // 단가 신뢰성 검사: avgPrice <= 0 또는 priceMismatch=true 면 "단가 확인 필요"
                             const avgPriceUnreliable = !pos.avgPrice || pos.avgPrice <= 0 || pos.priceMismatch === true;
+                            // displayPriceSource — 평균매입가가 어디서 왔는지 추적
+                            const displayPriceSource =
+                              pos.source === 'KIS_BALANCE' ? 'KIS_BALANCE_AVG_PRICE'
+                              : pos.source === 'PAPER_TRADE' ? 'PAPER_TRADE_AVG_PRICE'
+                              : pos.source === 'SEED' ? 'SEED_AVG_PRICE'
+                              : pos.source === 'MANUAL' ? 'DB_POSITION_AVG_PRICE'
+                              : 'DB_POSITION_AVG_PRICE';
                             // source별 라벨/색상
                             const sourceLabel = pos.source === 'KIS_BALANCE' ? 'KIS잔고'
                               : pos.source === 'PAPER_TRADE' ? '모의'
@@ -1745,7 +1803,7 @@ export default function TradingDashboard() {
                               : pos.source === 'MANUAL' ? 'text-amber-600'
                               : 'text-muted-foreground';
                             return (
-                            <TableRow key={pos.stockCode}>
+                            <TableRow key={pos.stockCode} title={`displayPriceSource: ${displayPriceSource}\nquantity: ${pos.quantity}\navgPrice: ${pos.avgPrice ?? '—'}\ncurrentPrice: ${pos.currentPrice ?? '—'}\npriceMismatch: ${pos.priceMismatch ?? false}\nmismatchReason: ${pos.mismatchReason ?? ''}`}>
                               <TableCell>
                                 <div className="font-medium">{pos.stockName}</div>
                                 <div className="text-xs text-muted-foreground">{pos.stockCode}</div>
@@ -1765,6 +1823,9 @@ export default function TradingDashboard() {
                                     <span className="text-xs text-muted-foreground">
                                       총매입 {(pos.avgPrice * pos.quantity).toLocaleString()}원
                                     </span>
+                                    <span className="text-[10px] text-muted-foreground/70" title={displayPriceSource}>
+                                      {displayPriceSource}
+                                    </span>
                                   </div>
                                 )}
                               </TableCell>
@@ -1775,7 +1836,15 @@ export default function TradingDashboard() {
                                   <span className="text-muted-foreground">—</span>
                                 )}
                               </TableCell>
-                              <TableCell className="text-right">{formatMoney(pos.evaluationAmount)}원</TableCell>
+                              <TableCell className="text-right">
+                                {avgPriceUnreliable ? (
+                                  <span className="text-amber-600 text-xs">계산 불가</span>
+                                ) : (
+                                  <span className={pos.profitLoss >= 0 ? 'text-emerald-600' : 'text-red-600'}>
+                                    {pos.profitLoss >= 0 ? '+' : ''}{formatMoney(pos.profitLoss)}원
+                                  </span>
+                                )}
+                              </TableCell>
                               <TableCell className="text-right">
                                 {avgPriceUnreliable ? (
                                   <span className="text-amber-600 text-xs">계산 불가</span>
@@ -1852,6 +1921,27 @@ export default function TradingDashboard() {
                         미체결
                       </button>
                     </div>
+                    {/* 실행모드 필터: LIVE / PAPER / DRY_RUN / ALL */}
+                    <div className="flex items-center rounded-md border border-gray-200 dark:border-gray-700 overflow-hidden text-xs">
+                      <span className="px-2 py-1 text-muted-foreground bg-gray-50 dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700">실행모드</span>
+                      {(['ALL', 'LIVE', 'PAPER', 'DRY_RUN'] as const).map(m => (
+                        <button
+                          key={m}
+                          onClick={() => setExecutionModeFilter(m)}
+                          className={`px-2 py-1 font-medium transition-colors border-l border-gray-200 dark:border-gray-700 first:border-l-0 ${
+                            executionModeFilter === m
+                              ? m === 'LIVE' ? 'bg-red-500 text-white'
+                                : m === 'PAPER' ? 'bg-blue-500 text-white'
+                                : m === 'DRY_RUN' ? 'bg-gray-500 text-white'
+                                : 'bg-emerald-500 text-white'
+                              : 'bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
+                          }`}
+                          title={m === 'ALL' ? '모든 실행모드' : `${m} 거래만`}
+                        >
+                          {m === 'ALL' ? '전체' : m}
+                        </button>
+                      ))}
+                    </div>
                     {tradeLoadError && (
                       <span className="text-xs text-amber-600 dark:text-amber-400">{tradeLoadError}</span>
                     )}
@@ -1893,28 +1983,39 @@ export default function TradingDashboard() {
                       <TableBody>
                         {trades.map((trade) => {
                           const isOverseas = trade.currency === 'USD' || trade.market === 'OVERSEAS';
-                          // displayPrice 우선순위: FILLED → avgFillPrice ?? filledPrice ?? price
-                          //                       SUBMITTED/PENDING → orderPrice ?? price
-                          //                       FAILED/BLOCKED → price (참고용 주문가)
+                          // displayPrice 우선순위 (orderExecutionMode 인식):
+                          //   LIVE/FILLED: avgFillPrice ?? filledPrice ?? price  → "체결가"
+                          //   PAPER/FILLED: avgFillPrice ?? filledPrice ?? orderPrice ?? price → "체결가"
+                          //   DRY_RUN/FILLED: signalPrice → "가상체결가"
+                          //   SUBMITTED/PENDING: orderPrice → "주문가"
+                          //   FAILED/BLOCKED: 체결가 없음
                           const display = computeTradeDisplayFields(trade);
-                          const currencySymbol = isOverseas ? '$' : '원';
                           const formatDisplayPrice = isOverseas
                             ? `$${display.displayPrice.toFixed(2)}`
                             : `${formatFullMoney(display.displayPrice)}원`;
-                          // 상태별 라벨/색상
+                          // status (raw) + displayStatus (UI 표시용)
                           const status = (trade.status || '').toUpperCase();
                           const isNonExecuted = display.isNonExecuted;
-                          const statusLabel = status === 'FILLED' ? '체결'
-                            : status === 'SUBMITTED' ? '접수'
-                            : status === 'PENDING' ? '대기'
-                            : status === 'BLOCKED' ? '차단'
-                            : status === 'FAILED' ? '실패'
-                            : status === 'CANCELLED' ? '취소'
-                            : status;
-                          // 미체결 행은 흐리게 표시
-                          const rowOpacity = isNonExecuted ? 'opacity-60' : '';
+                          const isDryRun = display.isRealExecution === false;
+                          const displayStatus = display.displayStatus || status;
+                          // 미체결 행은 흐리게 표시, DRY_RUN 가상체결도 살짝 흐리게
+                          const rowOpacity = isNonExecuted ? 'opacity-60' : (isDryRun ? 'opacity-80' : '');
+                          // tooltip 문자열 — 모든 가격 필드 노출
+                          const tooltipLines = [
+                            `orderExecutionMode: ${trade.orderExecutionMode || 'DRY_RUN'}`,
+                            `status: ${trade.status || ''} (displayStatus: ${displayStatus})`,
+                            `priceSource: ${display.displayPriceType}`,
+                            `isRealExecution: ${display.isRealExecution}`,
+                            `signalPrice: ${trade.signalPrice ?? trade.price ?? '—'}`,
+                            `orderPrice: ${trade.orderPrice ?? '—'}`,
+                            `filledPrice: ${trade.filledPrice ?? '—'}`,
+                            `avgFillPrice: ${trade.avgFillPrice ?? '—'}`,
+                            `simulatedFillPrice: ${display.simulatedFillPrice ?? '—'}`,
+                            `slippagePercent: ${trade.slippagePercent ?? '—'}`,
+                          ];
+                          const tooltipText = tooltipLines.join('\n');
                           return (
-                          <TableRow key={trade.id} className={rowOpacity}>
+                          <TableRow key={trade.id} className={rowOpacity} title={tooltipText}>
                             <TableCell className="text-xs">
                               {new Date(trade.tradedAt).toLocaleString('ko-KR')}
                             </TableCell>
@@ -1930,7 +2031,7 @@ export default function TradingDashboard() {
                             </TableCell>
                             <TableCell className="text-right">{trade.quantity}주</TableCell>
                             <TableCell className="text-right">
-                              {/* displayLabel: 체결가 / 주문가 / 주문가(미체결) / 신호가(미체결) */}
+                              {/* displayLabel: 체결가 / 가상체결가 / 주문가 / 주문가(미체결) / 신호가(미체결) */}
                               <div className={isNonExecuted ? 'text-muted-foreground line-through opacity-70' : ''}>
                                 {formatDisplayPrice}
                               </div>
@@ -1938,6 +2039,7 @@ export default function TradingDashboard() {
                                 display.displayPriceType === 'avgFillPrice' ? 'text-emerald-600 dark:text-emerald-400'
                                 : display.displayPriceType === 'filledPrice' ? 'text-emerald-600 dark:text-emerald-400'
                                 : display.displayPriceType === 'orderPrice' ? 'text-blue-600 dark:text-blue-400'
+                                : isDryRun ? 'text-gray-500 dark:text-gray-400'
                                 : 'text-amber-600 dark:text-amber-400'
                               }`}>
                                 {display.displayLabel}
@@ -1960,12 +2062,18 @@ export default function TradingDashboard() {
                                   {trade.signalReason}
                                 </div>
                               )}
+                              {/* 손익 — DRY_RUN은 "가상손익" 라벨 */}
+                              {trade.profitLoss != null && !isNonExecuted && (
+                                <div className={`text-xs ${isDryRun ? 'text-gray-500 dark:text-gray-400' : (trade.profitLoss >= 0 ? 'text-emerald-500' : 'text-red-500')}`}>
+                                  {isDryRun ? '가상손익 ' : ''}{trade.profitLoss >= 0 ? '+' : ''}{formatFullMoney(trade.profitLoss)}원
+                                  {trade.profitRate != null && ` (${trade.profitRate >= 0 ? '+' : ''}${trade.profitRate.toFixed(2)}%)`}
+                                </div>
+                              )}
                             </TableCell>
                             <TableCell>
                               <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ${
-                                trade.orderExecutionMode === 'DRY_RUN' ? 'bg-gray-100 text-gray-600'
-                                : trade.orderExecutionMode === 'PAPER' ? 'bg-blue-50 text-blue-600'
-                                : trade.orderExecutionMode === 'LIVE' ? 'bg-red-50 text-red-600'
+                                trade.source === 'MANUAL' ? 'bg-amber-50 text-amber-600'
+                                : trade.source === 'TEST' ? 'bg-purple-50 text-purple-600'
                                 : 'bg-gray-100 text-gray-600'
                               }`}>
                                 {trade.source === 'MANUAL' ? '수동' : trade.source === 'TEST' ? '테스트' : '에이전트'}
@@ -1983,24 +2091,27 @@ export default function TradingDashboard() {
                               <StrategyTypeBadge type={trade.strategy} />
                             </TableCell>
                             <TableCell>
-                              {/* 상태 라벨 + 색상 + 아이콘 */}
+                              {/* displayStatus 기준 라벨/색상 + 아이콘 */}
                               <div className="flex items-center gap-1.5">
-                                {status === 'FILLED' ? (
+                                {displayStatus === '체결' ? (
                                   <CheckCircle className="h-4 w-4 text-emerald-500" />
-                                ) : status === 'SUBMITTED' ? (
+                                ) : displayStatus === '가상체결' ? (
+                                  <CheckCircle className="h-4 w-4 text-gray-400" />
+                                ) : displayStatus === '접수' ? (
                                   <CheckCircle className="h-4 w-4 text-blue-500" />
-                                ) : status === 'PENDING' ? (
+                                ) : displayStatus === '대기' ? (
                                   <Clock className="h-4 w-4 text-amber-500" />
                                 ) : (
                                   <XCircle className="h-4 w-4 text-red-500" />
                                 )}
                                 <span className={`text-xs font-medium ${
-                                  status === 'FILLED' ? 'text-emerald-600 dark:text-emerald-400'
-                                  : status === 'SUBMITTED' ? 'text-blue-600 dark:text-blue-400'
-                                  : status === 'PENDING' ? 'text-amber-600 dark:text-amber-400'
+                                  displayStatus === '체결' ? 'text-emerald-600 dark:text-emerald-400'
+                                  : displayStatus === '가상체결' ? 'text-gray-500 dark:text-gray-400'
+                                  : displayStatus === '접수' ? 'text-blue-600 dark:text-blue-400'
+                                  : displayStatus === '대기' ? 'text-amber-600 dark:text-amber-400'
                                   : 'text-red-600 dark:text-red-400'
                                 }`}>
-                                  {statusLabel}
+                                  {displayStatus}
                                 </span>
                               </div>
                             </TableCell>

@@ -3,35 +3,47 @@
 // 각 보유 종목별로 DB Position.avgPrice / KIS 평균단가 / 매입금액/수량 계산값 비교
 // 단가 괴리(reasonMismatch)가 있으면 자동청산 금지 안내
 //
-// 응답:
+// 쿼리 파라미터:
+//   ?code=005930  → 특정 종목만 진단 (삼성전자 단가 추적용)
+//
+// 응답 (종목별):
 //   {
-//     success: true,
-//     totalPositions: N,
-//     mismatchCount: M,
-//     positions: [
-//       {
-//         stockCode, stockName,
-//         db: { avgPrice, currentPrice, quantity, totalCost, ... },
-//         kis: { rawBalanceItem, avgPriceFieldName, avgPriceRawValue, parsedAvgPrice, parsedCurrentPrice, parsedQuantity, evaluatedAmount, purchaseAmount, calculatedAvgPrice },
-//         priceMismatch: boolean,
-//         mismatchReason: string,
-//         recommendation: string  // "재동기화 필요" / "정상" / "KIS 잔고 없음 — DB 삭제 필요"
-//       }
-//     ]
+//     stockCode, stockName,
+//     quantity, currentPrice, avgPrice, displayPrice, displayPriceSource,
+//     db: { avgPrice, currentPrice, quantity, totalCost, ... },
+//     kis: { rawBalanceItem, avgPriceFieldName, avgPriceRawValue, currentPriceFieldName, currentPriceRawValue, parsedAvgPrice, parsedCurrentPrice, parsedQuantity, evaluatedAmount, purchaseAmount, calculatedAvgPrice },
+//     latestFilledTrade: { avgFillPrice, filledPrice, status, tradedAt, source, orderExecutionMode } | null,
+//     priceMismatch: boolean,
+//     mismatchReason: string,
+//     recommendation: string
 //   }
+//
+// displayPriceSource 값:
+//   - "KIS_BALANCE_AVG_PRICE" — KIS 잔고의 pchs_avg_pric (가장 신뢰)
+//   - "KIS_BALANCE_CALCULATED" — 매입금액/수량으로 계산
+//   - "DB_POSITION_AVG_PRICE" — DB Position.avgPrice (백업)
+//   - "TRADE_HISTORY_AVG_FILL_PRICE" — 최근 FILLED 거래의 avgFillPrice
+//   - "TRADE_HISTORY_PRICE" — 최근 거래의 price (신호가)
+//   - "UNKNOWN" — 출처 불명
 
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { KisApiClient } from '@/lib/kis-api';
 import { getOrCreateKisConfigFromEnv } from '@/lib/kis-config-loader';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const { searchParams } = new URL(request.url);
+    const codeFilter = searchParams.get('code'); // 특정 종목 진단
+
     // 1) DB에서 모든 DOMESTIC 포지션 조회 (스키마 mismatch 대비 safe select)
     let dbPositions: any[] = [];
     try {
       dbPositions = await db.position.findMany({
-        where: { market: 'DOMESTIC' },
+        where: {
+          market: 'DOMESTIC',
+          ...(codeFilter ? { stockCode: codeFilter } : {}),
+        },
         select: {
           id: true,
           stockCode: true,
@@ -44,29 +56,69 @@ export async function GET() {
           strategy: true,
           market: true,
           currency: true,
+          source: true,
           openedAt: true,
           updatedAt: true,
         },
       });
     } catch (dbErr) {
       const msg = dbErr instanceof Error ? dbErr.message : String(dbErr);
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Position DB 조회 실패',
-          code: 'DB_QUERY_FAILED',
-          dbError: msg,
-          hint: 'Railway DB에서 Position v2 컬럼이 생성되었는지 확인하세요 (prisma migrate deploy).',
-        },
-        { status: 500 }
-      );
+      // source 컬럼이 없는 경우 — select에서 source 제거하고 재시도
+      if (msg.includes('source') || msg.includes('does not exist')) {
+        console.warn('[Position Diagnostics] source 컬럼 없음 — 재시도');
+        try {
+          dbPositions = await db.position.findMany({
+            where: {
+              market: 'DOMESTIC',
+              ...(codeFilter ? { stockCode: codeFilter } : {}),
+            },
+            select: {
+              id: true,
+              stockCode: true,
+              stockName: true,
+              quantity: true,
+              avgPrice: true,
+              currentPrice: true,
+              profitLoss: true,
+              profitRate: true,
+              strategy: true,
+              market: true,
+              currency: true,
+              openedAt: true,
+              updatedAt: true,
+            },
+          });
+        } catch (retryErr) {
+          const retryMsg = retryErr instanceof Error ? retryErr.message : String(retryErr);
+          return NextResponse.json(
+            {
+              success: false,
+              error: 'Position DB 조회 실패',
+              code: 'DB_QUERY_FAILED',
+              dbError: retryMsg,
+              hint: 'Railway DB에서 Position v2 컬럼이 생성되었는지 확인하세요 (prisma migrate deploy).',
+            },
+            { status: 500 }
+          );
+        }
+      } else {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Position DB 조회 실패',
+            code: 'DB_QUERY_FAILED',
+            dbError: msg,
+            hint: 'Railway DB에서 Position v2 컬럼이 생성되었는지 확인하세요 (prisma migrate deploy).',
+          },
+          { status: 500 }
+        );
+      }
     }
 
     // 2) KIS 잔고 조회
     const config = await getOrCreateKisConfigFromEnv();
     let kisBalance: any = null;
     let kisError: string | null = null;
-    let kisRawOutput1: any[] = [];
 
     if (config) {
       try {
@@ -79,8 +131,6 @@ export async function GET() {
           tokenExpiresAt: config.tokenExpiresAt ?? undefined,
         });
         kisBalance = await client.getAccountBalance();
-        // output1 원본은 노출되지 않으므로, getAccountBalance에서 노출한 positions를 활용
-        // 단, 진단 API는 클라이언트가 파싱한 결과를 그대로 사용
       } catch (e) {
         kisError = e instanceof Error ? e.message : String(e);
       }
@@ -99,6 +149,61 @@ export async function GET() {
       const stockCode = dbPos.stockCode;
       const kisPos = kisPositions.find(p => p.stockCode === stockCode);
 
+      // 3a) 최근 FILLED 거래 조회 (TradeHistory)
+      let latestFilledTrade: any = null;
+      try {
+        const latestTrades = await db.tradeHistory.findMany({
+          where: { stockCode, status: 'FILLED' },
+          orderBy: { tradedAt: 'desc' },
+          take: 1,
+          select: {
+            id: true,
+            stockCode: true,
+            stockName: true,
+            tradeType: true,
+            quantity: true,
+            price: true,
+            status: true,
+            source: true,
+            orderExecutionMode: true,
+            orderPrice: true,
+            filledPrice: true,
+            avgFillPrice: true,
+            signalReason: true,
+            tradedAt: true,
+          },
+        });
+        latestFilledTrade = latestTrades[0] ?? null;
+      } catch (_tradeErr) {
+        // TradeHistory v2 컬럼 없을 수 있음 — 무시
+        latestFilledTrade = null;
+      }
+
+      // 3b) 최근 거래 (status 무관)도 별도 조회
+      let latestTrade: any = null;
+      try {
+        const latestAnyTrades = await db.tradeHistory.findMany({
+          where: { stockCode },
+          orderBy: { tradedAt: 'desc' },
+          take: 1,
+          select: {
+            id: true,
+            status: true,
+            source: true,
+            orderExecutionMode: true,
+            price: true,
+            orderPrice: true,
+            filledPrice: true,
+            avgFillPrice: true,
+            tradedAt: true,
+            signalReason: true,
+          },
+        });
+        latestTrade = latestAnyTrades[0] ?? null;
+      } catch (_e) {
+        latestTrade = null;
+      }
+
       const calculatedAvgPrice = kisPos?.purchaseAmount && kisPos?.quantity
         ? kisPos.purchaseAmount / kisPos.quantity
         : null;
@@ -111,7 +216,7 @@ export async function GET() {
         // DB에 있는데 KIS 잔고에 없음
         priceMismatch = true;
         mismatchReason = 'KIS 잔고에 없는 포지션 — 전량 매도/삭제된 포지션';
-        recommendation = 'DB에서 삭제 필요 (DELETE /api/positions/resync)';
+        recommendation = 'DB에서 삭제 필요 (POST /api/positions/resync)';
       } else {
         // 1) avgPrice <= 0 (DB)
         if (dbPos.avgPrice <= 0) {
@@ -142,9 +247,39 @@ export async function GET() {
 
       if (priceMismatch) mismatchCount++;
 
+      // ── displayPriceSource 결정 ──
+      // 우선순위: KIS_BALANCE_AVG_PRICE > KIS_BALANCE_CALCULATED > DB_POSITION_AVG_PRICE > TRADE_HISTORY_AVG_FILL_PRICE > TRADE_HISTORY_PRICE > UNKNOWN
+      let displayPrice: number = dbPos.avgPrice ?? 0;
+      let displayPriceSource = 'UNKNOWN';
+      if (kisPos?.avgPrice && kisPos.avgPrice > 0) {
+        displayPrice = kisPos.avgPrice;
+        displayPriceSource = 'KIS_BALANCE_AVG_PRICE';
+      } else if (calculatedAvgPrice && calculatedAvgPrice > 0) {
+        displayPrice = calculatedAvgPrice;
+        displayPriceSource = 'KIS_BALANCE_CALCULATED';
+      } else if (dbPos.avgPrice && dbPos.avgPrice > 0) {
+        displayPrice = dbPos.avgPrice;
+        displayPriceSource = 'DB_POSITION_AVG_PRICE';
+      } else if (latestFilledTrade?.avgFillPrice != null) {
+        displayPrice = latestFilledTrade.avgFillPrice;
+        displayPriceSource = 'TRADE_HISTORY_AVG_FILL_PRICE';
+      } else if (latestFilledTrade?.filledPrice != null) {
+        displayPrice = latestFilledTrade.filledPrice;
+        displayPriceSource = 'TRADE_HISTORY_FILLED_PRICE';
+      } else if (latestTrade?.price != null) {
+        displayPrice = latestTrade.price;
+        displayPriceSource = 'TRADE_HISTORY_PRICE';
+      }
+
       diagnostics.push({
         stockCode,
         stockName: dbPos.stockName,
+        quantity: dbPos.quantity,
+        currentPrice: dbPos.currentPrice,
+        avgPrice: dbPos.avgPrice,
+        displayPrice,
+        displayPriceSource,
+        source: dbPos.source ?? (kisPos ? 'KIS_BALANCE' : 'MANUAL'),
         db: {
           id: dbPos.id,
           avgPrice: dbPos.avgPrice,
@@ -154,12 +289,12 @@ export async function GET() {
           profitLoss: dbPos.profitLoss,
           profitRate: dbPos.profitRate,
           strategy: dbPos.strategy,
+          source: dbPos.source,
           openedAt: dbPos.openedAt,
           updatedAt: dbPos.updatedAt,
         },
         kis: kisPos ? {
           rawBalanceItem: {
-            // 원본 KIS output1 항목은 노출하지 않되, 파싱된 필드값을 모두 노출
             pdno: kisPos.stockCode,
             prdt_name: kisPos.stockName,
             hldg_qty: kisPos.quantity,
@@ -181,36 +316,73 @@ export async function GET() {
           purchaseAmount: kisPos.purchaseAmount,
           calculatedAvgPrice,
         } : null,
+        latestFilledTrade: latestFilledTrade ? {
+          id: latestFilledTrade.id,
+          tradeType: latestFilledTrade.tradeType,
+          quantity: latestFilledTrade.quantity,
+          status: latestFilledTrade.status,
+          source: latestFilledTrade.source,
+          orderExecutionMode: latestFilledTrade.orderExecutionMode,
+          signalPrice: latestFilledTrade.price,
+          orderPrice: latestFilledTrade.orderPrice,
+          filledPrice: latestFilledTrade.filledPrice,
+          avgFillPrice: latestFilledTrade.avgFillPrice,
+          tradedAt: latestFilledTrade.tradedAt,
+          signalReason: latestFilledTrade.signalReason,
+        } : null,
+        latestTrade: latestTrade ? {
+          status: latestTrade.status,
+          source: latestTrade.source,
+          orderExecutionMode: latestTrade.orderExecutionMode,
+          signalPrice: latestTrade.price,
+          orderPrice: latestTrade.orderPrice,
+          filledPrice: latestTrade.filledPrice,
+          avgFillPrice: latestTrade.avgFillPrice,
+          tradedAt: latestTrade.tradedAt,
+          signalReason: latestTrade.signalReason,
+        } : null,
         priceMismatch,
         mismatchReason,
         recommendation,
       });
     }
 
-    // KIS에는 있는데 DB에는 없는 포지션도 별도 표시
-    const dbCodes = new Set(dbPositions.map(p => p.stockCode));
-    const orphanKisPositions = kisPositions
-      .filter(p => !dbCodes.has(p.stockCode))
-      .map(p => ({
-        stockCode: p.stockCode,
-        stockName: p.stockName,
-        kis: {
-          avgPriceFieldName: p.rawAvgPriceField,
-          avgPriceRawValue: p.rawAvgPrice,
-          parsedAvgPrice: p.avgPrice,
-          parsedCurrentPrice: p.currentPrice,
-          parsedQuantity: p.quantity,
-          evaluatedAmount: p.evaluationAmount,
-          purchaseAmount: p.purchaseAmount,
-          calculatedAvgPrice: p.purchaseAmount && p.quantity ? p.purchaseAmount / p.quantity : null,
-        },
-        priceMismatch: false,
-        mismatchReason: 'KIS 잔고에 있으나 DB에 없음 — 수동 매수 또는 외부에서 유입',
-        recommendation: 'DB에 신규 추가 필요 (POST /api/positions/resync)',
-      }));
+    // KIS에는 있는데 DB에는 없는 포지션도 별도 표시 (codeFilter가 없을 때만)
+    let orphanKisPositions: any[] = [];
+    if (!codeFilter) {
+      const dbCodes = new Set(dbPositions.map(p => p.stockCode));
+      orphanKisPositions = kisPositions
+        .filter(p => !dbCodes.has(p.stockCode))
+        .map(p => ({
+          stockCode: p.stockCode,
+          stockName: p.stockName,
+          quantity: p.quantity,
+          currentPrice: p.currentPrice,
+          avgPrice: p.avgPrice,
+          displayPrice: p.avgPrice,
+          displayPriceSource: 'KIS_BALANCE_AVG_PRICE',
+          source: p.source || 'KIS_BALANCE',
+          kis: {
+            avgPriceFieldName: p.rawAvgPriceField,
+            avgPriceRawValue: p.rawAvgPrice,
+            currentPriceFieldName: p.rawCurrentPriceField,
+            currentPriceRawValue: p.rawCurrentPrice,
+            parsedAvgPrice: p.avgPrice,
+            parsedCurrentPrice: p.currentPrice,
+            parsedQuantity: p.quantity,
+            evaluatedAmount: p.evaluationAmount,
+            purchaseAmount: p.purchaseAmount,
+            calculatedAvgPrice: p.purchaseAmount && p.quantity ? p.purchaseAmount / p.quantity : null,
+          },
+          priceMismatch: false,
+          mismatchReason: 'KIS 잔고에 있으나 DB에 없음 — 수동 매수 또는 외부에서 유입',
+          recommendation: 'DB에 신규 추가 필요 (POST /api/positions/resync)',
+        }));
+    }
 
     return NextResponse.json({
       success: true,
+      codeFilter: codeFilter || null,
       totalDbPositions: dbPositions.length,
       totalKisPositions: kisPositions.length,
       mismatchCount,

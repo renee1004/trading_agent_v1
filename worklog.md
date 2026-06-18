@@ -632,3 +632,52 @@ Stage Summary:
 - 단가 sanity check: avgPrice<=0 또는 30% 괴리 시 DB 저장 금지
 - UI: 보유포지션에서 avgPrice 신뢰 불가 시 "단가 확인 필요" 표시, 수익률 "계산 불가"
 - Railway DB 마이그레이션 필요: prisma migrate deploy가 새 source 컬럼 자동 추가
+
+---
+Task ID: 6
+Agent: Main Agent
+Task: 거래내역/보유포지션 단가 라벨 혼란 해결 — DRY_RUN "가상체결가", 실행모드 필터, displayPriceSource 추적, 진단 API 보강
+
+Work Log:
+- /api/trading/history: orderExecutionMode 인식 표시 우선순위 적용
+  - LIVE/FILLED: avgFillPrice ?? filledPrice ?? price → "체결가"
+  - PAPER/FILLED: avgFillPrice ?? filledPrice ?? orderPrice ?? signalPrice → "체결가"
+  - DRY_RUN/FILLED: signalPrice → "가상체결가" (DRY_RUN은 실제 체결 아님)
+  - SUBMITTED/PENDING: orderPrice → "주문가" (DRY_RUN은 "주문가(시뮬)")
+  - FAILED/BLOCKED: 체결가 없음 → "주문가(미체결)" / "신호가(미체결)"
+- displayStatus 추가: DRY_RUN+FILLED → "가상체결", PAPER/LIVE+FILLED → "체결", SUBMITTED→"접수", PENDING→"대기", FAILED→"실패", BLOCKED→"차단", CANCELLED→"취소"
+- isRealExecution 추가: PAPER/LIVE=true, DRY_RUN=false
+- simulatedFillPrice 추가: DRY_RUN에서 signalPrice를 가상체결가로 사용
+- priceSource 필드 추가 (UI tooltip용, = displayPriceType)
+- 통계 분리: krwStats.realizedPL (PAPER+LIVE만) vs krwStats.virtualPL (DRY_RUN만)
+- executionModeCounts 추가 (DRY_RUN/PAPER/LIVE 건수)
+- executionMode 쿼리 파라미터 지원 (?executionMode=DRY_RUN)
+- src/app/page.tsx UI 변경:
+  - TradeData 인터페이스 확장: displayStatus, isRealExecution, simulatedFillPrice, priceSource 추가
+  - computeTradeDisplayFields: orderExecutionMode 인식 우선순위 로직으로 재작성
+  - 거래내역 테이블 행: displayStatus 기준 아이콘/색상, DRY_RUN 가상체결 회색 톤
+  - 손익 표시: DRY_RUN은 "가상손익" 라벨 + 회색, 실제 체결은 "실현손익" + 색상
+  - 출처 컬럼: source(MANUAL/TEST/AGENT) + orderExecutionMode(DRY_RUN/PAPER/LIVE) 뱃지 분리
+  - tooltip: 모든 가격 필드 노출 (orderExecutionMode, status, priceSource, signalPrice, orderPrice, filledPrice, avgFillPrice, simulatedFillPrice, slippagePercent)
+  - 실행모드 필터 UI 추가: 전체/LIVE/PAPER/DRY_RUN 토글 버튼 (색상 구분)
+- 보유포지션 UI 변경:
+  - 헤더 "평균단가" → "평균매입가", "평가금" → "평가손익"
+  - 카드 설명: "평균매입가는 KIS 평균단가(pchs_avg_pric) 기준 · 체결가 아님"
+  - 각 포지션 행: displayPriceSource 라벨 추가 (KIS_BALANCE_AVG_PRICE / DB_POSITION_AVG_PRICE 등)
+  - tooltip: displayPriceSource, avgPrice, currentPrice, priceMismatch, mismatchReason 노출
+- /api/positions/diagnostics 재작성:
+  - ?code=005930 종목 필터 지원
+  - displayPriceSource 결정 로직 (KIS_BALANCE_AVG_PRICE > KIS_BALANCE_CALCULATED > DB_POSITION_AVG_PRICE > TRADE_HISTORY_AVG_FILL_PRICE > TRADE_HISTORY_PRICE > UNKNOWN)
+  - latestFilledTrade / latestTrade 조회 추가 (TradeHistory에서 최근 FILLED 거래 avgFillPrice/filledPrice 확인)
+  - source 컬럼 누락 시 자동 fallback select
+  - 응답에 displayPrice, displayPriceSource, source 필드 추가
+- npx next build 성공
+
+Stage Summary:
+- DRY_RUN 거래는 더 이상 "체결"/"체결가"로 표시되지 않음 — "가상체결"/"가상체결가"로 명확 분리
+- PAPER/LIVE만 실제 체결로 표시 — "체결"/"체결가" 라벨 유지
+- 거래내역에 실행모드 필터 (LIVE/PAPER/DRY_RUN) 추가 — 사용자가 모드별로 분리 조회 가능
+- 각 거래 row에 tooltip으로 모든 가격 필드 노출 — signalPrice vs orderPrice vs filledPrice vs avgFillPrice 구분 가능
+- DRY_RUN 손익은 "가상손익" 라벨 + 회색 표시 — 실제 손익과 시각적 분리
+- 보유포지션 "평균매입가" 라벨 + displayPriceSource 추적 — 72,300원이 KIS 평균단가인지 DB Position인지 TradeHistory 기반인지 즉시 식별 가능
+- /api/positions/diagnostics?code=005930 — 삼성전자 단가 출처 종합 진단 (DB/KIS/TradeHistory 비교)

@@ -3,11 +3,28 @@
 // DB 오류를 명확히 반환 (success:false 대신 warning/error 노출)
 //
 // 표시 우선순위 (UI 혼란 방지):
-//   - FILLED: avgFillPrice ?? filledPrice ?? price  → "체결가"
-//   - SUBMITTED/PENDING: orderPrice ?? price       → "주문가"
-//   - FAILED/BLOCKED/CANCELLED: price는 참고용      → "주문가(미체결)"
+//   orderExecutionMode 기준 분기:
+//   - LIVE / FILLED:        avgFillPrice ?? filledPrice ?? price  → "체결가"
+//   - PAPER / FILLED:       avgFillPrice ?? filledPrice ?? orderPrice ?? signalPrice → "체결가" (실제 모의투자 체결)
+//   - DRY_RUN / FILLED:     signalPrice (또는 simulatedFillPrice)  → "가상체결가"
+//   - SUBMITTED/PENDING:    orderPrice ?? price                    → "주문가"
+//   - FAILED/BLOCKED:       체결가 없음                            → "실패/차단"
+//
+// displayStatus (UI 표시용):
+//   - DRY_RUN + FILLED → "가상체결"
+//   - PAPER/LIVE + FILLED → "체결"
+//   - SUBMITTED → "접수"
+//   - PENDING → "대기"
+//   - FAILED → "실패"
+//   - BLOCKED → "차단"
+//   - CANCELLED → "취소"
+//
+// isRealExecution:
+//   - LIVE/PAPER인 경우 true (실제 주문/체결 응답이 있는 경우)
+//   - DRY_RUN은 false (시뮬레이션)
 //
 // 통계(손익/평균단가/총매수금액)는 executed trades(FILLED+SUBMITTED)만 포함.
+// 단, DRY_RUN 손익은 "가상손익"으로 분리 표시 (realizedPL에 합산하지 않음).
 // FAILED/BLOCKED는 건수에는 포함, 금액 합산에서는 제외.
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -19,10 +36,38 @@ const EXECUTED_STATUSES = new Set(['FILLED', 'SUBMITTED']);
 const NON_EXECUTED_STATUSES = new Set(['FAILED', 'BLOCKED', 'CANCELLED']);
 
 /**
- * status별 표시 가격 계산
- * - FILLED: avgFillPrice ?? filledPrice ?? price
- * - SUBMITTED/PENDING: orderPrice ?? price
- * - FAILED/BLOCKED/CANCELLED: price (참고용 주문가)
+ * 실제 실행 모드 여부 — DRY_RUN이 아닌 경우 true
+ */
+function isRealExecutionMode(mode: string | null | undefined): boolean {
+  return mode === 'LIVE' || mode === 'PAPER';
+}
+
+/**
+ * displayStatus 계산 — DRY_RUN + FILLED 조합을 "가상체결"로 변환
+ */
+function computeDisplayStatus(status: string, mode: string | null | undefined): string {
+  const s = (status || '').toUpperCase();
+  const m = (mode || 'DRY_RUN').toUpperCase();
+  if (s === 'FILLED') {
+    return m === 'DRY_RUN' ? '가상체결' : '체결';
+  }
+  if (s === 'SUBMITTED') return '접수';
+  if (s === 'PENDING') return '대기';
+  if (s === 'FAILED') return '실패';
+  if (s === 'BLOCKED') return '차단';
+  if (s === 'CANCELLED') return '취소';
+  return s;
+}
+
+/**
+ * status별 표시 가격 계산 (orderExecutionMode 인식)
+ *
+ * 표시 우선순위:
+ * - LIVE / FILLED:        avgFillPrice ?? filledPrice ?? price  → "체결가"
+ * - PAPER / FILLED:       avgFillPrice ?? filledPrice ?? orderPrice ?? signalPrice → "체결가"
+ * - DRY_RUN / FILLED:     signalPrice (= price)                 → "가상체결가"
+ * - SUBMITTED/PENDING:    orderPrice ?? signalPrice              → "주문가"
+ * - FAILED/BLOCKED/CANCELLED: signalPrice (참고용)               → "주문가(미체결)" / "신호가(미체결)"
  */
 function computeDisplayPrice(t: any): {
   displayPrice: number;
@@ -30,33 +75,67 @@ function computeDisplayPrice(t: any): {
   displayLabel: string;
   isExecuted: boolean;
   isNonExecuted: boolean;
+  isRealExecution: boolean;
+  simulatedFillPrice: number | null;
 } {
   const status = (t.status || '').toUpperCase();
+  const mode = (t.orderExecutionMode || 'DRY_RUN').toUpperCase();
+  const isReal = isRealExecutionMode(mode);
 
+  // simulatedFillPrice: DRY_RUN에서 signalPrice를 가상체결가로 사용
+  const simulatedFillPrice = mode === 'DRY_RUN' ? (t.price ?? null) : null;
+
+  // FILLED 처리
   if (status === 'FILLED') {
+    // LIVE: avgFillPrice ?? filledPrice ?? price
+    if (mode === 'LIVE') {
+      if (t.avgFillPrice != null) {
+        return { displayPrice: t.avgFillPrice, displayPriceType: 'avgFillPrice', displayLabel: '체결가', isExecuted: true, isNonExecuted: false, isRealExecution: true, simulatedFillPrice: null };
+      }
+      if (t.filledPrice != null) {
+        return { displayPrice: t.filledPrice, displayPriceType: 'filledPrice', displayLabel: '체결가', isExecuted: true, isNonExecuted: false, isRealExecution: true, simulatedFillPrice: null };
+      }
+      return { displayPrice: t.price, displayPriceType: 'signalPrice', displayLabel: '체결가(추정)', isExecuted: true, isNonExecuted: false, isRealExecution: true, simulatedFillPrice: null };
+    }
+    // PAPER: avgFillPrice ?? filledPrice ?? orderPrice ?? signalPrice → "체결가"
+    if (mode === 'PAPER') {
+      if (t.avgFillPrice != null) {
+        return { displayPrice: t.avgFillPrice, displayPriceType: 'avgFillPrice', displayLabel: '체결가', isExecuted: true, isNonExecuted: false, isRealExecution: true, simulatedFillPrice: null };
+      }
+      if (t.filledPrice != null) {
+        return { displayPrice: t.filledPrice, displayPriceType: 'filledPrice', displayLabel: '체결가', isExecuted: true, isNonExecuted: false, isRealExecution: true, simulatedFillPrice: null };
+      }
+      if (t.orderPrice != null) {
+        return { displayPrice: t.orderPrice, displayPriceType: 'orderPrice', displayLabel: '체결가(주문가)', isExecuted: true, isNonExecuted: false, isRealExecution: true, simulatedFillPrice: null };
+      }
+      return { displayPrice: t.price, displayPriceType: 'signalPrice', displayLabel: '체결가(추정)', isExecuted: true, isNonExecuted: false, isRealExecution: true, simulatedFillPrice: null };
+    }
+    // DRY_RUN: signalPrice (= price) → "가상체결가"
+    // 단, avgFillPrice/filledPrice가 있으면 그것을 가상체결가로 사용 (DRY_RUN에서도 가상 체결가를 세팅한 경우)
     if (t.avgFillPrice != null) {
-      return { displayPrice: t.avgFillPrice, displayPriceType: 'avgFillPrice', displayLabel: '체결가', isExecuted: true, isNonExecuted: false };
+      return { displayPrice: t.avgFillPrice, displayPriceType: 'avgFillPrice', displayLabel: '가상체결가', isExecuted: true, isNonExecuted: false, isRealExecution: false, simulatedFillPrice: t.avgFillPrice };
     }
     if (t.filledPrice != null) {
-      return { displayPrice: t.filledPrice, displayPriceType: 'filledPrice', displayLabel: '체결가', isExecuted: true, isNonExecuted: false };
+      return { displayPrice: t.filledPrice, displayPriceType: 'filledPrice', displayLabel: '가상체결가', isExecuted: true, isNonExecuted: false, isRealExecution: false, simulatedFillPrice: t.filledPrice };
     }
-    // FILLED인데 filledPrice가 없는 경우 (과거 데이터) — price 사용
-    return { displayPrice: t.price, displayPriceType: 'signalPrice', displayLabel: '체결가(추정)', isExecuted: true, isNonExecuted: false };
+    return { displayPrice: t.price, displayPriceType: 'signalPrice', displayLabel: '가상체결가', isExecuted: true, isNonExecuted: false, isRealExecution: false, simulatedFillPrice: t.price ?? null };
   }
 
+  // SUBMITTED / PENDING
   if (status === 'SUBMITTED' || status === 'PENDING') {
     if (t.orderPrice != null) {
-      return { displayPrice: t.orderPrice, displayPriceType: 'orderPrice', displayLabel: '주문가', isExecuted: true, isNonExecuted: false };
+      const label = mode === 'DRY_RUN' ? '주문가(시뮬)' : '주문가';
+      return { displayPrice: t.orderPrice, displayPriceType: 'orderPrice', displayLabel: label, isExecuted: true, isNonExecuted: false, isRealExecution: isReal, simulatedFillPrice };
     }
-    return { displayPrice: t.price, displayPriceType: 'signalPrice', displayLabel: '주문가(추정)', isExecuted: true, isNonExecuted: false };
+    const label = mode === 'DRY_RUN' ? '주문가(시뮬,추정)' : '주문가(추정)';
+    return { displayPrice: t.price, displayPriceType: 'signalPrice', displayLabel: label, isExecuted: true, isNonExecuted: false, isRealExecution: isReal, simulatedFillPrice };
   }
 
-  // FAILED / BLOCKED / CANCELLED / 기타
-  // price는 signalPrice (신호 발생 시 가격) — 참고용으로만 표시
+  // FAILED / BLOCKED / CANCELLED — 체결가 없음
   if (t.orderPrice != null) {
-    return { displayPrice: t.orderPrice, displayPriceType: 'orderPrice', displayLabel: '주문가(미체결)', isExecuted: false, isNonExecuted: true };
+    return { displayPrice: t.orderPrice, displayPriceType: 'orderPrice', displayLabel: '주문가(미체결)', isExecuted: false, isNonExecuted: true, isRealExecution: isReal, simulatedFillPrice };
   }
-  return { displayPrice: t.price, displayPriceType: 'signalPrice', displayLabel: '신호가(미체결)', isExecuted: false, isNonExecuted: true };
+  return { displayPrice: t.price, displayPriceType: 'signalPrice', displayLabel: '신호가(미체결)', isExecuted: false, isNonExecuted: true, isRealExecution: isReal, simulatedFillPrice };
 }
 
 export async function GET(request: NextRequest) {
@@ -70,11 +149,14 @@ export async function GET(request: NextRequest) {
     const executedOnly = searchParams.get('executedOnly') === 'true';
     // excludeFailed=true: FAILED/BLOCKED/CANCELLED 제외 (기본 false)
     const excludeFailed = searchParams.get('excludeFailed') === 'true';
+    // executionMode: LIVE / PAPER / DRY_RUN 필터
+    const executionModeFilter = searchParams.get('executionMode'); // DRY_RUN | PAPER | LIVE
 
     const where: any = {};
     if (type) where.tradeType = type;
     if (marketFilter) where.market = marketFilter;
     if (statusFilter) where.status = statusFilter;
+    if (executionModeFilter) where.orderExecutionMode = executionModeFilter;
     if (executedOnly) {
       where.status = { in: ['FILLED', 'SUBMITTED'] };
     } else if (excludeFailed) {
@@ -222,8 +304,12 @@ export async function GET(request: NextRequest) {
         displayPrice: display.displayPrice,
         displayPriceType: display.displayPriceType,
         displayLabel: display.displayLabel,
+        displayStatus: computeDisplayStatus(t.status, t.orderExecutionMode),
         isExecuted: display.isExecuted,
         isNonExecuted: display.isNonExecuted,
+        isRealExecution: display.isRealExecution,
+        simulatedFillPrice: display.simulatedFillPrice,
+        priceSource: display.displayPriceType, // UI tooltip용 (displayPrice가 어디서 왔는지)
       };
     });
 
@@ -232,20 +318,37 @@ export async function GET(request: NextRequest) {
     for (const t of tradesWithDisplay) {
       statusCounts[t.status] = (statusCounts[t.status] || 0) + 1;
     }
+    // 실행모드별 카운트 (DRY_RUN/PAPER/LIVE)
+    const executionModeCounts: Record<string, number> = {};
+    for (const t of tradesWithDisplay) {
+      const m = t.orderExecutionMode || 'DRY_RUN';
+      executionModeCounts[m] = (executionModeCounts[m] || 0) + 1;
+    }
 
     // ── 통계: 체결된 거래(FILLED + SUBMITTED)만 포함 ──
     // FAILED/BLOCKED/CANCELLED는 건수에는 포함하되 금액 합산에서 제외
     const executedTrades = tradesWithDisplay.filter((t: any) => EXECUTED_STATUSES.has((t.status || '').toUpperCase()));
     const nonExecutedTrades = tradesWithDisplay.filter((t: any) => NON_EXECUTED_STATUSES.has((t.status || '').toUpperCase()));
 
+    // DRY_RUN vs 실제(PAPER/LIVE) 분리
+    const realExecutedTrades = executedTrades.filter((t: any) => t.isRealExecution === true);
+    const simulatedExecutedTrades = executedTrades.filter((t: any) => t.isRealExecution === false);
+
     // 통화별 분리 통계 (executedTrades만)
     const krwExecuted = executedTrades.filter((t: any) => t.currency === 'KRW');
     const usdExecuted = executedTrades.filter((t: any) => t.currency === 'USD');
+    // 실제 체결만 (PAPER+LIVE)
+    const krwRealExecuted = realExecutedTrades.filter((t: any) => t.currency === 'KRW');
+    const usdRealExecuted = realExecutedTrades.filter((t: any) => t.currency === 'USD');
+    // 가상 체결만 (DRY_RUN)
+    const krwSimExecuted = simulatedExecutedTrades.filter((t: any) => t.currency === 'KRW');
+    const usdSimExecuted = simulatedExecutedTrades.filter((t: any) => t.currency === 'USD');
 
     const krwStats = {
       totalBuyAmount: krwExecuted.filter((t: any) => t.tradeType === 'BUY').reduce((sum: number, t: any) => sum + (t.displayPrice * t.quantity || 0), 0),
       totalSellAmount: krwExecuted.filter((t: any) => t.tradeType === 'SELL').reduce((sum: number, t: any) => sum + (t.displayPrice * t.quantity || 0), 0),
-      realizedPL: krwExecuted.filter((t: any) => t.profitLoss !== null).reduce((sum: number, t: any) => sum + (t.profitLoss || 0), 0),
+      realizedPL: krwRealExecuted.filter((t: any) => t.profitLoss !== null).reduce((sum: number, t: any) => sum + (t.profitLoss || 0), 0),
+      virtualPL: krwSimExecuted.filter((t: any) => t.profitLoss !== null).reduce((sum: number, t: any) => sum + (t.profitLoss || 0), 0),
       buyCount: krwExecuted.filter((t: any) => t.tradeType === 'BUY').length,
       sellCount: krwExecuted.filter((t: any) => t.tradeType === 'SELL').length,
     };
@@ -253,7 +356,8 @@ export async function GET(request: NextRequest) {
     const usdStats = {
       totalBuyAmount: usdExecuted.filter((t: any) => t.tradeType === 'BUY').reduce((sum: number, t: any) => sum + (t.displayPrice * t.quantity || 0), 0),
       totalSellAmount: usdExecuted.filter((t: any) => t.tradeType === 'SELL').reduce((sum: number, t: any) => sum + (t.displayPrice * t.quantity || 0), 0),
-      realizedPL: usdExecuted.filter((t: any) => t.profitLoss !== null).reduce((sum: number, t: any) => sum + (t.profitLoss || 0), 0),
+      realizedPL: usdRealExecuted.filter((t: any) => t.profitLoss !== null).reduce((sum: number, t: any) => sum + (t.profitLoss || 0), 0),
+      virtualPL: usdSimExecuted.filter((t: any) => t.profitLoss !== null).reduce((sum: number, t: any) => sum + (t.profitLoss || 0), 0),
       buyCount: usdExecuted.filter((t: any) => t.tradeType === 'BUY').length,
       sellCount: usdExecuted.filter((t: any) => t.tradeType === 'SELL').length,
     };
@@ -273,11 +377,14 @@ export async function GET(request: NextRequest) {
           totalTrades,
           executedCount,
           nonExecutedCount,
+          realExecutedCount: realExecutedTrades.length,
+          simulatedExecutedCount: simulatedExecutedTrades.length,
           buyTrades,
           sellTrades,
           krw: krwStats,
           usd: usdStats,
           statusCounts,
+          executionModeCounts,
         },
       },
       total: totalTrades,
@@ -288,11 +395,17 @@ export async function GET(request: NextRequest) {
         orderPrice: '주문 입력 가격',
         filledPrice: '1차 체결 가격',
         avgFillPrice: '평균 체결 가격 (완전 체결 시)',
-        displayPrice: 'UI 표시용 우선순위 적용 가격 (FILLED→avgFillPrice, SUBMITTED→orderPrice, FAILED→참고용)',
+        simulatedFillPrice: 'DRY_RUN 가상 체결가 (= signalPrice)',
+        displayPrice: 'UI 표시용 우선순위 적용 가격',
         displayPriceType: 'displayPrice가 어떤 필드에서 왔는지',
-        displayLabel: 'UI 라벨 (체결가/주문가/주문가(미체결))',
+        displayLabel: 'UI 라벨 (체결가/가상체결가/주문가/주문가(미체결))',
+        displayStatus: 'UI 표시용 상태 (DRY_RUN+FILLED → 가상체결)',
         isExecuted: '체결된 거래 여부 (FILLED/SUBMITTED) — 통계에 포함',
         isNonExecuted: '미체결 여부 (FAILED/BLOCKED/CANCELLED) — 통계에서 제외',
+        isRealExecution: '실제 주문/체결 여부 (PAPER/LIVE=true, DRY_RUN=false)',
+        priceSource: 'displayPrice 출처 (= displayPriceType)',
+        realizedPL: '실제 체결(PAPER+LIVE) 기준 손익',
+        virtualPL: 'DRY_RUN 가상 체결 기준 손익 (시뮬레이션 손익)',
       },
     });
   } catch (error) {
