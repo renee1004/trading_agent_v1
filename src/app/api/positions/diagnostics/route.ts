@@ -347,38 +347,91 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // KIS에는 있는데 DB에는 없는 포지션도 별도 표시 (codeFilter가 없을 때만)
-    let orphanKisPositions: any[] = [];
-    if (!codeFilter) {
-      const dbCodes = new Set(dbPositions.map(p => p.stockCode));
-      orphanKisPositions = kisPositions
-        .filter(p => !dbCodes.has(p.stockCode))
-        .map(p => ({
-          stockCode: p.stockCode,
-          stockName: p.stockName,
-          quantity: p.quantity,
-          currentPrice: p.currentPrice,
-          avgPrice: p.avgPrice,
-          displayPrice: p.avgPrice,
-          displayPriceSource: 'KIS_BALANCE_AVG_PRICE',
-          source: p.source || 'KIS_BALANCE',
-          kis: {
-            avgPriceFieldName: p.rawAvgPriceField,
-            avgPriceRawValue: p.rawAvgPrice,
-            currentPriceFieldName: p.rawCurrentPriceField,
-            currentPriceRawValue: p.rawCurrentPrice,
-            parsedAvgPrice: p.avgPrice,
-            parsedCurrentPrice: p.currentPrice,
-            parsedQuantity: p.quantity,
-            evaluatedAmount: p.evaluationAmount,
-            purchaseAmount: p.purchaseAmount,
-            calculatedAvgPrice: p.purchaseAmount && p.quantity ? p.purchaseAmount / p.quantity : null,
+    // ── KIS에는 있는데 DB에는 없는 포지션 (KIS_ONLY) ──
+    // codeFilter가 있든 없든 무조건 처리 —
+    // 삼성전자 005930이 DB에 없고 KIS에만 있어도 진단 결과에 반드시 포함되어야 함.
+    const dbCodes = new Set(dbPositions.map(p => p.stockCode));
+    let kisOnlyPositions = kisPositions
+      .filter(p => !dbCodes.has(p.stockCode))
+      .filter(p => !codeFilter || p.stockCode === codeFilter);
+
+    // KIS_ONLY 포지션 진단 객체 생성
+    const kisOnlyDiagnostics = kisOnlyPositions.map((p: any) => {
+      const calculatedAvgPrice = p.purchaseAmount && p.quantity
+        ? p.purchaseAmount / p.quantity
+        : null;
+
+      // displayPriceSource 결정 (KIS 우선)
+      let displayPrice: number = 0;
+      let displayPriceSource = 'UNKNOWN';
+      if (p.avgPrice && p.avgPrice > 0) {
+        displayPrice = p.avgPrice;
+        displayPriceSource = 'KIS_BALANCE_AVG_PRICE';
+      } else if (calculatedAvgPrice && calculatedAvgPrice > 0) {
+        displayPrice = calculatedAvgPrice;
+        displayPriceSource = 'KIS_BALANCE_CALCULATED';
+      }
+
+      // 단가 신뢰성 체크
+      let priceMismatch = false;
+      let mismatchReason = '';
+      let recommendation = 'DB Position 없음 — KIS 기준으로 resync 필요 (POST /api/positions/resync)';
+
+      if (p.avgPrice <= 0 && (!calculatedAvgPrice || calculatedAvgPrice <= 0)) {
+        priceMismatch = true;
+        mismatchReason = `KIS 평균단가 0 이하 (rawAvgPrice=${p.rawAvgPrice}, purchaseAmount=${p.purchaseAmount}, quantity=${p.quantity}) — 신뢰 불가`;
+        recommendation = 'KIS 잔고 응답 검증 필요 — 수동 확인 권장';
+      } else if (p.priceMismatch) {
+        priceMismatch = true;
+        mismatchReason = `KIS 응답 내부 괴리: ${p.mismatchReason}`;
+        recommendation = 'KIS 잔고 응답 검증 필요 — 수동 확인 권장';
+      } else if (p.avgPrice > 0 && calculatedAvgPrice &&
+                 Math.abs(p.avgPrice - calculatedAvgPrice) / p.avgPrice > 0.30) {
+        priceMismatch = true;
+        mismatchReason = `KIS avgPrice(${p.avgPrice}) vs calculated(${calculatedAvgPrice}) 괴리 ${((Math.abs(p.avgPrice - calculatedAvgPrice) / p.avgPrice) * 100).toFixed(1)}%`;
+        recommendation = 'KIS 잔고 응답 검증 필요 — 수동 확인 권장';
+      }
+
+      return {
+        stockCode: p.stockCode,
+        stockName: p.stockName,
+        quantity: p.quantity,
+        currentPrice: p.currentPrice,
+        avgPrice: p.avgPrice,
+        displayPrice,
+        displayPriceSource,
+        source: 'KIS_ONLY',
+        db: null,
+        kis: {
+          rawBalanceItem: {
+            pdno: p.stockCode,
+            prdt_name: p.stockName,
+            hldg_qty: p.quantity,
+            pchs_avg_pric: p.rawAvgPrice,
+            prpr: p.rawCurrentPrice,
+            pchs_amt: p.purchaseAmount,
+            evlu_amt: p.evaluationAmount,
+            evlu_pfls_amt: p.profitLoss,
+            evlu_pfls_rt: p.profitRate,
           },
-          priceMismatch: false,
-          mismatchReason: 'KIS 잔고에 있으나 DB에 없음 — 수동 매수 또는 외부에서 유입',
-          recommendation: 'DB에 신규 추가 필요 (POST /api/positions/resync)',
-        }));
-    }
+          avgPriceFieldName: p.rawAvgPriceField,
+          avgPriceRawValue: p.rawAvgPrice,
+          currentPriceFieldName: p.rawCurrentPriceField,
+          currentPriceRawValue: p.rawCurrentPrice,
+          parsedAvgPrice: p.avgPrice,
+          parsedCurrentPrice: p.currentPrice,
+          parsedQuantity: p.quantity,
+          evaluatedAmount: p.evaluationAmount,
+          purchaseAmount: p.purchaseAmount,
+          calculatedAvgPrice,
+        },
+        latestFilledTrade: null,
+        latestTrade: null,
+        priceMismatch,
+        mismatchReason,
+        recommendation,
+      };
+    });
 
     return NextResponse.json({
       success: true,
@@ -386,7 +439,8 @@ export async function GET(request: NextRequest) {
       totalDbPositions: dbPositions.length,
       totalKisPositions: kisPositions.length,
       mismatchCount,
-      orphanKisCount: orphanKisPositions.length,
+      kisOnlyCount: kisOnlyDiagnostics.length,
+      orphanKisCount: kisOnlyDiagnostics.length, // 하위 호환 — 동일 값
       kisAvailable: !!kisBalance,
       kisError,
       kisSummary: kisBalance ? {
@@ -395,7 +449,7 @@ export async function GET(request: NextRequest) {
         totalProfitLoss: kisBalance.totalProfitLoss,
         totalProfitRate: kisBalance.totalProfitRate,
       } : null,
-      positions: [...diagnostics, ...orphanKisPositions],
+      positions: [...diagnostics, ...kisOnlyDiagnostics],
     });
   } catch (error) {
     return NextResponse.json(

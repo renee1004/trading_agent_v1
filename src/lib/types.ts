@@ -185,7 +185,7 @@ export interface TradingSignal {
   strategy: string;
   confidence: number; // 0-100
   price: number; // 기존 호환용 (분석 기준가)
-  currentPrice?: number; // 실시간 현재가
+  // currentPrice 중복 선언 제거 — 아래 해외주식 섹션에서 한 번만 선언
   previousClose?: number; // 전일 종가
   changePrice?: number; // 전일 대비
   changeRate?: number; // 등락률 (%)
@@ -210,6 +210,10 @@ export interface TradingSignal {
   priceGapPercent?: number;     // |currentPrice - analysisPrice| / analysisPrice
   currentPriceTimestamp?: string; // 현재가 조회 시각
   dataSource?: string;          // "daily_candle+current_price" 등
+  // ── 가격 신뢰성 anomaly (단가 괴리 20% 이상 시 자동 주문/청산 차단) ──
+  priceAnomaly?: boolean;        // true면 신규 주문 금지, 자동 청산 금지
+  anomalyReason?: string;        // anomaly 사유 (예: "현재가 370750 vs 캔들 종가 70100 → 괴리 428.7%")
+  anomalyCheckedAt?: string;     // anomaly 검증 시각 ISO
 }
 
 export interface StrategyConfig {

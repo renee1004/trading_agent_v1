@@ -25,6 +25,7 @@ import {
   EffectiveTradingSettings,
   RuntimeDecision,
 } from './effective-settings';
+import { checkPriceAnomaly, applyPriceAnomalyToSignal, PRICE_ANOMALY_THRESHOLD } from './price-anomaly';
 
 // 에이전트 로그 타입
 export interface AgentLog {
@@ -433,6 +434,32 @@ async function executeOrder(
   exchangeCode?: string,
   quantity: number = 1
 ): Promise<{ success: boolean; orderNo: string; message: string }> {
+  // ── 가격 anomaly 안전장치 (defense in depth) ──
+  // signal.priceAnomaly=true면 절대 주문하지 않음
+  // (DOMESTIC 분석 루프와 monitorPositions에서 이미 차단하지만,
+  //  다른 호출 경로도 보호하기 위해 executeOrder入口에서 한 번 더 검증)
+  if (signal.priceAnomaly) {
+    addLog('RISK', market,
+      `executeOrder 차단: ${signal.stockName} 가격 anomaly — ${signal.anomalyReason || '사유 없음'}`,
+      {
+        stockCode: signal.stockCode,
+        signalType: signal.signalType,
+        strategy: signal.strategy,
+        price: signal.price,
+        analysisPrice: signal.analysisPrice,
+        currentPrice: signal.currentPrice,
+        priceGapPercent: signal.priceGapPercent,
+        anomalyReason: signal.anomalyReason,
+        blockedBy: 'PRICE_ANOMALY_AT_EXECUTE_ORDER',
+      }
+    );
+    return {
+      success: false,
+      orderNo: '',
+      message: `가격 anomaly로 주문 차단: ${signal.anomalyReason || '괴리 20% 이상'}`,
+    };
+  }
+
   // ── KIS isDemo 확인 ──
   let isDemo = true;
   try {
@@ -924,6 +951,32 @@ async function monitorPositions(
       );
 
       if (exitCheck.shouldExit) {
+        // ── 가격 anomaly 검증 (position.currentPrice vs position.avgPrice 괴리 20% 이상 시 청산 차단) ──
+        // 포지션 단가가 신뢰 불가 상태면 자동 청산 금지 (false 청산 방지)
+        const positionAnomaly = checkPriceAnomaly(
+          position.avgPrice,
+          position.currentPrice,
+          position.stockCode,
+          position.stockName,
+        );
+        if (positionAnomaly.priceAnomaly) {
+          addLog('RISK', market,
+            `⚠️ 자동 청산 차단: ${position.stockName} 가격 anomaly — avgPrice=${position.avgPrice} vs currentPrice=${position.currentPrice} (괴리 ${(positionAnomaly.gapPercent * 100).toFixed(2)}%)`,
+            {
+              stockCode: position.stockCode,
+              stockName: position.stockName,
+              avgPrice: position.avgPrice,
+              currentPrice: position.currentPrice,
+              gapPercent: positionAnomaly.gapPercent,
+              anomalyReason: positionAnomaly.anomalyReason,
+              originalExitReason: exitCheck.reason,
+              blockedBy: 'PRICE_ANOMALY',
+              hint: '단가 신뢰성 문제 — /api/positions/diagnostics?code=' + position.stockCode + ' 로 확인 후 수동 청산 권장',
+            }
+          );
+          continue; // 청산 금지 — 다음 포지션으로
+        }
+
         addLog('EXIT', market, 
           `${position.stockName} 자동 청산: ${exitCheck.reason} (현재가: ${position.currentPrice})`,
           { stockCode: position.stockCode, reason: exitCheck.reason, price: position.currentPrice }
@@ -940,6 +993,9 @@ async function monitorPositions(
           reason: exitCheck.reason,
           indicators: {},
           timestamp: new Date(),
+          priceAnomaly: positionAnomaly.priceAnomaly,
+          anomalyReason: positionAnomaly.anomalyReason,
+          anomalyCheckedAt: positionAnomaly.anomalyCheckedAt,
         };
 
         const result = await executeOrder(
@@ -1387,6 +1443,65 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
         effectiveSettings.weakSignalThreshold,
       );
 
+      // ── 가격 anomaly 검증 (단가 괴리 20% 이상 시 주문/청산 차단) ──
+      // 분석가(캔들 종가 = signal.price) vs KIS 실시간 현재가 비교
+      // 사용자 신고: 삼성전자 캔들 lastClose=370,750 vs 실시간 70,100 → 428% 괴리
+      let domesticCurrentPrice = 0;
+      let domesticPriceAnomalyResult: ReturnType<typeof checkPriceAnomaly> | null = null;
+      if (kisClient && signal.price > 0) {
+        try {
+          const rtPrice = await kisClient.getStockPrice(stock.code);
+          domesticCurrentPrice = rtPrice.currentPrice || 0;
+          domesticPriceAnomalyResult = checkPriceAnomaly(
+            signal.price, // 분석 기준가 (캔들 lastClose)
+            domesticCurrentPrice,
+            stock.code,
+            stock.name,
+          );
+          // signal에 기록 (executeOrder/monitorPositions에서 참조)
+          signal.analysisPrice = signal.price;
+          signal.currentPrice = domesticCurrentPrice;
+          signal.priceAnomaly = domesticPriceAnomalyResult.priceAnomaly;
+          signal.anomalyReason = domesticPriceAnomalyResult.anomalyReason;
+          signal.anomalyCheckedAt = domesticPriceAnomalyResult.anomalyCheckedAt;
+          signal.priceGapPercent = domesticPriceAnomalyResult.gapPercent;
+          signal.currentPriceTimestamp = new Date().toISOString();
+          signal.dataSource = 'daily_candle+current_price';
+
+          if (domesticPriceAnomalyResult.priceAnomaly) {
+            addLog('RISK', 'DOMESTIC',
+              `⚠️ 가격 anomaly: ${stock.name} 분석가=${signal.price} vs 실시간=${domesticCurrentPrice} (괴리 ${(domesticPriceAnomalyResult.gapPercent * 100).toFixed(2)}%) — 신규 주문 및 자동 청산 차단`,
+              {
+                stockCode: stock.code,
+                stockName: stock.name,
+                analysisPrice: signal.price,
+                realtimePrice: domesticCurrentPrice,
+                gapPercent: domesticPriceAnomalyResult.gapPercent,
+                anomalyReason: domesticPriceAnomalyResult.anomalyReason,
+                threshold: PRICE_ANOMALY_THRESHOLD,
+                hint: 'KIS 일봉 응답의 stck_clpr 파싱/액면분할/수정주가 혼용 가능성 — /api/price/diagnostics?code=' + stock.code + ' 로 원본 응답 확인 필요',
+              }
+            );
+          } else if (domesticPriceAnomalyResult.gapPercent >= 0.05) {
+            // 5~20% 괴리는 INFO 레벨 경고
+            addLog('INFO', 'DOMESTIC',
+              `가격 괴리 주의: ${stock.name} 분석가=${signal.price} vs 실시간=${domesticCurrentPrice} (괴리 ${(domesticPriceAnomalyResult.gapPercent * 100).toFixed(2)}%)`,
+              {
+                stockCode: stock.code,
+                analysisPrice: signal.price,
+                realtimePrice: domesticCurrentPrice,
+                gapPercent: domesticPriceAnomalyResult.gapPercent,
+              }
+            );
+          }
+        } catch (cpErr) {
+          addLog('ERROR', 'DOMESTIC',
+            `${stock.name} 현재가 조회 실패 (anomaly 검증 생략): ${cpErr instanceof Error ? cpErr.message : 'Unknown'}`,
+            { stockCode: stock.code }
+          );
+        }
+      }
+
       // 종목별 상세 정보 로그
       const logDetails: Record<string, unknown> = {
         stockCode: stock.code,
@@ -1397,6 +1512,11 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
         signalThreshold: effectiveSettings.signalThreshold,
         weakSignalThreshold: effectiveSettings.weakSignalThreshold,
       };
+      if (domesticCurrentPrice > 0) {
+        logDetails.realtimePrice = domesticCurrentPrice;
+        logDetails.priceGapPercent = domesticPriceAnomalyResult?.gapPercent;
+        logDetails.priceAnomaly = domesticPriceAnomalyResult?.priceAnomaly ?? false;
+      }
 
       // HOLD인 경우 holdReason 로그에 추가
       if (signal.signalType === 'HOLD' && signal.holdReason) {
@@ -1404,6 +1524,24 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
         addLog('INFO', 'DOMESTIC', `${stock.name} 분석 결과: HOLD (buyScore=${signal.buyScore ?? '-'}, sellScore=${signal.sellScore ?? '-'}, 임계값=${signal.finalThreshold ?? effectiveSettings.signalThreshold}) — ${signal.holdReason}`, logDetails);
       } else {
         addLog('INFO', 'DOMESTIC', `${stock.name} 분석 결과: ${signal.signalType} (신뢰도: ${signal.confidence}%)`, logDetails);
+      }
+
+      // ── priceAnomaly=true인 경우 신규 주문 차단 ──
+      if (signal.priceAnomaly && signal.signalType !== 'HOLD') {
+        signalsBlockedReasons.push(`${stock.name}: 가격 anomaly (괴리 ${((signal.priceGapPercent ?? 0) * 100).toFixed(2)}%)`);
+        addLog('RISK', 'DOMESTIC',
+          `주문 차단: ${stock.name} 가격 anomaly — 분석가 ${signal.price} vs 실시간 ${domesticCurrentPrice}`,
+          {
+            stockCode: stock.code,
+            signalType: signal.signalType,
+            analysisPrice: signal.price,
+            realtimePrice: domesticCurrentPrice,
+            gapPercent: signal.priceGapPercent,
+            anomalyReason: signal.anomalyReason,
+            blockedBy: 'PRICE_ANOMALY',
+          }
+        );
+        continue; // 다음 종목으로
       }
 
       // BUY/SELL/HOLD 모두 후보 추적 (진단용)
@@ -1722,6 +1860,34 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
         signal.currentPriceTimestamp = currentPriceTimestamp;
         signal.dataSource = priceDataSource;
 
+        // ── 가격 anomaly 검증 (해외: analysisPrice vs currentPrice 괴리 20% 이상) ──
+        const overseasAnomaly = checkPriceAnomaly(
+          analysisPrice,
+          currentPrice,
+          stock.code,
+          stock.name,
+        );
+        signal.priceAnomaly = overseasAnomaly.priceAnomaly;
+        signal.anomalyReason = overseasAnomaly.anomalyReason;
+        signal.anomalyCheckedAt = overseasAnomaly.anomalyCheckedAt;
+        if (overseasAnomaly.priceAnomaly) {
+          addLog('RISK', 'OVERSEAS',
+            `⚠️ 가격 anomaly: ${stock.name} 분석가=${analysisPrice} vs 실시간=${currentPrice} (괴리 ${(overseasAnomaly.gapPercent * 100).toFixed(2)}%) — 신규 주문 및 자동 청산 차단`,
+            {
+              originalStockCode: currentPriceInfo?.originalStockCode || stock.code,
+              stockCode: currentPriceInfo?.stockCode || stock.code,
+              exchangeCode: normExchange,
+              normalizedSymbol,
+              analysisPrice,
+              currentPrice,
+              gapPercent: overseasAnomaly.gapPercent,
+              anomalyReason: overseasAnomaly.anomalyReason,
+              threshold: PRICE_ANOMALY_THRESHOLD,
+              hint: '해외 일봉/현재가 단위 불일치 가능성 — /api/price/diagnostics?code=' + encodeURIComponent(stock.code) + ' 로 확인',
+            }
+          );
+        }
+
         const gapDisplay = currentPrice > 0
           ? `, currentPrice=${currentPrice}, gap=${(priceGapPercent * 100).toFixed(2)}%`
           : '';
@@ -1807,6 +1973,24 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
 
           if (finalSignal.signalType === 'HOLD') {
             addLog('RISK', 'OVERSEAS', `${stock.name} AI 검증 결과 HOLD로 변경 - 매매 차단`);
+            continue;
+          }
+
+          // ── priceAnomaly=true인 경우 해외 신규 주문 차단 ──
+          if (finalSignal.priceAnomaly) {
+            signalsBlockedReasons.push(`${stock.name}: 가격 anomaly (괴리 ${((finalSignal.priceGapPercent ?? 0) * 100).toFixed(2)}%)`);
+            addLog('RISK', 'OVERSEAS',
+              `해외 주문 차단: ${stock.name} 가격 anomaly — 분석가 ${finalSignal.analysisPrice} vs 실시간 ${finalSignal.currentPrice}`,
+              {
+                stockCode: stock.code,
+                signalType: finalSignal.signalType,
+                analysisPrice: finalSignal.analysisPrice,
+                currentPrice: finalSignal.currentPrice,
+                gapPercent: finalSignal.priceGapPercent,
+                anomalyReason: finalSignal.anomalyReason,
+                blockedBy: 'PRICE_ANOMALY',
+              }
+            );
             continue;
           }
 
