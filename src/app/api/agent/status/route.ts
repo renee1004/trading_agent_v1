@@ -107,7 +107,8 @@ export async function GET() {
             error: f.error,
           })),
           warning: agentStatus.tradeHistorySaveFailures.length > 0
-            ? `${agentStatus.tradeHistorySaveFailures.length}건의 거래내역 저장 실패 — DB 연결 또는 스키마를 확인하세요`
+            ? `${agentStatus.tradeHistorySaveFailures.length}건의 거래내역 저장 실패 — DB 연결 또는 스키마를 확인하세요. ` +
+              `스키마 동기화 누락 의심 시 POST /api/system/schema-sync {force:true} 실행`
             : null,
         },
         lastCycleSummary: agentStatus.lastCycleResult ? {
@@ -171,6 +172,17 @@ export async function GET() {
 
         // 배포 버전 정보
         version: versionInfo,
+
+        // 스키마 동기화 상태 (런타임 보장)
+        schemaSync: (() => {
+          try {
+            // 동적 import로 순환 의존성 방지
+            const schemaSyncModule = require('@/lib/schema-sync');
+            return schemaSyncModule.getSchemaSyncStatus();
+          } catch (_e) {
+            return { attempted: false, success: false, error: 'module not loaded', syncedAt: null, syncedColumns: [] };
+          }
+        })(),
 
         // 실제 실행 설정 (에이전트와 100% 동일한 소스)
         effectiveSettings: {

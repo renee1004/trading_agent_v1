@@ -3,11 +3,30 @@
 // 스케줄러 자동 복구: Railway 등 클라우드 환경에서 서버 재시작 후
 // 이전에 실행 중이던 스케줄러를 자동으로 재시작
 // 주기적 헬스체크: 스케줄러가 예기치 않게 중단된 경우 감지 및 복구
+// 스키마 동기화: start.sh의 prisma migrate deploy가 실패한 경우 폴백
 
 export async function register() {
   // 서버 사이드에서만 실행 (클라이언트 번들에서는 제외)
   if (process.env.NEXT_RUNTIME === 'nodejs') {
     console.log('[Instrumentation] 서버 시작, 자동 복구 스케줄링...');
+
+    // 0. 런타임 스키마 동기화 (1초 후 — Prisma 연결 안정화 시간)
+    // start.sh의 prisma migrate deploy가 실패하더라도
+    // 서버가 뜨면서 한 번 더 동기화 시도하여 보장
+    setTimeout(async () => {
+      try {
+        const { ensureSchemaSynced } = await import('./lib/schema-sync');
+        const result = await ensureSchemaSynced();
+        if (result.success) {
+          console.log(`[Instrumentation] ✅ 스키마 동기화 완료 — ${result.syncedColumns.length}개 컬럼 검증됨`);
+        } else if (result.attempted) {
+          console.error(`[Instrumentation] ❌ 스키마 동기화 실패: ${result.error}`);
+          console.error('[Instrumentation] TradeHistory.source 등 v2 컬럼이 없을 수 있음 — 거래내역 저장 실패 가능');
+        }
+      } catch (error) {
+        console.error('[Instrumentation] 스키마 동기화 예외:', error);
+      }
+    }, 1000);
 
     // 1. 초기 자동 복구 (5초 후)
     setTimeout(async () => {
