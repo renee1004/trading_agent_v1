@@ -542,6 +542,49 @@ async function executeOrder(
     };
   }
 
+  // ── ★ 런타임 안전 가드 (defense in depth) ──
+  // ALLOW_STRATEGY_TEST_ORDER가 아니면 테스트 전략 주문 무조건 차단
+  const ALLOW_STRATEGY_TEST_ORDER = process.env.ALLOW_STRATEGY_TEST_ORDER === 'true';
+  if (!ALLOW_STRATEGY_TEST_ORDER) {
+    if (settings.strategyAggressiveness !== 'CONSERVATIVE') {
+      addLog('RISK', market,
+        `executeOrder 차단: ${signal.stockName} 비보수 전략 (${settings.strategyAggressiveness}) — ALLOW_STRATEGY_TEST_ORDER=false`,
+        { stockCode: signal.stockCode, blockedBy: 'SAFE_MODE_STRATEGY' }
+      );
+      return { success: false, orderNo: '', message: `안전 모드: ${settings.strategyAggressiveness} 전략 주문 차단` };
+    }
+    if (settings.killSwitchEnabled) {
+      addLog('RISK', market,
+        `executeOrder 차단: ${signal.stockName} killSwitchEnabled=true`,
+        { stockCode: signal.stockCode, blockedBy: 'KILL_SWITCH' }
+      );
+      return { success: false, orderNo: '', message: '안전 모드: killSwitch가 활성화되어 주문 차단' };
+    }
+    if (!settings.autoDomesticOrderEnabled && market === 'DOMESTIC') {
+      addLog('RISK', market,
+        `executeOrder 차단: ${signal.stockName} autoDomesticOrderEnabled=false`,
+        { stockCode: signal.stockCode, blockedBy: 'AUTO_ORDER_DISABLED' }
+      );
+      return { success: false, orderNo: '', message: '안전 모드: 자동 국내 주문 비활성화' };
+    }
+  }
+
+  // 실전 위험 모드 차단 (ALLOW_STRATEGY_TEST_ORDER와 무관)
+  if (settings.tradingMode !== 'DEMO' && !settings.allowRealDomesticOrder && market === 'DOMESTIC') {
+    addLog('RISK', market,
+      `executeOrder 차단: ${signal.stockName} DEMO가 아닌데 allowRealDomesticOrder=false`,
+      { stockCode: signal.stockCode, blockedBy: 'REAL_ORDER_BLOCKED' }
+    );
+    return { success: false, orderNo: '', message: '안전 모드: 실전 주문 권한 없음' };
+  }
+  if (settings.orderExecutionMode === 'LIVE' && !settings.allowRealDomesticOrder && market === 'DOMESTIC') {
+    addLog('RISK', market,
+      `executeOrder 차단: ${signal.stockName} LIVE 모드인데 allowRealDomesticOrder=false`,
+      { stockCode: signal.stockCode, blockedBy: 'LIVE_ORDER_BLOCKED' }
+    );
+    return { success: false, orderNo: '', message: '안전 모드: LIVE 주문 권한 없음' };
+  }
+
   // ── KIS isDemo 확인 ──
   let isDemo = true;
   try {

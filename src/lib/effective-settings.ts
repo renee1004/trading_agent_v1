@@ -185,6 +185,11 @@ export interface EffectiveSettingsResult {
   settings: EffectiveTradingSettings;
   source: 'db' | 'env' | 'default';
   sources: Record<string, 'db' | 'env' | 'default'>;
+  _safety: {
+    allowStrategyTestOrder: boolean;
+    dbRequestedStrategyAggressiveness: string | null;
+    safetyBlockedReasons: string[];
+  };
 }
 
 // =============================================
@@ -222,7 +227,10 @@ export function computeRuntimeDecision(settings: EffectiveTradingSettings): Runt
   // ── canPlaceDomesticOrderNow ──
   let canPlaceDomesticOrderNow = true;
   let domesticOrderBlockedReason = '';
-  if (!settings.autoDomesticOrderEnabled) {
+  if (settings.killSwitchEnabled) {
+    canPlaceDomesticOrderNow = false;
+    domesticOrderBlockedReason = 'killSwitchEnabled=true';
+  } else if (!settings.autoDomesticOrderEnabled) {
     canPlaceDomesticOrderNow = false;
     domesticOrderBlockedReason = 'autoDomesticOrderEnabled=false';
   } else if (settings.tradeOnlyMarketHours && !isDomesticOpen) {
@@ -274,18 +282,26 @@ export async function getEffectiveTradingSettings(): Promise<EffectiveSettingsRe
   console.log('[EffectiveSettings] Prisma 준비 상태:', prismaReady, 'DATABASE_URL 설정됨:', !!process.env.DATABASE_URL);
 
   // ═══════════════════════════════════════════════════════════
-  // 0순위: strategy_aggressiveness_override 키 항상 최우선 확인
+  // 0순위: strategy_aggressiveness_override 키 확인
   // ═══════════════════════════════════════════════════════════
+  const ALLOW_STRATEGY_TEST_ORDER = process.env.ALLOW_STRATEGY_TEST_ORDER === 'true';
   let overrideAggressiveness: StrategyAggressiveness | null = null;
+  let dbRequestedStrategyAggressiveness: string | null = null; // 안전 진단용
   let overrideSource: 'db' | 'default' = 'default';
   try {
     const overrideRecord = await getAppSetting('strategy_aggressiveness_override');
     if (overrideRecord?.value && typeof overrideRecord.value === 'object') {
       const val = (overrideRecord.value as Record<string, unknown>).strategyAggressiveness;
       if (val === 'CONSERVATIVE' || val === 'TEST' || val === 'AGGRESSIVE' || val === 'PIPELINE_TEST' || val === 'STRATEGY_TEST' || val === 'AGGRESSIVE_STRATEGY') {
-        overrideAggressiveness = val as StrategyAggressiveness;
-        overrideSource = 'db';
-        console.log('[EffectiveSettings] 0순위 override 키에서 strategyAggressiveness:', overrideAggressiveness);
+        dbRequestedStrategyAggressiveness = val as string;
+        // ★ ALLOW_STRATEGY_TEST_ORDER가 아니면 테스트 전략 override 무시
+        if (ALLOW_STRATEGY_TEST_ORDER || val === 'CONSERVATIVE') {
+          overrideAggressiveness = val as StrategyAggressiveness;
+          overrideSource = 'db';
+          console.log('[EffectiveSettings] 0순위 override 키 적용:', overrideAggressiveness);
+        } else {
+          console.log('[EffectiveSettings] 0순위 override 키 무시 (ALLOW_STRATEGY_TEST_ORDER=false):', val, '→ CONSERVATIVE 강제');
+        }
       }
     } else {
       console.log('[EffectiveSettings] override 키 없거나 값 비어있음');
@@ -501,6 +517,63 @@ export async function getEffectiveTradingSettings(): Promise<EffectiveSettingsRe
   settings.indexFilter = thresholds.indexFilter;
 
   // =============================================
+  // ★★★ 런타임 안전 보정 (DB/override/환경변수보다 최우선) ★★★
+  // ALLOW_STRATEGY_TEST_ORDER=true가 아니면 무조건 안전 모드
+  // 이 보정은 모든 DB 저장값, override 키, 환경변수보다 뒤에 실행되므로 최종 보장
+  // =============================================
+  const dbAutoDomesticBefore = settings.autoDomesticOrderEnabled;
+  const dbKillSwitchBefore = settings.killSwitchEnabled;
+  const dbStrategyBefore = settings.strategyAggressiveness;
+  const safetyBlockedReasons: string[] = [];
+
+  if (!ALLOW_STRATEGY_TEST_ORDER) {
+    // 테스트 전략 → CONSERVATIVE 강등
+    if (
+      settings.strategyAggressiveness === 'STRATEGY_TEST' ||
+      settings.strategyAggressiveness === 'PIPELINE_TEST' ||
+      settings.strategyAggressiveness === 'AGGRESSIVE_STRATEGY'
+    ) {
+      console.warn(`[EffectiveSettings] ★ 안전 보정: ${settings.strategyAggressiveness} → CONSERVATIVE (ALLOW_STRATEGY_TEST_ORDER=false)`);
+      settings.strategyAggressiveness = 'CONSERVATIVE';
+      // CONSERVATIVE 임계값 재적용
+      const safeThresholds = AGGRESSIVENESS_THRESHOLDS.CONSERVATIVE;
+      settings.signalThreshold = safeThresholds.signalThreshold;
+      settings.weakSignalThreshold = safeThresholds.weakSignalThreshold;
+      settings.minConfidenceThreshold = safeThresholds.minConfidence;
+      settings.accountRiskPercent = safeThresholds.accountRiskPercent;
+      settings.useATRStop = safeThresholds.useATRStop;
+      settings.partialTakeProfit = safeThresholds.partialTakeProfit;
+      settings.indexFilter = safeThresholds.indexFilter;
+      safetyBlockedReasons.push(`${dbStrategyBefore} → CONSERVATIVE (ALLOW_STRATEGY_TEST_ORDER=false)`);
+    }
+
+    // 주문 차단 강제
+    if (settings.autoDomesticOrderEnabled !== false) {
+      console.warn('[EffectiveSettings] ★ 안전 보정: autoDomesticOrderEnabled → false (ALLOW_STRATEGY_TEST_ORDER=false)');
+      settings.autoDomesticOrderEnabled = false;
+      safetyBlockedReasons.push('autoDomesticOrderEnabled=false');
+    }
+    if (settings.autoExitEnabled !== false) {
+      settings.autoExitEnabled = false;
+    }
+    if (settings.killSwitchEnabled !== true) {
+      console.warn('[EffectiveSettings] ★ 안전 보정: killSwitchEnabled → true (ALLOW_STRATEGY_TEST_ORDER=false)');
+      settings.killSwitchEnabled = true;
+      safetyBlockedReasons.push('killSwitchEnabled=true');
+    }
+  }
+
+  if (!safetyBlockedReasons.includes('autoDomesticOrderEnabled=false') && !settings.autoDomesticOrderEnabled) {
+    safetyBlockedReasons.push('autoDomesticOrderEnabled=false');
+  }
+  if (!safetyBlockedReasons.includes('killSwitchEnabled=true') && settings.killSwitchEnabled) {
+    safetyBlockedReasons.push('killSwitchEnabled=true');
+  }
+  if (!ALLOW_STRATEGY_TEST_ORDER) {
+    safetyBlockedReasons.push('ALLOW_STRATEGY_TEST_ORDER is not true');
+  }
+
+  // =============================================
   // 소스 추적
   // =============================================
   const source: 'db' | 'env' | 'default' = hasDbSettings
@@ -536,7 +609,17 @@ export async function getEffectiveTradingSettings(): Promise<EffectiveSettingsRe
     }
   }
 
-  return { settings, source, sources };
+  return {
+    settings,
+    source,
+    sources,
+    // 안전 진단 정보
+    _safety: {
+      allowStrategyTestOrder: ALLOW_STRATEGY_TEST_ORDER,
+      dbRequestedStrategyAggressiveness,
+      safetyBlockedReasons,
+    },
+  };
 }
 
 /**

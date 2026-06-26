@@ -239,6 +239,22 @@ WHERE "key" = 'trading_settings'
   AND "value"->>'strategyAggressiveness' = 'CONSERVATIVE';
 SQL
 
+  # strategy_aggressiveness_override 키도 CONSERVATIVE로 보정
+  run_sql "안전 설정: override 키 → CONSERVATIVE" <<'SQL' || true
+INSERT INTO "AppSetting" ("id", "key", "value", "createdAt", "updatedAt")
+VALUES (
+  gen_random_uuid(),
+  'strategy_aggressiveness_override',
+  '{"strategyAggressiveness": "CONSERVATIVE"}'::jsonb,
+  NOW(),
+  NOW()
+)
+ON CONFLICT ("key") DO UPDATE
+SET "value" = '{"strategyAggressiveness": "CONSERVATIVE"}'::jsonb,
+    "updatedAt" = NOW()
+WHERE "AppSetting"."value"->>'strategyAggressiveness' IS DISTINCT FROM 'CONSERVATIVE';
+SQL
+
   echo "[DB] ✅ 안전 설정 보정 완료"
 fi
 

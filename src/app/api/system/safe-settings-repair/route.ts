@@ -1,93 +1,102 @@
-// 안전 운용 설정 보정 API
-// 목적: Railway 런타임에서 DB AppSetting(trading_settings)이 코드 기본값을 덮어쓰는 경우,
-//       운영 안전값을 명시적으로 DB에 저장한다.
+// POST /api/system/safe-settings-repair
+// DB에 저장된 위험 설정을 안전값으로 강제 보정
 //
-// 이 API는 값을 더 위험하게 만들지 않고 아래 안전값으로만 보정한다.
-// - strategyAggressiveness = CONSERVATIVE
-// - autoDomesticOrderEnabled = false
-// - autoExitEnabled = false
-// - killSwitchEnabled = true
-// - maxOpenDomesticPositions = 3
-// - 테스트/공격 프리셋에서 남은 계산 임계값 제거
+// GET: 현재 DB 설정 상태 조회 (보정 없이)
+// POST: confirm=SAFE_SETTINGS_REPAIR 확인 시 DB 직접 보정
+//
+// 보정 내용:
+//   - strategyAggressiveness → CONSERVATIVE
+//   - autoDomesticOrderEnabled → false
+//   - autoExitEnabled → false
+//   - killSwitchEnabled → true
+//   - 계산 필드 제거 (signalThreshold, weakSignalThreshold, ...)
+//   - strategy_aggressiveness_override → CONSERVATIVE
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getAppSetting, setAppSetting } from '@/lib/prisma';
 
-const SETTINGS_DB_KEY = 'trading_settings';
-const OVERRIDE_DB_KEY = 'strategy_aggressiveness_override';
+const MAIN_KEY = 'trading_settings';
+const OVERRIDE_KEY = 'strategy_aggressiveness_override';
 const REQUIRED_CONFIRM = 'SAFE_SETTINGS_REPAIR';
 
-function stripCalculatedStrategyFields(value: Record<string, unknown>) {
-  delete value.signalThreshold;
-  delete value.weakSignalThreshold;
-  delete value.minConfidenceThreshold;
-  delete value.accountRiskPercent;
-  delete value.useATRStop;
-  delete value.partialTakeProfit;
-  delete value.indexFilter;
-  return value;
-}
-
-function buildSafeTradingSettings(existingValue: Record<string, unknown>) {
-  const repaired = stripCalculatedStrategyFields({ ...existingValue });
-
-  repaired.strategyAggressiveness = 'CONSERVATIVE';
-  repaired.autoDomesticOrderEnabled = false;
-  repaired.autoExitEnabled = false;
-  repaired.killSwitchEnabled = true;
-  repaired.maxOpenDomesticPositions = 3;
-  repaired.maxOpenPositions = 3;
-  repaired.allowRealDomesticOrder = false;
-  repaired.allowRealOverseasOrder = false;
-  repaired.enableOverseasOrder = false;
-  repaired.allowAfterHoursTrading = false;
-
-  // DEMO/PAPER는 유지 가능하지만, 주문 가능 여부는 autoDomesticOrderEnabled=false + killSwitch=true가 차단한다.
-  if (repaired.tradingMode !== 'DEMO' && repaired.tradingMode !== 'REAL') {
-    repaired.tradingMode = 'DEMO';
-  }
-  if (repaired.orderExecutionMode !== 'DRY_RUN' && repaired.orderExecutionMode !== 'PAPER' && repaired.orderExecutionMode !== 'LIVE') {
-    repaired.orderExecutionMode = 'DRY_RUN';
-  }
-
-  return repaired;
-}
-
-async function readObjectSetting(key: string): Promise<Record<string, unknown>> {
-  const record = await getAppSetting(key);
-  return record?.value && typeof record.value === 'object'
-    ? record.value as Record<string, unknown>
-    : {};
+interface Diagnosis {
+  key: string;
+  field: string;
+  currentValue: unknown;
+  expectedValue: unknown;
+  needsRepair: boolean;
 }
 
 export async function GET() {
   try {
-    const tradingSettings = await readObjectSetting(SETTINGS_DB_KEY);
-    const overrideSettings = await readObjectSetting(OVERRIDE_DB_KEY);
+    const mainRecord = await getAppSetting(MAIN_KEY);
+    const overrideRecord = await getAppSetting(OVERRIDE_KEY);
+
+    const mainValue = (mainRecord?.value && typeof mainRecord.value === 'object')
+      ? mainRecord.value as Record<string, unknown>
+      : {};
+    const overrideValue = (overrideRecord?.value && typeof overrideRecord.value === 'object')
+      ? overrideRecord.value as Record<string, unknown>
+      : {};
+
+    const diagnoses: Diagnosis[] = [];
+
+    // 메인 키 진단
+    const mainChecks: Array<[string, unknown, unknown]> = [
+      ['strategyAggressiveness', mainValue.strategyAggressiveness, 'CONSERVATIVE'],
+      ['autoDomesticOrderEnabled', mainValue.autoDomesticOrderEnabled, false],
+      ['autoExitEnabled', mainValue.autoExitEnabled, false],
+      ['killSwitchEnabled', mainValue.killSwitchEnabled, true],
+      ['maxOpenDomesticPositions', mainValue.maxOpenDomesticPositions, 3],
+      ['maxOpenPositions', mainValue.maxOpenPositions, 3],
+    ];
+
+    for (const [field, current, expected] of mainChecks) {
+      diagnoses.push({
+        key: MAIN_KEY,
+        field,
+        currentValue: current,
+        expectedValue: expected,
+        needsRepair: current !== expected,
+      });
+    }
+
+    // 계산 필드 존재 여부 진단
+    const computedFields = ['signalThreshold', 'weakSignalThreshold', 'minConfidenceThreshold', 'accountRiskPercent', 'useATRStop', 'partialTakeProfit', 'indexFilter'];
+    for (const field of computedFields) {
+      const exists = mainValue[field] !== undefined;
+      diagnoses.push({
+        key: MAIN_KEY,
+        field,
+        currentValue: exists ? mainValue[field] : '(not set)',
+        expectedValue: '(removed — auto-computed from strategyAggressiveness)',
+        needsRepair: exists,
+      });
+    }
+
+    // override 키 진단
+    const overrideStrategy = overrideValue.strategyAggressiveness;
+    diagnoses.push({
+      key: OVERRIDE_KEY,
+      field: 'strategyAggressiveness',
+      currentValue: overrideStrategy ?? '(not set)',
+      expectedValue: 'CONSERVATIVE',
+      needsRepair: overrideStrategy !== undefined && overrideStrategy !== 'CONSERVATIVE',
+    });
+
+    const needsRepair = diagnoses.some(d => d.needsRepair);
 
     return NextResponse.json({
       success: true,
-      data: {
-        tradingSettingsPreview: {
-          strategyAggressiveness: tradingSettings.strategyAggressiveness ?? null,
-          autoDomesticOrderEnabled: tradingSettings.autoDomesticOrderEnabled ?? null,
-          autoExitEnabled: tradingSettings.autoExitEnabled ?? null,
-          killSwitchEnabled: tradingSettings.killSwitchEnabled ?? null,
-          maxOpenPositions: tradingSettings.maxOpenPositions ?? null,
-          maxOpenDomesticPositions: tradingSettings.maxOpenDomesticPositions ?? null,
-          orderExecutionMode: tradingSettings.orderExecutionMode ?? null,
-          tradingMode: tradingSettings.tradingMode ?? null,
-        },
-        overridePreview: {
-          strategyAggressiveness: overrideSettings.strategyAggressiveness ?? null,
-        },
-        repairEndpoint: 'POST /api/system/safe-settings-repair',
-        requiredBody: { confirm: REQUIRED_CONFIRM },
-      },
+      needsRepair,
+      diagnoses,
+      repairInstructions: needsRepair
+        ? `POST with { "confirm": "${REQUIRED_CONFIRM}" } to apply repairs`
+        : 'All settings are already safe',
     });
   } catch (error) {
     return NextResponse.json(
-      { success: false, error: `안전 설정 조회 실패: ${error instanceof Error ? error.message : 'Unknown'}` },
+      { success: false, error: `진단 실패: ${error instanceof Error ? error.message : 'Unknown'}` },
       { status: 500 }
     );
   }
@@ -97,65 +106,86 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json().catch(() => ({}));
     if (body?.confirm !== REQUIRED_CONFIRM) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: `confirm 값이 필요합니다. body에 {"confirm":"${REQUIRED_CONFIRM}"} 를 보내세요.`,
-        },
-        { status: 400 }
-      );
+      return NextResponse.json({
+        success: false,
+        error: `confirm 필드가 "${REQUIRED_CONFIRM}"이 아닙니다`,
+        hint: `POST { "confirm": "${REQUIRED_CONFIRM}" }`,
+      }, { status: 400 });
     }
 
-    const beforeTradingSettings = await readObjectSetting(SETTINGS_DB_KEY);
-    const beforeOverrideSettings = await readObjectSetting(OVERRIDE_DB_KEY);
+    const results: Array<{ key: string; success: boolean; detail: string }> = [];
 
-    const repairedTradingSettings = buildSafeTradingSettings(beforeTradingSettings);
-    const repairedOverrideSettings = {
-      ...beforeOverrideSettings,
-      strategyAggressiveness: 'CONSERVATIVE',
-    };
+    // 1) 메인 키 보정
+    const mainRecord = await getAppSetting(MAIN_KEY);
+    const mainValue = (mainRecord?.value && typeof mainRecord.value === 'object')
+      ? { ...(mainRecord.value as Record<string, unknown>) }
+      : {};
 
-    const tradingSaved = await setAppSetting(SETTINGS_DB_KEY, repairedTradingSettings);
-    const overrideSaved = await setAppSetting(OVERRIDE_DB_KEY, repairedOverrideSettings);
+    // 강제 설정
+    mainValue.strategyAggressiveness = 'CONSERVATIVE';
+    mainValue.autoDomesticOrderEnabled = false;
+    mainValue.autoExitEnabled = false;
+    mainValue.killSwitchEnabled = true;
+    mainValue.maxOpenDomesticPositions = 3;
+    mainValue.maxOpenPositions = 3;
 
-    const afterTradingSettings = await readObjectSetting(SETTINGS_DB_KEY);
-    const afterOverrideSettings = await readObjectSetting(OVERRIDE_DB_KEY);
+    // 계산 필드 제거
+    for (const field of ['signalThreshold', 'weakSignalThreshold', 'minConfidenceThreshold', 'accountRiskPercent', 'useATRStop', 'partialTakeProfit', 'indexFilter']) {
+      delete mainValue[field];
+    }
+
+    const mainSaved = await setAppSetting(MAIN_KEY, mainValue);
+    results.push({
+      key: MAIN_KEY,
+      success: !!mainSaved,
+      detail: mainSaved ? 'CONSERVATIVE + 안전모드 적용, 계산 필드 제거' : '저장 실패',
+    });
+
+    // 2) override 키 보정
+    const overrideSaved = await setAppSetting(OVERRIDE_KEY, { strategyAggressiveness: 'CONSERVATIVE' });
+    results.push({
+      key: OVERRIDE_KEY,
+      success: !!overrideSaved,
+      detail: 'CONSERVATIVE로 덮어씀',
+    });
+
+    // 3) 검증 읽기
+    const verifyMain = await getAppSetting(MAIN_KEY);
+    const verifyOverride = await getAppSetting(OVERRIDE_KEY);
+    const verifyMainValue = (verifyMain?.value && typeof verifyMain.value === 'object')
+      ? verifyMain.value as Record<string, unknown>
+      : {};
+    const verifyOverrideValue = (verifyOverride?.value && typeof verifyOverride.value === 'object')
+      ? verifyOverride.value as Record<string, unknown>
+      : {};
+
+    const allSafe =
+      verifyMainValue.strategyAggressiveness === 'CONSERVATIVE' &&
+      verifyMainValue.autoDomesticOrderEnabled === false &&
+      verifyMainValue.killSwitchEnabled === true &&
+      verifyOverrideValue.strategyAggressiveness === 'CONSERVATIVE';
 
     return NextResponse.json({
-      success: tradingSaved && overrideSaved,
-      data: {
-        tradingSettings: {
-          before: {
-            strategyAggressiveness: beforeTradingSettings.strategyAggressiveness ?? null,
-            autoDomesticOrderEnabled: beforeTradingSettings.autoDomesticOrderEnabled ?? null,
-            autoExitEnabled: beforeTradingSettings.autoExitEnabled ?? null,
-            killSwitchEnabled: beforeTradingSettings.killSwitchEnabled ?? null,
-            maxOpenPositions: beforeTradingSettings.maxOpenPositions ?? null,
-            maxOpenDomesticPositions: beforeTradingSettings.maxOpenDomesticPositions ?? null,
-          },
-          after: {
-            strategyAggressiveness: afterTradingSettings.strategyAggressiveness ?? null,
-            autoDomesticOrderEnabled: afterTradingSettings.autoDomesticOrderEnabled ?? null,
-            autoExitEnabled: afterTradingSettings.autoExitEnabled ?? null,
-            killSwitchEnabled: afterTradingSettings.killSwitchEnabled ?? null,
-            maxOpenPositions: afterTradingSettings.maxOpenPositions ?? null,
-            maxOpenDomesticPositions: afterTradingSettings.maxOpenDomesticPositions ?? null,
-          },
+      success: true,
+      allSafe,
+      results,
+      verified: {
+        main: {
+          strategyAggressiveness: verifyMainValue.strategyAggressiveness,
+          autoDomesticOrderEnabled: verifyMainValue.autoDomesticOrderEnabled,
+          autoExitEnabled: verifyMainValue.autoExitEnabled,
+          killSwitchEnabled: verifyMainValue.killSwitchEnabled,
+          maxOpenDomesticPositions: verifyMainValue.maxOpenDomesticPositions,
         },
         override: {
-          before: {
-            strategyAggressiveness: beforeOverrideSettings.strategyAggressiveness ?? null,
-          },
-          after: {
-            strategyAggressiveness: afterOverrideSettings.strategyAggressiveness ?? null,
-          },
+          strategyAggressiveness: verifyOverrideValue.strategyAggressiveness,
         },
       },
-      message: '안전 운용 설정 보정 완료. /api/agent/status에서 effectiveSettings를 다시 확인하세요.',
+      warning: !allSafe ? '검증 실패 — 런타임 안전 보정(effective-settings.ts)에 의해 보호됩니다' : undefined,
     });
   } catch (error) {
     return NextResponse.json(
-      { success: false, error: `안전 설정 보정 실패: ${error instanceof Error ? error.message : 'Unknown'}` },
+      { success: false, error: `보정 실패: ${error instanceof Error ? error.message : 'Unknown'}` },
       { status: 500 }
     );
   }

@@ -8,7 +8,7 @@ import { getSchedulerStatus } from '@/lib/agent-scheduler';
 import { getEffectiveTradingSettings, computeRuntimeDecision, AGGRESSIVENESS_THRESHOLDS, type StrategyAggressiveness } from '@/lib/effective-settings';
 import { getOverseasMarketInfo, isUSDST, getCurrentKSTString, getCurrentETString } from '@/lib/market-hours';
 import { getDomesticSession } from '@/lib/agent-scheduler';
-import { getAllAppSettings } from '@/lib/prisma';
+import { getAllAppSettings, getAppSetting } from '@/lib/prisma';
 import { db } from '@/lib/db';
 
 export async function GET() {
@@ -31,8 +31,33 @@ export async function GET() {
     };
 
     // 실제 실행 설정 + 런타임 판단
-    const { settings: effectiveSettings, source: settingsSource, sources: settingsSources } = await getEffectiveTradingSettings();
+    const { settings: effectiveSettings, source: settingsSource, sources: settingsSources, _safety } = await getEffectiveTradingSettings();
     const runtimeDecision = computeRuntimeDecision(effectiveSettings);
+
+    // DB 원본 설정 값 (안전 보정 전) 조회 — 안전 진단용
+    let dbOriginalAutoDomesticOrder: boolean | null = null;
+    let dbOriginalKillSwitch: boolean | null = null;
+    try {
+      const dbRecord = await getAppSetting('trading_settings');
+      if (dbRecord?.value && typeof dbRecord.value === 'object') {
+        const v = dbRecord.value as Record<string, unknown>;
+        dbOriginalAutoDomesticOrder = typeof v.autoDomesticOrderEnabled === 'boolean' ? v.autoDomesticOrderEnabled : null;
+        dbOriginalKillSwitch = typeof v.killSwitchEnabled === 'boolean' ? v.killSwitchEnabled : null;
+      }
+    } catch { /* ignore */ }
+
+    const safetyDiagnostics = {
+      effectiveSafetyMode: _safety.allowStrategyTestOrder ? 'TEST_ALLOWED' as const : 'SAFE_LOCKED' as const,
+      allowStrategyTestOrder: _safety.allowStrategyTestOrder,
+      dbRequestedStrategyAggressiveness: _safety.dbRequestedStrategyAggressiveness,
+      effectiveStrategyAggressiveness: effectiveSettings.strategyAggressiveness,
+      dbAutoDomesticOrderEnabled: dbOriginalAutoDomesticOrder,
+      effectiveAutoDomesticOrderEnabled: effectiveSettings.autoDomesticOrderEnabled,
+      dbKillSwitchEnabled: dbOriginalKillSwitch,
+      effectiveKillSwitchEnabled: effectiveSettings.killSwitchEnabled,
+      canPlaceDomesticOrderNow: runtimeDecision.canPlaceDomesticOrderNow,
+      safetyBlockedReasons: _safety.safetyBlockedReasons,
+    };
 
     // DB에서 영속 로그 조회 (최근 30개)
     let dbLogs: Array<{
@@ -269,6 +294,9 @@ export async function GET() {
           domesticOrderBlockedReason: runtimeDecision.domesticOrderBlockedReason,
           overseasOrderBlockedReason: runtimeDecision.overseasOrderBlockedReason,
         },
+
+        // ── 안전 진단 ──
+        safetyDiagnostics,
 
         // ── 차단 원인 통합 요약 ──
         currentBlockingSummary: (() => {
