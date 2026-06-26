@@ -999,32 +999,14 @@ async function monitorPositions(
 ): Promise<number> {
   let exitsExecuted = 0;
 
-  // autoExitEnabled=false 기본이지만, 조건부로 자동 활성화:
-  //   1) 전체 포지션 중 가격 anomaly가 0건
-  //   2) 포지션 조회가 정상 (positions.length > 0 또는 정상적으로 빈 결과)
+  // autoExitEnabled=false 기본 — 전략 검증 완료 전까지 자동 청산 비활성화
+  // (avgPrice vs currentPrice 차이는 손익률이지 priceAnomaly가 아님)
   if (settings.autoExitEnabled === false) {
-    // 조건부 활성화 체크
-    const { positions } = await fetchPositions(kisClient, market);
-    let anomalyCount = 0;
-    for (const pos of positions) {
-      const posAnomaly = checkPriceAnomaly(pos.avgPrice, pos.currentPrice, pos.stockCode, pos.stockName);
-      if (posAnomaly.priceAnomaly) anomalyCount++;
-    }
-
-    if (anomalyCount === 0 && positions.length >= 0) {
-      // 가격 anomaly 0건 → auto-exit 허용 (아래 청산 루프로 진행)
-      addLog('INFO', market,
-        `자동 청산 조건부 활성화 — 가격 anomaly 0건/${positions.length}포지션, 손절/익절/트레일링 실행`,
-        { autoExitEnabled: false, conditionalActive: true, positionsChecked: positions.length }
-      );
-      // 아래 청산 루프를 그대로 실행하기 위해 return하지 않음
-    } else {
-      addLog('INFO', market,
-        `자동 청산 비활성화(autoExitEnabled=false) — 가격 anomaly ${anomalyCount}건 감지`,
-        { autoExitEnabled: false, conditionalActive: false, anomalyCount, positionsChecked: positions.length }
-      );
-      return 0;
-    }
+    addLog('INFO', market,
+      `자동 청산 비활성화(autoExitEnabled=false) — 손절/익절/트레일링 미실행`,
+      { autoExitEnabled: false }
+    );
+    return 0;
   }
 
   const riskConfig = buildRiskConfigFromSettings(settings, market);
@@ -1051,27 +1033,20 @@ async function monitorPositions(
       );
 
       if (exitCheck.shouldExit) {
-        // ── 가격 anomaly 검증 (position.currentPrice vs position.avgPrice 괴리 20% 이상 시 청산 차단) ──
-        // 포지션 단가가 신뢰 불가 상태면 자동 청산 금지 (false 청산 방지)
-        const positionAnomaly = checkPriceAnomaly(
-          position.avgPrice,
-          position.currentPrice,
-          position.stockCode,
-          position.stockName,
-        );
-        if (positionAnomaly.priceAnomaly) {
+        // ── 자동 청산 사전 차단 조건 (가격 소스 불일치/데이터 오류만 차단) ──
+        // avgPrice vs currentPrice 차이는 손익률이지 priceAnomaly가 아님!
+        // 차단 조건: priceMismatch=true (평균단가 신뢰 불가)
+        if ((position as any).priceMismatch === true) {
           addLog('RISK', market,
-            `⚠️ 자동 청산 차단: ${position.stockName} 가격 anomaly — avgPrice=${position.avgPrice} vs currentPrice=${position.currentPrice} (괴리 ${(positionAnomaly.gapPercent * 100).toFixed(2)}%)`,
+            `⚠️ 자동 청산 차단: ${position.stockName} priceMismatch=true — 평균단가 신뢰 불가`,
             {
               stockCode: position.stockCode,
               stockName: position.stockName,
               avgPrice: position.avgPrice,
               currentPrice: position.currentPrice,
-              gapPercent: positionAnomaly.gapPercent,
-              anomalyReason: positionAnomaly.anomalyReason,
               originalExitReason: exitCheck.reason,
-              blockedBy: 'PRICE_ANOMALY',
-              hint: '단가 신뢰성 문제 — /api/positions/diagnostics?code=' + position.stockCode + ' 로 확인 후 수동 청산 권장',
+              blockedBy: 'PRICE_MISMATCH',
+              hint: '/api/positions/diagnostics?code=' + position.stockCode + ' 로 확인 후 수동 청산 권장',
             }
           );
           continue; // 청산 금지 — 다음 포지션으로
@@ -1093,9 +1068,7 @@ async function monitorPositions(
           reason: exitCheck.reason,
           indicators: {},
           timestamp: new Date(),
-          priceAnomaly: positionAnomaly.priceAnomaly,
-          anomalyReason: positionAnomaly.anomalyReason,
-          anomalyCheckedAt: positionAnomaly.anomalyCheckedAt,
+          priceAnomaly: false,
         };
 
         const result = await executeOrder(

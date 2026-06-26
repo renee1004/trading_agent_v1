@@ -210,9 +210,10 @@ export interface TradingSignal {
   priceGapPercent?: number;     // |currentPrice - analysisPrice| / analysisPrice
   currentPriceTimestamp?: string; // 현재가 조회 시각
   dataSource?: string;          // "daily_candle+current_price" 등
-  // ── 가격 신뢰성 anomaly (단가 괴리 20% 이상 시 자동 주문/청산 차단) ──
-  priceAnomaly?: boolean;        // true면 신규 주문 금지, 자동 청산 금지
-  anomalyReason?: string;        // anomaly 사유 (예: "현재가 370750 vs 캔들 종가 70100 → 괴리 428.7%")
+  // ── 가격 소스 불일치 anomaly (캔들 종가 vs 실시간 현재가 20%+ 괴리 시 신규 주문 차단) ──
+  // ⚠️ avgPrice vs currentPrice 차이는 손익률이지 priceAnomaly가 아님
+  priceAnomaly?: boolean;        // true면 신규 주문 금지 (자동 청산은 autoExitEnabled로 별도 제어)
+  anomalyReason?: string;        // anomaly 사유 (예: "캔들 종가 370750 vs 실시간 70100 → 괴리 428.7%")
   anomalyCheckedAt?: string;     // anomaly 검증 시각 ISO
 }
 

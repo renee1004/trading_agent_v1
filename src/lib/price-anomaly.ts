@@ -1,22 +1,28 @@
 // 가격 anomaly 검증 유틸리티
 // ─────────────────────────────────────────────────────────────
-// 분석 기준가(캔들 종가)와 KIS 실시간 현재가가 20% 이상 괴리하면:
-//   - signal.priceAnomaly = true
-//   - 신규 주문 금지
-//   - 자동 청산 금지
-//   - recentLogs에 경고 출력
+// **priceAnomaly의 정의 (가격 소스 간 비교만 해당):**
+//   - 캔들 종가(analysisPrice) vs KIS 실시간 현재가(realtimePrice)
+//   - KIS quote currentPrice vs KIS balance currentPrice
+//   - realtimeQuotePrice vs candleLastClose
+//   - realtimeQuotePrice vs position.currentPrice
+//
+// **priceAnomaly가 아닌 것 (손익률):**
+//   - avgPrice vs currentPrice 차이 → 이는 손실률/수익률이며 priceAnomaly가 아님
+//   - 평균매입단가와 현재가의 괴리는 정상적인 시장 변동이므로 자동청산 차단에 사용 금지
+//
+// priceAnomaly=true인 경우:
+//   - 신규 주문 금지 (캔들 종가와 실시간 가격이 20% 이상 괴리 = 데이터 오류)
+//   - 자동 청산은 priceAnomaly로 차단하지 않음 (autoExitEnabled로 제어)
 //
 // 사용자 신고 케이스 (삼성전자 005930):
 //   - signal.price = 370,750원 (캔들 lastClose)
 //   - KIS 현재가 = 70,100원 (정상)
 //   - 괴리율 = (370750 - 70100) / 70100 = 428.7% → priceAnomaly=true
 //
-// 원인 가설:
-//   1) KIS 일봉 API의 FID_ORG_ADJ_PRC=1 (원주가) 응답이 액면분할 전 가격을 반환
-//   2) KIS 일봉 응답의 stck_clpr 필드가 단위 보정 없이 원본 int로 파싱됨
-//   3) 수정주가/원주가 혼용으로 분할 전/후 가격이 섞임
-//
-// 본 모듈은 검증만 수행 — 실제 파싱 버그는 별도 수정 필요
+// 반례: 현대건설 000720
+//   - avgPrice = 140,012원 (KIS 평균단가 — 정상)
+//   - currentPrice = 108,600원 (KIS 현재가 — 정상)
+//   - 차이 = -22.51% → 이는 손실률이며 priceAnomaly가 아님!
 
 import type { TradingSignal } from './types';
 

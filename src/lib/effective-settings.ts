@@ -162,7 +162,7 @@ const DEFAULT_SETTINGS: EffectiveTradingSettings = {
   allowRealDomesticOrder: false,
   allowRealOverseasOrder: false,
   killSwitchEnabled: true,
-  autoExitEnabled: false, // 기본 false — 가격 anomaly 0건 + 포지션 정상 시 자동 활성화
+  autoExitEnabled: false, // 기본 false — 전략 검증 완료 전까지 수동 청산만
   maxDomesticOrderAmount: 1000000,   // KRW 100만원 (1일 매수 금액한도)
   maxOverseasOrderAmount: 500,       // USD 500달러
   maxDailyDomesticOrders: 5,         // 일일 최대 5건
