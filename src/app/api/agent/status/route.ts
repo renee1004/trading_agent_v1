@@ -114,9 +114,21 @@ export async function GET() {
       })),
     ].slice(0, 50);
 
+    // ── 데이터 계층 명확화 (v3 원칙: Position=원장, TradeHistory=체결기록) ──
+    const dataLayerPrinciple = {
+      position: 'LEDGER — KIS 잔고 기준 원장. 보유 포지션의 단일 진실 공급원. resync로만 갱신.',
+      tradeHistory: 'AUDIT_TRAIL — 체결/주문/차단 기록. 삭제 금지(immutable). 성과 집계 원본.',
+      agentLog: 'RUNTIME_LOG — 사이클 실행 로그. 진단/디버깅용. 날짜 필터 적용됨.',
+      signalGeneration: 'INTENT_ONLY — 전략은 Signal만 생성. 주문은 Rule Engine 검증 후 실행.',
+      note: 'TradeHistory로 Position을 추론하지 마세요. Position(원장)이 항상 우선입니다.',
+    };
+
     return NextResponse.json({
       success: true,
       data: {
+        // ── 데이터 계층 (v3 설계 원칙 참고) ──
+        dataLayer: dataLayerPrinciple,
+
         // 기본 에이전트 상태
         isRunning: agentStatus.isRunning,
         currentSessionId: agentStatus.currentSessionId,

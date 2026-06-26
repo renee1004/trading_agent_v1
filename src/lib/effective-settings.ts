@@ -694,11 +694,25 @@ export interface OrderPreValidation {
   maxOpenPositions: number;
   canPlaceOrder: boolean;
   blockedReason: string;
+  /** BUY/SELL 구분 추가 */
+  side: 'BUY' | 'SELL';
+  /** SELL 우회 허용 여부 (escape hatch) */
+  sellBypassedRiskRules: boolean;
 }
 
 /**
- * 주문 실행 전 사전검증
- * killSwitch → orderExecutionMode → isDemo → allowRealOrder → 시장별 설정 → 금액/건수/포지션 한도
+ * 주문 실행 전 사전검증 — BUY/SELL 분리 (v3 Rule Engine 방향성 비대칭 게이트 원칙)
+ *
+ * 설계 원칙 (Trading_Agent_v3 참고):
+ *   - 리스크 규칙(손실/노출/포지션 한도/금액): BUY만 차단, SELL은 항상 허용 (escape hatch)
+ *   - 운영 규칙(killSwitch/DRY_RUN/장시간/빈도): BUY/SELL 양방향 차단
+ *   - SELL은 "리스크를 제거하는" 방향이므로, 포지션 한도/금액/노출 체크를 우회
+ *   - 단, SELL도 보유하지 않은 종목에 대한 매도는 차단 (미보유 SELL 방지)
+ *
+ * 검증 순서:
+ *   [공통] killSwitch → orderExecutionMode → isDemo → allowRealOrder → 시장별 설정
+ *   [BUY 전용] 금액 한도 → 일일 건수 한도 → 포지션 한도 → 가용금액
+ *   [SELL 전용] 보유 수량 확인 (미보유 매도 방지)
  */
 export function validateOrderExecution(
   settings: EffectiveTradingSettings,
@@ -711,8 +725,11 @@ export function validateOrderExecution(
   openPositions: number,
   currentPriceField?: string,
   priceGapPercent?: number,
+  side?: 'BUY' | 'SELL',
+  heldQuantity?: number,
 ): OrderPreValidation {
   const isDomestic = market === 'DOMESTIC';
+  const isSell = side === 'SELL';
   const enableOrder = isDomestic ? settings.autoDomesticOrderEnabled : settings.enableOverseasOrder;
   const allowRealOrder = isDomestic ? settings.allowRealDomesticOrder : settings.allowRealOverseasOrder;
   const maxOrderAmount = isDomestic ? settings.maxDomesticOrderAmount : settings.maxOverseasOrderAmount;
@@ -742,15 +759,21 @@ export function validateOrderExecution(
     maxOpenPositions: maxPositions,
     canPlaceOrder: false,
     blockedReason: '',
+    side: side || 'BUY',
+    sellBypassedRiskRules: false,
   };
 
-  // 1. killSwitch — 모든 주문 차단
+  // ═══════════════════════════════════════════════════
+  // [공통 검증] 운영 규칙 — BUY/SELL 모두 적용
+  // ═══════════════════════════════════════════════════
+
+  // 1. killSwitch — 모든 주문 차단 (운영 규칙: 양방향)
   if (settings.killSwitchEnabled) {
     result.blockedReason = 'killSwitchEnabled=true';
     return result;
   }
 
-  // 2. DRY_RUN — 실제 주문 API 호출 금지
+  // 2. DRY_RUN — 실제 주문 API 호출 금지 (운영 규칙: 양방향)
   if (settings.orderExecutionMode === 'DRY_RUN') {
     result.blockedReason = '주문 드라이런: 실제 주문 차단';
     return result;
@@ -798,13 +821,32 @@ export function validateOrderExecution(
     }
   }
 
+  // ═══════════════════════════════════════════════════
+  // [SELL 전용] escape hatch — 리스크 제거는 항상 허용
+  // ═══════════════════════════════════════════════════
+  if (isSell) {
+    // SELL 전용: 보유 수량 확인 (미보유 매도 방지)
+    if (typeof heldQuantity === 'number' && quantity > heldQuantity) {
+      result.blockedReason = `SELL 수량 초과: 매도 ${quantity}주 > 보유 ${heldQuantity}주`;
+      return result;
+    }
+
+    // SELL은 리스크 제거 방향이므로 금액/건수/포지션 한도/가용금액 검증 우회
+    // (v3 원칙: DailyLossLimit, TotalExposure, PositionSize 규칙은 SELL에 적용하지 않음)
+    result.canPlaceOrder = true;
+    result.sellBypassedRiskRules = true;
+    return result;
+  }
+
+  // ═══════════════════════════════════════════════════
+  // [BUY 전용] 리스크 규칙 — 리스크 추가 엄격 차단
+  // ═══════════════════════════════════════════════════
+
   // 7. 주문금액 한도
   if (estimatedOrderAmount > maxOrderAmount) {
-    // TEST+PAPER 모드에서는 1주 금액이 maxOrderAmount 이하면 허용 (수량은 호출 측에서 1로 제한됨)
     const oneShareAmount = signalPrice * 1;
     const isTestPaper = (settings.strategyAggressiveness === 'PIPELINE_TEST' || settings.strategyAggressiveness === 'STRATEGY_TEST') && settings.orderExecutionMode === 'PAPER';
     if (isTestPaper && oneShareAmount <= maxOrderAmount && quantity > 1) {
-      // 1주로 자동 조정은 호출 측에서 처리하므로 여기서는 통과시킴
       console.warn(`[OrderValidation] TEST+PAPER: 수량 자동 조정 ${quantity}→1 (1주금액=${oneShareAmount.toLocaleString()}, 최대=${maxOrderAmount.toLocaleString()})`);
     } else {
       result.blockedReason = `주문금액 초과: ${estimatedOrderAmount.toLocaleString()} > ${maxOrderAmount.toLocaleString()}`;
@@ -824,17 +866,14 @@ export function validateOrderExecution(
     return result;
   }
 
-  // 10. 가용금액 부족 (PAPER/LIVE 모드에서만 — DRY_RUN은 이미 위에서 차단됨)
+  // 10. 가용금액 부족 (PAPER/LIVE 모드에서만)
   if (availableAmount > 0 && estimatedOrderAmount > availableAmount) {
     result.blockedReason = `가용금액 부족: 주문금액 ${estimatedOrderAmount.toLocaleString()} > 가용금액 ${availableAmount.toLocaleString()}`;
     return result;
   }
   if (availableAmount <= 0 && (settings.orderExecutionMode as string) !== 'DRY_RUN') {
-    // PAPER + DEMO 모드에서 잔고 조회 실패 시: 소액 주문은 허용 (파이프라인 검증 목적)
-    // 주문금액이 maxOrderAmount 이하면 통과, 초과면 차단
     const isPaperDemo = settings.orderExecutionMode === 'PAPER' && isDemo;
     if (isPaperDemo && estimatedOrderAmount <= maxOrderAmount) {
-      // PAPER 모의투자: 잔고 조회 실패해도 소액 주문 허용 (경고 로그만 남김)
       console.warn(`[OrderValidation] PAPER+DEMO 잔고 조회 실패 상태에서 소액 주문 허용 (주문금액=${estimatedOrderAmount}, 최대=${maxOrderAmount})`);
     } else {
       result.blockedReason = `가용금액 조회 불가 (availableAmount=0): 주문 차단`;
@@ -842,7 +881,7 @@ export function validateOrderExecution(
     }
   }
 
-  // 모든 검증 통과
+  // 모든 BUY 검증 통과
   result.canPlaceOrder = true;
   return result;
 }

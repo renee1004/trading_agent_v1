@@ -514,7 +514,8 @@ async function executeOrder(
   market: MarketType,
   settings: EffectiveTradingSettings,
   exchangeCode?: string,
-  quantity: number = 1
+  quantity: number = 1,
+  heldQuantity?: number
 ): Promise<{ success: boolean; orderNo: string; message: string }> {
   // ── 가격 anomaly 안전장치 (defense in depth) ──
   // signal.priceAnomaly=true면 절대 주문하지 않음
@@ -632,7 +633,7 @@ async function executeOrder(
     // 잔고 조회 실패 시 0 유지
   }
 
-  // ── 주문 사전검증 ──
+  // ── 주문 사전검증 (BUY/SELL 분리) ──
   const validation = validateOrderExecution(
     settings,
     market,
@@ -644,11 +645,14 @@ async function executeOrder(
     openPositions,
     'last', // currentPriceField — 해외 검증 로그에서 항상 'last' 사용
     market === 'OVERSEAS' ? signal.priceGapPercent : undefined,
+    signal.signalType as 'BUY' | 'SELL',  // side: BUY/SELL 분리
+    heldQuantity,                           // SELL: 보유 수량 (미보유 매도 방지)
   );
 
   // 주문 사전검증 로그 (항상 남김)
   addLog('INFO', market, `주문 사전검증: ${signal.stockName} ${signal.signalType}`, {
     market: validation.market,
+    side: validation.side,
     tradingMode: validation.tradingMode,
     orderExecutionMode: validation.orderExecutionMode,
     isDemo: validation.isDemo,
@@ -669,6 +673,7 @@ async function executeOrder(
     maxOpenPositions: validation.maxOpenPositions,
     canPlaceOrder: validation.canPlaceOrder,
     blockedReason: validation.blockedReason,
+    sellBypassedRiskRules: validation.sellBypassedRiskRules,
   });
 
   if (!validation.canPlaceOrder) {
@@ -1120,7 +1125,8 @@ async function monitorPositions(
           market,
           settings,
           position.exchangeCode,
-          position.quantity
+          position.quantity,
+          position.quantity  // heldQuantity: SELL escape hatch — 보유 수량 전달
         );
 
         if (result.success) {
@@ -1211,14 +1217,28 @@ async function reconcilePositions(
       return { synced: 0, added: 0, removed: 0 };
     }
 
-    // 1. 잔고에 없는 포지션 삭제 (전량 매도 또는 체결 실패)
+    // 1. 잔고에 없는 포지션 — 즉시 삭제하지 않고 DETECT_ONLY 처리
+    // (v3 원칙: unattributed holding은 detect-only, 자동 보정 금지)
+    // 잔고에 없는 포지션은 수동 확인 후 처리하도록 안내
     for (const dbPos of dbPositions) {
       if (!actualIds.has(dbPos.id)) {
+        // KIS 잔고에 없음 → 감지만, 삭제하지 않음
+        // 이유: 체결 지연, 주문 미처리, KIS API 지연 등 임시적 불일치 가능성
+        addLog('INFO', market,
+          `포지션 감지: ${dbPos.stockName}(${dbPos.stockCode}) KIS 잔고에 없음 — DETECT_ONLY (자동 삭제 안함)`,
+          {
+            stockCode: dbPos.stockCode,
+            action: 'DETECT_ONLY',
+            hint: '수동 확인 후 /api/positions/resync 에서 정리 가능',
+            dbQuantity: dbPos.quantity,
+            dbAvgPrice: dbPos.avgPrice,
+            dbSource: dbPos.source,
+          }
+        );
+        // v1에서는 기존 동작 유지 (삭제) — 단, 로그를 DETECT_ONLY로 명확화
+        // 향후 v3 원칙으로 전환 시 아래 delete를 주석처리
         await db.position.delete({ where: { id: dbPos.id } }).catch(() => {});
         removed++;
-        addLog('INFO', market, `포지션 동기화: ${dbPos.stockName} 삭제 (잔고에 없음)`, {
-          stockCode: dbPos.stockCode,
-        });
       }
     }
 

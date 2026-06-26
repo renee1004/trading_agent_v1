@@ -1,6 +1,13 @@
 // 거래내역 정리 API
 // 2026-06-26 00:00:00 KST 이전의 과거 TradeHistory / AgentLog를 백업 후 삭제
 //
+// v3 설계 원칙 참고:
+//   - Position = KIS 잔고 기준 원장 (LEDGER). 절대 삭제/정리 금지.
+//   - TradeHistory = 체결/주문/차단 기록 (AUDIT_TRAIL). 원칙적으로 immutable이나,
+//     v1에서는 과거 STRATEGY_TEST 시절의 오류 데이터로부터 새 기준으로 전환하기 위해
+//     cutoff 기준 한정 정리 허용. 정리 후에는 immutable로 취급.
+//   - AgentLog = 실행 로그 (RUNTIME_LOG). 진단용이므로 날짜 기준 정리 가능.
+//
 // GET  — 정리 대상 preview (삭제 대상 개수/범위)
 // POST — 확인값이 있을 때만 백업(AppSetting) 후 삭제
 //
