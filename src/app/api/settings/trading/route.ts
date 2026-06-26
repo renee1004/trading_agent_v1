@@ -11,7 +11,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAppSetting, setAppSetting } from '@/lib/prisma';
 import { getEffectiveTradingSettings, EffectiveTradingSettings } from '@/lib/effective-settings';
 
-// 안전 기본값 (effective-settings.ts와 동일)
+// 안전 기본값 (effective-settings.ts와 동일하게 보수 운용 기준으로 유지)
 const DEFAULT_SETTINGS: EffectiveTradingSettings = {
   autoAnalysisEnabled: true,
   runAnalysisOnlyDuringMarketHours: false,
@@ -28,13 +28,13 @@ const DEFAULT_SETTINGS: EffectiveTradingSettings = {
   maxPositionSize: 0.1,
   maxDailyLoss: 0.03,
   maxTotalLoss: 0.1,
-  maxOpenPositions: 5,
+  maxOpenPositions: 3,
   stopLossPercent: 0.05,
   takeProfitPercent: 0.15,
   trailingStopPercent: 0.03,
   selectedStrategy: 'COMPOSITE',
   maxOverseasPriceGapPercent: 0.005,
-  // 주문 실행 모드 기본값
+  // 주문 실행 모드 기본값: DEMO/PAPER 환경에서도 주문은 명시적으로 켜기 전까지 차단
   tradingMode: 'DEMO',
   orderExecutionMode: 'DRY_RUN',
   allowRealDomesticOrder: false,
@@ -47,13 +47,13 @@ const DEFAULT_SETTINGS: EffectiveTradingSettings = {
   maxDailyOverseasOrders: 3,
   maxOpenDomesticPositions: 3,
   maxOpenOverseasPositions: 1,
-  // 전략 공격성 기본값
+  // 전략 공격성 기본값: STRATEGY_TEST가 아닌 CONSERVATIVE
   strategyAggressiveness: 'CONSERVATIVE',
-  signalThreshold: 60,
-  weakSignalThreshold: 40,
-  minConfidenceThreshold: 50,
+  signalThreshold: 70,
+  weakSignalThreshold: 55,
+  minConfidenceThreshold: 65,
   // 고급 전략 설정 (strategyAggressiveness에 의해 자동 설정)
-  accountRiskPercent: 0.3,
+  accountRiskPercent: 0.25,
   useATRStop: false,
   partialTakeProfit: false,
   indexFilter: false,
@@ -113,8 +113,8 @@ export async function POST(request: NextRequest) {
     if (safetyChecked.allowAfterHoursTrading !== true) {
       safetyChecked.allowAfterHoursTrading = false;
     }
-    // 실전 계좌에서 autoDomesticOrderEnabled=true는 명시적 저장 필요
-    // 모의투자에서는 true 기본 허용
+
+    // 국내 자동매수는 기본 OFF. 명시적 true/false가 아닌 입력은 저장하지 않음.
     if (safetyChecked.autoDomesticOrderEnabled !== true && safetyChecked.autoDomesticOrderEnabled !== false) {
       delete safetyChecked.autoDomesticOrderEnabled;
     }
@@ -126,9 +126,16 @@ export async function POST(request: NextRequest) {
     if (safetyChecked.allowRealOverseasOrder !== true) {
       safetyChecked.allowRealOverseasOrder = false;
     }
-    if (safetyChecked.killSwitchEnabled !== true) {
-      safetyChecked.killSwitchEnabled = false;
+
+    // killSwitch/autoExit은 안전 기본값을 우선한다.
+    // 사용자가 명시적으로 값을 보낸 경우만 반영하되, 값이 없으면 killSwitch=true, autoExit=false로 저장한다.
+    if (safetyChecked.killSwitchEnabled !== true && safetyChecked.killSwitchEnabled !== false) {
+      safetyChecked.killSwitchEnabled = true;
     }
+    if (safetyChecked.autoExitEnabled !== true && safetyChecked.autoExitEnabled !== false) {
+      safetyChecked.autoExitEnabled = false;
+    }
+
     const validModes = ['DRY_RUN', 'PAPER', 'LIVE'];
     if (!validModes.includes(safetyChecked.orderExecutionMode)) {
       safetyChecked.orderExecutionMode = 'DRY_RUN';
@@ -150,6 +157,17 @@ export async function POST(request: NextRequest) {
     if (safetyChecked.strategyAggressiveness && !validAggressiveness.includes(safetyChecked.strategyAggressiveness)) {
       console.warn('[Settings] strategyAggressiveness 무효값, CONSERVATIVE로 복구:', safetyChecked.strategyAggressiveness);
       safetyChecked.strategyAggressiveness = 'CONSERVATIVE';
+    }
+    if (!safetyChecked.strategyAggressiveness) {
+      safetyChecked.strategyAggressiveness = 'CONSERVATIVE';
+    }
+
+    // 포지션 수 기준 통일: 국내 신규 BUY 기준은 maxOpenDomesticPositions=3을 기본으로 사용
+    if (!Number.isFinite(Number(safetyChecked.maxOpenDomesticPositions)) || Number(safetyChecked.maxOpenDomesticPositions) <= 0) {
+      safetyChecked.maxOpenDomesticPositions = 3;
+    }
+    if (!Number.isFinite(Number(safetyChecked.maxOpenPositions)) || Number(safetyChecked.maxOpenPositions) <= 0) {
+      safetyChecked.maxOpenPositions = Number(safetyChecked.maxOpenDomesticPositions) || 3;
     }
 
     // 유효성 검증
@@ -204,6 +222,14 @@ export async function POST(request: NextRequest) {
 
       // 2) 기존 값에 validated 덮어쓰기 (새 값이 우선)
       const merged = { ...existingValue, ...validated };
+
+      // 안전 기본값을 저장 단계에서도 보강한다.
+      merged.autoDomesticOrderEnabled = merged.autoDomesticOrderEnabled === true;
+      merged.killSwitchEnabled = merged.killSwitchEnabled !== false;
+      merged.autoExitEnabled = merged.autoExitEnabled === true ? true : false;
+      merged.maxOpenDomesticPositions = Number(merged.maxOpenDomesticPositions) || 3;
+      merged.maxOpenPositions = Number(merged.maxOpenDomesticPositions) || 3;
+      merged.strategyAggressiveness = merged.strategyAggressiveness || 'CONSERVATIVE';
 
       // 3) 계산된 임계값이 병합 결과에 있으면 제거
       //    (strategyAggressiveness 변경 시 임계값이 덮어쓰기되지 않도록)
