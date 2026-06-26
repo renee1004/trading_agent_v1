@@ -439,6 +439,7 @@ export async function getEffectiveTradingSettings(): Promise<EffectiveSettingsRe
   settings.allowRealOverseasOrder = dbAllowRealOverseas || envAllowRealOverseas;
 
   // killSwitchEnabled: DB true OR 환경변수 true → 활성화 (비상 정지)
+  // DB에 false가 저장되어 있어도 기본값 true를 유지하려면 start.sh 배포 보정으로 DB를 true로 맞춰야 함
   const dbKillSwitch = dbSettings?.killSwitchEnabled === true;
   const envKillSwitch = process.env.KILL_SWITCH_ENABLED === 'true';
   settings.killSwitchEnabled = dbKillSwitch || envKillSwitch;

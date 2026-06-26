@@ -176,6 +176,70 @@ SQL
   echo "[DB] 3순위 완료: ${SQL_OK} 성공, ${SQL_FAIL} 스킵"
   echo "[DB] ✅ 스키마 동기화 완료 (3중 보장)"
   echo "[DB] === 스키마 동기화 종료 ==="
+
+  # ── 안전 설정 보정 (배포 시마다 강제 적용) ──
+  # DB에 STRATEGY_TEST 등 위험한 설정이 남아있으면 덮어씀
+  # 우선순위: 환경변수 > 이 보정 > DB 기존값
+  echo "[DB] === 안전 설정 보정 ==="
+  if [ "$STRATEGY_AGGRESSIVENESS" != "STRATEGY_TEST" ] && [ "$STRATEGY_AGGRESSIVENESS" != "PIPELINE_TEST" ]; then
+    run_sql "안전 설정: strategyAggressiveness → CONSERVATIVE" <<'SQL' || true
+UPDATE "AppSetting"
+SET "value" = jsonb_set(
+  "value",
+  '{strategyAggressiveness}',
+  '"CONSERVATIVE"'
+),
+"updatedAt" = NOW()
+WHERE "key" = 'trading_settings'
+  AND ("value"->>'strategyAggressiveness' IN ('STRATEGY_TEST', 'PIPELINE_TEST', 'AGGRESSIVE_STRATEGY')
+       OR "value"->>'strategyAggressiveness' IS NULL);
+SQL
+  else
+    echo "[DB] ⏭️ strategyAggressiveness 보정 스킵 (환경변수로 명시적 설정됨: ${STRATEGY_AGGRESSIVENESS:-미설정})"
+  fi
+
+  # 안전모드 관련: autoDomesticOrderEnabled=false, autoExitEnabled=false, killSwitchEnabled=true 강제
+  # (환경변수로 명시적으로 true로 설정한 경우만 제외)
+  if [ "$AUTO_DOMESTIC_ORDER_ENABLED" != "true" ]; then
+    run_sql "안전 설정: autoDomesticOrderEnabled → false" <<'SQL' || true
+UPDATE "AppSetting"
+SET "value" = jsonb_set("value", '{autoDomesticOrderEnabled}', 'false'),
+    "updatedAt" = NOW()
+WHERE "key" = 'trading_settings'
+  AND ("value"->>'autoDomesticOrderEnabled')::boolean IS DISTINCT FROM false;
+SQL
+  fi
+
+  if [ "$AUTO_EXIT_ENABLED" != "true" ]; then
+    run_sql "안전 설정: autoExitEnabled → false" <<'SQL' || true
+UPDATE "AppSetting"
+SET "value" = jsonb_set("value", '{autoExitEnabled}', 'false'),
+    "updatedAt" = NOW()
+WHERE "key" = 'trading_settings'
+  AND ("value"->>'autoExitEnabled')::boolean IS DISTINCT FROM false;
+SQL
+  fi
+
+  if [ "$KILL_SWITCH_ENABLED" != "false" ]; then
+    run_sql "안전 설정: killSwitchEnabled → true" <<'SQL' || true
+UPDATE "AppSetting"
+SET "value" = jsonb_set("value", '{killSwitchEnabled}', 'true'),
+    "updatedAt" = NOW()
+WHERE "key" = 'trading_settings'
+  AND ("value"->>'killSwitchEnabled')::boolean IS DISTINCT FROM true;
+SQL
+  fi
+
+  # STRATEGY_TEST 관련 임계값 제거 (CONSERVATIVE 프리셋이 code에서 적용되도록)
+  run_sql "안전 설정: STRATEGY_TEST 임계값 제거" <<'SQL' || true
+UPDATE "AppSetting"
+SET "value" = "value" - 'signalThreshold' - 'weakSignalThreshold' - 'minConfidenceThreshold' - 'accountRiskPercent',
+    "updatedAt" = NOW()
+WHERE "key" = 'trading_settings'
+  AND "value"->>'strategyAggressiveness' = 'CONSERVATIVE';
+SQL
+
+  echo "[DB] ✅ 안전 설정 보정 완료"
 fi
 
 echo "Starting Next.js server on port ${PORT:-3000}..."
