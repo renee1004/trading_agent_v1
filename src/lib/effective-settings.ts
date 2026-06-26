@@ -36,14 +36,14 @@ export const AGGRESSIVENESS_THRESHOLDS: Record<StrategyAggressiveness, {
   description: string;
 }> = {
   CONSERVATIVE: {
-    signalThreshold: 60,
-    weakSignalThreshold: 40,
-    minConfidence: 50,
-    accountRiskPercent: 0.3,     // 계좌의 0.3%
+    signalThreshold: 70,
+    weakSignalThreshold: 55,
+    minConfidence: 65,
+    accountRiskPercent: 0.25,    // 계좌의 0.25%
     useATRStop: false,
     partialTakeProfit: false,
     indexFilter: false,
-    description: '보수 모드 — 기존 고정% 손절/익절',
+    description: '보수 모드 — 엄격한 신호 필터링 (signal≥70, confidence≥65%)',
   },
   PIPELINE_TEST: {
     signalThreshold: 30,
@@ -136,7 +136,7 @@ export interface EffectiveTradingSettings {
 const DEFAULT_SETTINGS: EffectiveTradingSettings = {
   autoAnalysisEnabled: true,
   runAnalysisOnlyDuringMarketHours: false,
-  autoDomesticOrderEnabled: true,
+  autoDomesticOrderEnabled: false,
   enableOverseasAnalysis: false,
   enableOverseasOrder: false,
   allowAfterHoursTrading: false,
@@ -161,8 +161,8 @@ const DEFAULT_SETTINGS: EffectiveTradingSettings = {
   orderExecutionMode: 'DRY_RUN',
   allowRealDomesticOrder: false,
   allowRealOverseasOrder: false,
-  killSwitchEnabled: false,
-  autoExitEnabled: true, // 기본 true — false면 자동 청산 금지
+  killSwitchEnabled: true,
+  autoExitEnabled: false, // 기본 false — 가격 anomaly 0건 + 포지션 정상 시 자동 활성화
   maxDomesticOrderAmount: 1000000,   // KRW 100만원 (1일 매수 금액한도)
   maxOverseasOrderAmount: 500,       // USD 500달러
   maxDailyDomesticOrders: 5,         // 일일 최대 5건
@@ -546,11 +546,15 @@ export function buildRiskConfigFromSettings(
   market: 'DOMESTIC' | 'OVERSEAS'
 ): RiskConfig {
   const marketDefaults = getMarketRiskConfig(market);
+  // 국내 신규 BUY 기준은 maxOpenDomesticPositions만 사용 (maxOpenPositions와 충돌 방지)
+  const maxPositions = market === 'DOMESTIC'
+    ? settings.maxOpenDomesticPositions
+    : settings.maxOpenOverseasPositions;
   return {
     maxPositionSize: settings.maxPositionSize ?? marketDefaults.maxPositionSize,
     maxDailyLoss: settings.maxDailyLoss ?? marketDefaults.maxDailyLoss,
     maxTotalLoss: settings.maxTotalLoss ?? marketDefaults.maxTotalLoss,
-    maxOpenPositions: settings.maxOpenPositions ?? marketDefaults.maxOpenPositions,
+    maxOpenPositions: maxPositions ?? marketDefaults.maxOpenPositions,
     stopLossPercent: settings.stopLossPercent ?? marketDefaults.stopLossPercent,
     takeProfitPercent: settings.takeProfitPercent ?? marketDefaults.takeProfitPercent,
     trailingStopPercent: settings.trailingStopPercent ?? marketDefaults.trailingStopPercent,

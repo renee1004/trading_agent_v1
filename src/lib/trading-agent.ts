@@ -110,6 +110,88 @@ let agentState: AgentStatus = {
 
 const MAX_LOGS = 200;
 
+// =============================================
+// BUY 후보 엄격 사전 필터 (9가지 조건)
+// =============================================
+// CONSERVATIVE 모드에서 signalThreshold/weakSignalThreshold 이상의
+// buyScore를 가진 신호도 추가 조건으로 엄격하게 필터링
+// → executableSignals에 포함되려면 모든 조건 통과 필요
+interface BuyFilterResult {
+  pass: boolean;
+  reason: string;
+}
+
+function filterBuyCandidateStrict(
+  signal: TradingSignal,
+  candles: StockCandle[],
+  domesticPositions: BalanceItem[],
+  maxOpenDomesticPositions: number,
+): BuyFilterResult {
+  const ind = signal.indicators || {};
+  const currentPrice = signal.currentPrice || signal.price;
+
+  // 1. priceAnomaly=false (이미 상위에서 차단되지만 안전장치)
+  if (signal.priceAnomaly) {
+    return { pass: false, reason: '가격 anomaly' };
+  }
+
+  // 2. currentPrice > MA20
+  const ma20 = ind.maLong;
+  if (ma20 && currentPrice > 0 && currentPrice <= ma20) {
+    return { pass: false, reason: `currentPrice(${currentPrice.toLocaleString()}) ≤ MA20(${ma20.toLocaleString()})` };
+  }
+
+  // 3. MA5 > MA20 (단기 추세 상승 확인)
+  const ma5 = ind.maShort;
+  if (ma5 && ma20 && ma5 <= ma20) {
+    return { pass: false, reason: `MA5(${ma5.toLocaleString()}) ≤ MA20(${ma20.toLocaleString()}) — 추세 하락` };
+  }
+
+  // 4. RSI 45~65 (중립 구간 — 과매수/과매도 모두 배제)
+  const rsi = ind.rsi;
+  if (rsi !== undefined && rsi !== null && !isNaN(rsi)) {
+    if (rsi < 45 || rsi > 65) {
+      return { pass: false, reason: `RSI(${rsi.toFixed(1)}) 외 구간 (45~65 요구)` };
+    }
+  }
+
+  // 5. sellScore < 25 (매도 압력이 낮아야 매수)
+  if (signal.sellScore !== undefined && signal.sellScore !== null && signal.sellScore >= 25) {
+    return { pass: false, reason: `sellScore(${signal.sellScore}) ≥ 25 — 매도 압력 높음` };
+  }
+
+  // 6. 최근 3봉 중 2봉 이상 양봉 (단기 모멘텀 확인)
+  if (candles.length >= 3) {
+    const recent3 = candles.slice(-3);
+    const bullishCount = recent3.filter(c => c.close > c.open).length;
+    if (bullishCount < 2) {
+      return { pass: false, reason: `최근 3봉 중 양봉 ${bullishCount}개 < 2개` };
+    }
+  }
+
+  // 7. 거래량 증가 (최근 봉 거래량 ≥ 직전 봉)
+  if (candles.length >= 2) {
+    const lastVol = candles[candles.length - 1].volume;
+    const prevVol = candles[candles.length - 2].volume;
+    if (prevVol > 0 && lastVol < prevVol) {
+      return { pass: false, reason: `거래량 감소 (최근=${lastVol.toLocaleString()} < 직전=${prevVol.toLocaleString()})` };
+    }
+  }
+
+  // 8. 이미 보유 중이면 추가매수 금지
+  const alreadyHeld = domesticPositions.find(p => p.stockCode === signal.stockCode);
+  if (alreadyHeld) {
+    return { pass: false, reason: '이미 보유 중 — 추가매수 금지' };
+  }
+
+  // 9. currentOpenDomesticPositions < maxOpenDomesticPositions
+  if (domesticPositions.length >= maxOpenDomesticPositions) {
+    return { pass: false, reason: `국내 포지션 한도 초과 (${domesticPositions.length}/${maxOpenDomesticPositions})` };
+  }
+
+  return { pass: true, reason: '' };
+}
+
 export function addLog(
   type: AgentLog['type'],
   market: MarketType,
@@ -917,14 +999,32 @@ async function monitorPositions(
 ): Promise<number> {
   let exitsExecuted = 0;
 
-  // autoExitEnabled=false 이면 자동 청산(손절/익절/트레일링) 금지 — 포지션 모니터링만 수행
-  // (단가 신뢰성 문제가 해결될 때까지 안전장치)
+  // autoExitEnabled=false 기본이지만, 조건부로 자동 활성화:
+  //   1) 전체 포지션 중 가격 anomaly가 0건
+  //   2) 포지션 조회가 정상 (positions.length > 0 또는 정상적으로 빈 결과)
   if (settings.autoExitEnabled === false) {
-    addLog('INFO', market,
-      `자동 청산 비활성화(autoExitEnabled=false) — 포지션 모니터링만 수행, 손절/익절/트레일링 주문 없음`,
-      { autoExitEnabled: false }
-    );
-    return 0;
+    // 조건부 활성화 체크
+    const { positions } = await fetchPositions(kisClient, market);
+    let anomalyCount = 0;
+    for (const pos of positions) {
+      const posAnomaly = checkPriceAnomaly(pos.avgPrice, pos.currentPrice, pos.stockCode, pos.stockName);
+      if (posAnomaly.priceAnomaly) anomalyCount++;
+    }
+
+    if (anomalyCount === 0 && positions.length >= 0) {
+      // 가격 anomaly 0건 → auto-exit 허용 (아래 청산 루프로 진행)
+      addLog('INFO', market,
+        `자동 청산 조건부 활성화 — 가격 anomaly 0건/${positions.length}포지션, 손절/익절/트레일링 실행`,
+        { autoExitEnabled: false, conditionalActive: true, positionsChecked: positions.length }
+      );
+      // 아래 청산 루프를 그대로 실행하기 위해 return하지 않음
+    } else {
+      addLog('INFO', market,
+        `자동 청산 비활성화(autoExitEnabled=false) — 가격 anomaly ${anomalyCount}건 감지`,
+        { autoExitEnabled: false, conditionalActive: false, anomalyCount, positionsChecked: positions.length }
+      );
+      return 0;
+    }
   }
 
   const riskConfig = buildRiskConfigFromSettings(settings, market);
@@ -1614,6 +1714,36 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
         if (finalSignal.signalType === 'HOLD') {
           addLog('RISK', 'DOMESTIC', `${stock.name} AI 검증 결과 HOLD로 변경 - 매매 차단`);
           continue;
+        }
+
+        // ── 사전 필터: 미보유 SELL → 매수 회피 신호로만 기록, 주문 파이프라인 진입 금지 ──
+        if (finalSignal.signalType === 'SELL') {
+          const isHeld = domesticPositions.positions.find(p => p.stockCode === stock.code);
+          if (!isHeld) {
+            addLog('SIGNAL', 'DOMESTIC',
+              `${stock.name} SELL 신호지만 미보유 — 매수 회피 신호로 기록 (주문 불가)`,
+              { stockCode: stock.code, sellScore: finalSignal.sellScore, confidence: finalSignal.confidence }
+            );
+            continue; // 주문 파이프라인 진입 금지
+          }
+        }
+
+        // ── 사전 필터: BUY 후보 9가지 엄격 조건 ──
+        // CONSERVATIVE 모드에서만 적용 (TEST/AGGRESSIVE는 기존 리스크 매니저에 위임)
+        if (finalSignal.signalType === 'BUY' && effectiveSettings.strategyAggressiveness === 'CONSERVATIVE') {
+          const buyFilter = filterBuyCandidateStrict(
+            finalSignal, candles, domesticPositions.positions, effectiveSettings.maxOpenDomesticPositions,
+          );
+          if (!buyFilter.pass) {
+            signalsBlockedReasons.push(`${stock.name}: ${buyFilter.reason}`);
+            const candidate = topBuyCandidates.find(c => c.stockCode === stock.code);
+            if (candidate) candidate.blockedReason = buyFilter.reason;
+            addLog('RISK', 'DOMESTIC',
+              `${stock.name} BUY 사전 필터 차단: ${buyFilter.reason}`,
+              { stockCode: stock.code, filter: 'strictBuyFilter', reason: buyFilter.reason }
+            );
+            continue;
+          }
         }
 
         // 리스크 체크
