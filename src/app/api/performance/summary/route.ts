@@ -9,12 +9,21 @@ import { db, isDbAvailable, getDbType } from '@/lib/db';
 export async function GET() {
   try {
     // InMemory DB도 지원하므로 항상 시도
-    // ── 1. 전체 거래 통계 ──
+    // ── 1. 전체 거래 통계 (오늘 KST 이후만) ──
     // BUY+SELL 쌍을 매칭하여 실현 손익을 계산하는 대신,
     // SELL 거래의 profitRate를 기준으로 승/패 판단
+
+    // KST 오늘 00:00:00 이후만
+    const now = new Date();
+    const kstOffset = 9 * 60 * 60 * 1000;
+    const kstNow = new Date(now.getTime() + kstOffset);
+    const kstDateStr = kstNow.toISOString().slice(0, 10);
+    const startOfTodayKST = new Date(`${kstDateStr}T00:00:00+09:00`);
+
     const allTrades = await db.tradeHistory.findMany({
       where: {
         status: { notIn: ['CANCELLED', 'FAILED'] },
+        tradedAt: { gte: startOfTodayKST },
       },
       orderBy: { tradedAt: 'asc' },
     });

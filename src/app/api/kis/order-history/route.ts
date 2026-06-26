@@ -14,8 +14,15 @@ export async function GET(request: NextRequest) {
     let dbTrades: any[] = [];
     let dbError: string | null = null;
     try {
+      // KST 오늘 00:00:00 이후만 (과거 이상 데이터 제외)
+      const now = new Date();
+      const kstOffset = 9 * 60 * 60 * 1000;
+      const kstNow = new Date(now.getTime() + kstOffset);
+      const kstDateStr = kstNow.toISOString().slice(0, 10);
+      const startOfTodayKST = new Date(`${kstDateStr}T00:00:00+09:00`);
+
       dbTrades = await db.tradeHistory.findMany({
-        where: { market },
+        where: { market, tradedAt: { gte: startOfTodayKST } },
         orderBy: { tradedAt: 'desc' },
         take: 50,
       });

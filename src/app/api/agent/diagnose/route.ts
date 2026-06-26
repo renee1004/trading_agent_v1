@@ -13,12 +13,21 @@ function makeErrorMessage(error: unknown): string {
 export async function GET() {
   try {
     const config = await db.kisConfig.findFirst();
+    // KST 오늘 00:00:00 이후만
+    const now = new Date();
+    const kstOffset = 9 * 60 * 60 * 1000;
+    const kstNow = new Date(now.getTime() + kstOffset);
+    const kstDateStr = kstNow.toISOString().slice(0, 10);
+    const startOfTodayKST = new Date(`${kstDateStr}T00:00:00+09:00`);
+
     const recentTrades = await db.tradeHistory.findMany({
+      where: { tradedAt: { gte: startOfTodayKST } },
       orderBy: { tradedAt: 'desc' },
       take: 10,
     });
 
     const recentLogs = await db.agentLog.findMany({
+      where: { createdAt: { gte: startOfTodayKST } },
       orderBy: { createdAt: 'desc' },
       take: 20,
     });

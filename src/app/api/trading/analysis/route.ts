@@ -148,6 +148,15 @@ export async function GET(request: NextRequest) {
     const where: any = {
       status: { notIn: ['CANCELLED', 'FAILED', 'BLOCKED', 'PENDING'] },
     };
+    // 기본: 오늘 KST 이후만 (?includeHistorical=true → 전체)
+    const includeHistorical = searchParams.get('includeHistorical') === 'true';
+    if (!includeHistorical) {
+      const now = new Date();
+      const kstOffset = 9 * 60 * 60 * 1000;
+      const kstNow = new Date(now.getTime() + kstOffset);
+      const kstDateStr = kstNow.toISOString().slice(0, 10);
+      where.tradedAt = { gte: new Date(`${kstDateStr}T00:00:00+09:00`) };
+    }
     if (strategy) where.strategy = strategy;
     if (stockCode) where.stockCode = stockCode;
 

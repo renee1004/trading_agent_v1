@@ -153,6 +153,20 @@ export async function GET(request: NextRequest) {
     const executionModeFilter = searchParams.get('executionMode'); // DRY_RUN | PAPER | LIVE
 
     const where: any = {};
+
+    // ── 날짜 필터 (기본: 오늘 KST 자정 이후만) ──
+    // ?includeHistorical=true → 과거 데이터도 포함
+    const includeHistorical = searchParams.get('includeHistorical') === 'true';
+    if (!includeHistorical) {
+      // KST 오늘 00:00:00 = UTC 전날 15:00:00
+      const now = new Date();
+      const kstOffset = 9 * 60 * 60 * 1000;
+      const kstNow = new Date(now.getTime() + kstOffset);
+      const kstDateStr = kstNow.toISOString().slice(0, 10);
+      const startOfTodayKST = new Date(`${kstDateStr}T00:00:00+09:00`);
+      where.tradedAt = { gte: startOfTodayKST };
+    }
+
     if (type) where.tradeType = type;
     if (marketFilter) where.market = marketFilter;
     if (statusFilter) where.status = statusFilter;

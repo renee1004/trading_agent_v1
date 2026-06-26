@@ -59,7 +59,7 @@ export async function GET() {
       safetyBlockedReasons: _safety.safetyBlockedReasons,
     };
 
-    // DB에서 영속 로그 조회 (최근 30개)
+    // DB에서 영속 로그 조회 (최근 30개, 오늘 KST 이후만)
     let dbLogs: Array<{
       id: string;
       type: string;
@@ -69,7 +69,15 @@ export async function GET() {
       createdAt: string;
     }> = [];
     try {
+      // KST 오늘 00:00:00 = UTC 전날 15:00:00
+      const now = new Date();
+      const kstOffset = 9 * 60 * 60 * 1000;
+      const kstNow = new Date(now.getTime() + kstOffset);
+      const kstDateStr = kstNow.toISOString().slice(0, 10);
+      const startOfTodayKST = new Date(`${kstDateStr}T00:00:00+09:00`);
+
       const logs = await db.agentLog.findMany({
+        where: { createdAt: { gte: startOfTodayKST } },
         orderBy: { createdAt: 'desc' },
         take: 30,
       });
