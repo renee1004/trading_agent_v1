@@ -388,6 +388,18 @@ export async function getEffectiveTradingSettings(): Promise<EffectiveSettingsRe
   if (process.env.AUTO_EXIT_ENABLED === 'true') {
     envValues.autoExitEnabled = true;
   }
+  if (process.env.ORDER_EXECUTION_MODE) {
+    const mode = process.env.ORDER_EXECUTION_MODE.toUpperCase();
+    if (mode === 'DRY_RUN' || mode === 'PAPER' || mode === 'LIVE') {
+      envValues.orderExecutionMode = mode as 'DRY_RUN' | 'PAPER' | 'LIVE';
+    }
+  }
+  if (process.env.TRADING_MODE) {
+    const tMode = process.env.TRADING_MODE.toUpperCase();
+    if (tMode === 'DEMO' || tMode === 'REAL') {
+      envValues.tradingMode = tMode as 'DEMO' | 'REAL';
+    }
+  }
 
   // 최종 설정 병합: 기본값 < DB < 환경변수
   const settings: EffectiveTradingSettings = {
@@ -582,9 +594,33 @@ export async function getEffectiveTradingSettings(): Promise<EffectiveSettingsRe
       ? 'env'
       : 'default';
 
-  const sources: Record<string, 'db' | 'env' | 'default'> = {};
+  // safe-override가 적용된 키를 추적
+  const safeOverrideKeys = new Set<string>();
+  if (!ALLOW_STRATEGY_TEST_ORDER) {
+    if (
+      settings.strategyAggressiveness === 'CONSERVATIVE' &&
+      (dbStrategyBefore === 'STRATEGY_TEST' || dbStrategyBefore === 'PIPELINE_TEST' || dbStrategyBefore === 'AGGRESSIVE_STRATEGY')
+    ) {
+      safeOverrideKeys.add('strategyAggressiveness');
+      safeOverrideKeys.add('signalThreshold');
+      safeOverrideKeys.add('weakSignalThreshold');
+      safeOverrideKeys.add('minConfidenceThreshold');
+      safeOverrideKeys.add('accountRiskPercent');
+      safeOverrideKeys.add('useATRStop');
+      safeOverrideKeys.add('partialTakeProfit');
+      safeOverrideKeys.add('indexFilter');
+    }
+    safeOverrideKeys.add('autoDomesticOrderEnabled');
+    safeOverrideKeys.add('autoExitEnabled');
+    safeOverrideKeys.add('killSwitchEnabled');
+  }
+
+  type SourceType = 'db' | 'env' | 'default' | 'safe-override';
+  const sources: Record<string, SourceType> = {};
   for (const key of Object.keys(DEFAULT_SETTINGS)) {
-    if (envValues[key as keyof EffectiveTradingSettings] !== undefined) {
+    if (safeOverrideKeys.has(key)) {
+      sources[key] = 'safe-override';
+    } else if (envValues[key as keyof EffectiveTradingSettings] !== undefined) {
       sources[key] = 'env';
     } else if (key === 'strategyAggressiveness' && overrideAggressiveness !== null) {
       // ★ override 키에서 온 strategyAggressiveness는 항상 'db'로 표시

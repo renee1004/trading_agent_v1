@@ -10,6 +10,7 @@ import { getOverseasMarketInfo, isUSDST, getCurrentKSTString, getCurrentETString
 import { getDomesticSession } from '@/lib/agent-scheduler';
 import { getAllAppSettings, getAppSetting } from '@/lib/prisma';
 import { db } from '@/lib/db';
+import { getEnvDiagnostics, getGitVersionInfo } from '@/lib/env-diagnostics';
 
 export async function GET() {
   try {
@@ -20,15 +21,20 @@ export async function GET() {
     // 서버 스케줄러 상태
     const schedulerStatus = await getSchedulerStatus();
 
-    // 배포 버전 정보 (Railway 환경변수 + APP_VERSION)
+    // 배포 버전 정보 (Railway 환경변수 + 로컬 git fallback)
+    const gitInfo = await getGitVersionInfo();
     const versionInfo = {
-      gitCommitSha: process.env.RAILWAY_GIT_COMMIT_SHA || null,
-      gitBranch: process.env.RAILWAY_GIT_BRANCH || null,
+      gitCommitSha: gitInfo.gitCommitSha,
+      gitBranch: gitInfo.gitBranch,
       appVersion: process.env.APP_VERSION || null,
       railwayServiceId: process.env.RAILWAY_SERVICE_ID || null,
       railwayDeploymentId: process.env.RAILWAY_DEPLOYMENT_ID || null,
       nodeEnv: process.env.NODE_ENV || 'development',
+      runtime: process.env.RAILWAY_SERVICE_ID ? 'railway' : 'local',
     };
+
+    // 환경변수 로딩 진단 (민감값 없이 boolean만)
+    const envDiagnostics = getEnvDiagnostics();
 
     // 실제 실행 설정 + 런타임 판단
     const { settings: effectiveSettings, source: settingsSource, sources: settingsSources, _safety } = await getEffectiveTradingSettings();
