@@ -11,6 +11,8 @@ import { getDomesticSession } from '@/lib/agent-scheduler';
 import { getAllAppSettings, getAppSetting } from '@/lib/prisma';
 import { db } from '@/lib/db';
 import { getEnvDiagnostics, getGitVersionInfo } from '@/lib/env-diagnostics';
+import { getKisEnvDiagnostics } from '@/lib/kis-env-diagnostics';
+import { getKisLastError } from '@/lib/kis-api';
 
 export async function GET() {
   try {
@@ -35,6 +37,9 @@ export async function GET() {
 
     // 환경변수 로딩 진단 (민감값 없이 boolean만)
     const envDiagnostics = getEnvDiagnostics();
+
+    // KIS 진단 (공통 판정 함수 — local-health와 동일 기준)
+    const kisDiag = getKisEnvDiagnostics();
 
     // 실제 실행 설정 + 런타임 판단
     const { settings: effectiveSettings, source: settingsSource, sources: settingsSources, _safety } = await getEffectiveTradingSettings();
@@ -407,6 +412,19 @@ export async function GET() {
 
         // 로그
         recentLogs: mergedLogs,
+
+        // KIS 진단 (configured/missingKeys/baseUrlType/allowRealFallback)
+        // 마지막 사이클 결과에서 분석 스킵 여부도 함께 표시
+        kisDiagnostics: {
+          configured: kisDiag.kisConfigured,
+          missingKeys: kisDiag.missingKeys,
+          baseUrlType: kisDiag.baseUrlType,
+          allowRealFallback: kisDiag.allowRealFallback,
+          isDemo: kisDiag.isDemo,
+          analysisSkipped: !kisDiag.kisConfigured,
+          skipReason: !kisDiag.kisConfigured ? 'KIS 설정 불완전' : null,
+          ...(getKisLastError() ? { lastError: getKisLastError() } : {}),
+        },
       },
     });
   } catch (error) {

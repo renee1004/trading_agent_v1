@@ -1,39 +1,24 @@
 // 환경변수 로딩 상태 진단 (민감값 없이 boolean만 반환)
 // /api/agent/status, /api/system/local-health 에서 공통 사용
 
+import { getKisEnvDiagnostics } from './kis-env-diagnostics';
+
 /**
  * KIS 필수 환경변수 존재 여부 (boolean만, 원문 절대 노출 금지)
- * kis-config-loader.ts의 fallback 체인과 동일하게 확인
+ * kisConfigured 판정은 kis-env-diagnostics.ts의 공통 함수를 사용
  */
 export function getEnvDiagnostics() {
-  const appKeyLoaded = !!(
-    process.env.KIS_APP_KEY ||
-    process.env.KIS_APPKEY ||
-    process.env.APP_KEY
-  );
-  const appSecretLoaded = !!(
-    process.env.KIS_APP_SECRET ||
-    process.env.KIS_APPSECRET ||
-    process.env.APP_SECRET
-  );
-  const accountNoLoaded = !!(
-    process.env.KIS_ACCOUNT_NO ||
-    process.env.KIS_ACCOUNT ||
-    process.env.ACCOUNT_NO
-  );
-  const accountProductCodeLoaded = !!process.env.KIS_ACCOUNT_PRODUCT_CODE;
+  const kisDiag = getKisEnvDiagnostics();
 
   const baseUrl = process.env.KIS_BASE_URL || '';
   const baseUrlLoaded = !!baseUrl;
-  // baseUrl이 'vts' 포함이면 모의투자 서버로 간주
-  const isVirtualServer = baseUrl.includes('openapivts');
 
   return {
     databaseUrlLoaded: !!process.env.DATABASE_URL,
-    kisAppKeyLoaded: appKeyLoaded,
-    kisAppSecretLoaded: appSecretLoaded,
-    kisAccountNoLoaded: accountNoLoaded,
-    kisAccountProductCodeLoaded: accountProductCodeLoaded,
+    kisAppKeyLoaded: kisDiag.hasAppKey,
+    kisAppSecretLoaded: kisDiag.hasAppSecret,
+    kisAccountNoLoaded: kisDiag.hasAccountNo,
+    kisAccountProductCodeLoaded: kisDiag.hasAccountProductCode,
     kisBaseUrlLoaded: baseUrlLoaded,
     tradingModeEnv: process.env.TRADING_MODE || null,
     orderExecutionModeEnv: process.env.ORDER_EXECUTION_MODE || null,
@@ -41,8 +26,9 @@ export function getEnvDiagnostics() {
     allowRealOverseasOrderEnv: process.env.ALLOW_REAL_OVERSEAS_ORDER === 'true',
     allowStrategyTestOrderEnv: process.env.ALLOW_STRATEGY_TEST_ORDER === 'true',
     killSwitchEnv: process.env.KILL_SWITCH_ENABLED === 'true',
-    kisConfigured: appKeyLoaded && appSecretLoaded && accountNoLoaded,
-    kisVirtualServer: isVirtualServer,
+    // 공통 함수 기준으로 판정 (local-health, agent/status, trading-agent와 동일)
+    kisConfigured: kisDiag.kisConfigured,
+    kisVirtualServer: kisDiag.baseUrlType === 'vts',
   };
 }
 

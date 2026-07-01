@@ -20,6 +20,7 @@ import {
   type OverseasExchangeCode,
 } from './kis-overseas-master';
 import { normalizeStockCode } from './stock-master';
+import { getKisEnvDiagnostics } from './kis-env-diagnostics';
 
 const DEMO_BASE_URL = 'https://openapivts.koreainvestment.com:29443';
 const REAL_BASE_URL = 'https://openapi.koreainvestment.com:9443';
@@ -305,6 +306,57 @@ const serverTokenCache: {
 
 let tokenIssuancePromise: Promise<string> | null = null;
 
+/**
+ * KIS HTTP 오류 진단 추적 (모듈 전역)
+ * 민감정보(appSecret, accessToken, accountNo 원문) 절대 저장 금지
+ * /api/agent/status, /api/system/local-health에서 참조
+ */
+export interface KisLastErrorInfo {
+  phase: string;       // 'domesticPrice' | 'domesticCandle' | 'overseasPrice' | 'overseasCandle' | 'token' | 'order'
+  httpStatus: number;
+  server: 'vts' | 'real' | 'unknown';
+  probableCauses: string[];
+  timestamp: string;
+}
+
+let lastKisError: KisLastErrorInfo | null = null;
+
+/** 최근 KIS HTTP 오러 정보 조회 (API 진단용) */
+export function getKisLastError(): KisLastErrorInfo | null {
+  return lastKisError;
+}
+
+/** KIS HTTP 오러 기록 (민감정보 제외) */
+function recordKisError(info: Omit<KisLastErrorInfo, 'timestamp'>): void {
+  lastKisError = { ...info, timestamp: new Date().toISOString() };
+}
+
+/** HTTP 상태 코드 기준 probableCauses 생성 */
+function classifyKisHttpError(httpStatus: number, phase: string, server: 'vts' | 'real' | 'unknown', apiMsg?: string): string[] {
+  const causes: string[] = [];
+  if (httpStatus === 500) {
+    causes.push('KIS 서버 일시 오류');
+    if (server === 'vts') causes.push('모의투자 서버 일시 오류');
+    causes.push('TR ID 또는 endpoint mismatch');
+    causes.push('모의투자에서 지원하지 않는 종목/조회');
+    causes.push('토큰/계좌 구분 오류');
+  } else if (httpStatus === 401 || httpStatus === 403) {
+    causes.push('토큰 만료 또는 인증 실패');
+    causes.push('appKey/appSecret 불일치');
+  } else if (httpStatus === 429) {
+    causes.push('초당 거래건수 초과 (EGW00201)');
+    causes.push('API 호출 스로틀링');
+  } else {
+    causes.push(`HTTP ${httpStatus} 오류`);
+  }
+  if (apiMsg) {
+    // KIS 응답 본문에 민감값이 있을 수 있으므로 msg_cd/msg1의 코드만 추가
+    const safeMsg = apiMsg.replace(/[0-9a-fA-F]{20,}/g, '[REDACTED]').substring(0, 80);
+    causes.push(`KIS 메시지: ${safeMsg}`);
+  }
+  return causes;
+}
+
 export class KisApiClient {
   private config: KisConfig;
   private accessToken: string | null = null;
@@ -333,8 +385,62 @@ export class KisApiClient {
     return this.config.isDemo ? DEMO_BASE_URL : REAL_BASE_URL;
   }
 
+  /**
+   * 조회 API용 base URL 목록
+   * ─────────────────────────────────────────────────────────
+   * 실전 서버 fallback 정책 — 이중 안전장치:
+   *
+   * [1차] getKisEnvDiagnostics().allowRealFallback 기준:
+   *   - 기본값: false — 모의투자(VTS) 서버만 사용, 실전 서버 호출 금지
+   *   - TRADING_MODE=DEMO → 무조건 false
+   *   - ALLOW_REAL_DOMESTIC_ORDER=false → 무조건 false
+   *   - KIS_ALLOW_REAL_FALLBACK=true + TRADING_MODE=REAL + ALLOW_REAL_DOMESTIC_ORDER=true → 허용
+   *
+   * [2차] 방어적 직접 검사 — allowRealFallback에 버그가 있어도 실전 서버 차단:
+   *   - TRADING_MODE !== 'REAL' 이면 무조건 VTS만
+   *   - KIS_BASE_URL에 openapivts 포함 시 무조건 VTS만
+   */
   private get quoteBaseUrls(): string[] {
-    if (this.config.isDemo) {
+    // ── 2차 방어: TRADING_MODE 직접 검사 ──
+    const tradingMode = process.env.TRADING_MODE;
+    const kisBaseUrl = process.env.KIS_BASE_URL || '';
+    const isTradingModeReal = tradingMode === 'REAL';
+    const isConfigDemo = this.config.isDemo;
+
+    // 비DEMO 모드(=실전 전용)이면 실전 서버만 사용 — fallback 개념 없음
+    if (!isConfigDemo && isTradingModeReal) {
+      return [REAL_BASE_URL];
+    }
+
+    // ── 1차: getKisEnvDiagnostics 통합 판정 ──
+    const kisEnv = getKisEnvDiagnostics();
+
+    // allowRealFallback=false (기본값) → 무조건 VTS만
+    if (!kisEnv.allowRealFallback) {
+      return [DEMO_BASE_URL];
+    }
+
+    // ── 2차 방어: allowRealFallback이 true여도 TRADING_MODE≠REAL이면 차단 ──
+    if (!isTradingModeReal) {
+      console.warn(
+        '[KIS API] BLOCKED: Real server fallback 차단 — ' +
+        `TRADING_MODE="${tradingMode || '(미설정)'}" (REAL 아님). ` +
+        `KIS_ALLOW_REAL_FALLBACK=true이지만 실전 서버 호출 금지.`
+      );
+      return [DEMO_BASE_URL];
+    }
+
+    // ── 2차 방어: KIS_BASE_URL이 VTS면 실전 서버 호출 금지 ──
+    if (kisBaseUrl.includes('openapivts')) {
+      console.warn(
+        '[KIS API] BLOCKED: Real server fallback 차단 — ' +
+        'KIS_BASE_URL이 모의투자 서버(VTS)를 지정. 실전 서버 호출 금지.'
+      );
+      return [DEMO_BASE_URL];
+    }
+
+    // 최종 허용: TRADING_MODE=REAL + allowRealFallback=true + KIS_BASE_URL≠VTS
+    if (isConfigDemo) {
       return [DEMO_BASE_URL, REAL_BASE_URL];
     }
     return [REAL_BASE_URL];
@@ -501,6 +607,15 @@ export class KisApiClient {
         const errorMsg = error instanceof Error ? error.message : String(error);
         errors.push(`${baseUrl}: ${errorMsg}`);
         console.warn(`[KIS API] Stock price failed on ${baseUrl}: ${stockCode} - ${errorMsg}`);
+        const httpMatch = errorMsg.match(/HTTP (\d+)/);
+        if (httpMatch) {
+          recordKisError({
+            phase: 'domesticPrice',
+            httpStatus: parseInt(httpMatch[1]),
+            server: baseUrl.includes('openapivts') ? 'vts' : 'real',
+            probableCauses: classifyKisHttpError(parseInt(httpMatch[1]), 'domesticPrice', baseUrl.includes('openapivts') ? 'vts' : 'real', errorMsg),
+          });
+        }
       }
     }
 
@@ -586,6 +701,15 @@ export class KisApiClient {
         const errorMsg = error instanceof Error ? error.message : String(error);
         errors.push(`[${baseUrl}] ${errorMsg}`);
         console.warn(`[KIS API] Daily candles failed: originalCode=${stockCode}, normalizedCode=${normalizedCode}, baseUrl=${baseUrl}, error=${errorMsg}`);
+        const httpMatch = errorMsg.match(/HTTP (\d+)/);
+        if (httpMatch) {
+          recordKisError({
+            phase: 'domesticCandle',
+            httpStatus: parseInt(httpMatch[1]),
+            server: baseUrl.includes('openapivts') ? 'vts' : 'real',
+            probableCauses: classifyKisHttpError(parseInt(httpMatch[1]), 'domesticCandle', baseUrl.includes('openapivts') ? 'vts' : 'real', errorMsg),
+          });
+        }
       }
     }
 
@@ -1835,9 +1959,18 @@ export class KisApiClient {
           exchangeRate: parseFloat(item.rate) || 0,
         })).reverse();
       } catch (error) {
-        const errorMsg = error instanceof Error ? error.message : String(error);
-        errors.push(`[${baseUrl}] ${errorMsg}`);
-        console.warn(`[KIS API] Overseas daily candles failed: stockCode=${stockCode}, EXCD=${normExchange}, baseUrl=${baseUrl}, error=${errorMsg}`);
+        const ovCandleErrMsg = error instanceof Error ? error.message : String(error);
+        errors.push(`[${baseUrl}] ${ovCandleErrMsg}`);
+        console.warn(`[KIS API] Overseas daily candles failed: stockCode=${stockCode}, EXCD=${normExchange}, baseUrl=${baseUrl}, error=${ovCandleErrMsg}`);
+        const httpMatch = ovCandleErrMsg.match(/HTTP (\d+)/);
+        if (httpMatch) {
+          recordKisError({
+            phase: 'overseasCandle',
+            httpStatus: parseInt(httpMatch[1]),
+            server: baseUrl.includes('openapivts') ? 'vts' : 'real',
+            probableCauses: classifyKisHttpError(parseInt(httpMatch[1]), 'overseasCandle', baseUrl.includes('openapivts') ? 'vts' : 'real', ovCandleErrMsg),
+          });
+        }
       }
     }
 

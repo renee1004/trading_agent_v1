@@ -3,6 +3,8 @@
 
 import { NextResponse } from 'next/server';
 import { getEnvDiagnostics, getGitVersionInfo } from '@/lib/env-diagnostics';
+import { getKisEnvDiagnostics } from '@/lib/kis-env-diagnostics';
+import { getKisLastError } from '@/lib/kis-api';
 import { getEffectiveTradingSettings, computeRuntimeDecision } from '@/lib/effective-settings';
 import { prisma } from '@/lib/prisma';
 
@@ -33,17 +35,20 @@ export async function GET() {
       // 설정 로드 실패 시 기본값
     }
 
-    // KIS baseUrl 판단 (vts = 모의투자 서버)
-    const kisBaseUrl = process.env.KIS_BASE_URL || '';
-    const kisBaseUrlType = kisBaseUrl.includes('openapivts') ? 'vts' : kisBaseUrl ? 'real' : 'not_set';
+    // KIS 진단 (공통 판정 함수)
+    const kisDiag = getKisEnvDiagnostics();
+    const kisLastError = getKisLastError();
 
     return NextResponse.json({
       success: true,
       runtime: git.gitCommitSha && !process.env.RAILWAY_SERVICE_ID ? 'local' : process.env.RAILWAY_SERVICE_ID ? 'railway' : 'unknown',
       database: { connected: dbConnected },
       kis: {
-        configured: env.kisConfigured,
-        baseUrl: kisBaseUrlType,
+        configured: kisDiag.kisConfigured,
+        baseUrl: kisDiag.baseUrlType,
+        missingKeys: kisDiag.missingKeys,
+        allowRealFallback: kisDiag.allowRealFallback,
+        ...(kisLastError ? { lastError: kisLastError } : {}),
       },
       safety: {
         effectiveSafetyMode: safetyMode,

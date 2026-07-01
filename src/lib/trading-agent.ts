@@ -16,6 +16,7 @@ import {
 } from './types';
 import { getDomesticSession, getKSTNow, DomesticSession } from './agent-scheduler';
 import { getOrCreateKisConfigFromEnv } from './kis-config-loader';
+import { getKisEnvDiagnostics, getKisNotConfiguredMessage } from './kis-env-diagnostics';
 import {
   getEffectiveTradingSettings,
   buildRiskConfigFromSettings,
@@ -1436,7 +1437,27 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
     }
   }
 
-  // 1. KIS 설정 로드
+  // 1. KIS 설정 로드 (공통 판정 함수 사용)
+  const kisDiag = getKisEnvDiagnostics();
+
+  // KIS 미설정이면 국내 분석 전체를 스킵
+  // 종목별 ERROR 반복하지 않고 단일 WARNING만 출력
+  if (!kisDiag.kisConfigured) {
+    const skipMsg = getKisNotConfiguredMessage(kisDiag);
+    addLog('INFO', 'DOMESTIC', skipMsg);
+
+    // 해외 분석도 KIS가 필요하므로 전체 사이클 종료
+    // (해외만 DB에서 종목 데이터가 있더라도 캔들/시세 조회 불가)
+    const endTime = new Date();
+    return {
+      success: true, startTime, endTime,
+      stocksAnalyzed: 0, signalsGenerated: 0, ordersPlaced: 0,
+      positionsMonitored: 0, exitsExecuted: 0, logs: agentState.logs.slice(0, 10), errors: [],
+      domesticSuccess: 0, domesticFailed: 0, overseasSuccess: 0, overseasFailed: 0,
+      zeroAnalysisReason: `KIS 설정 불완전으로 분석 스킵`,
+    };
+  }
+
   const kisConfig = await loadKisConfig();
   let kisClient: KisApiClient | null = null;
 
