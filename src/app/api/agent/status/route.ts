@@ -179,6 +179,13 @@ export async function GET() {
           overseasSuccess: agentStatus.lastCycleResult.overseasSuccess,
           overseasFailed: agentStatus.lastCycleResult.overseasFailed,
           zeroAnalysisReason: agentStatus.lastCycleResult.zeroAnalysisReason,
+          // ── KIS 호출 단계별 카운트 ──
+          candleSuccess: agentStatus.lastCycleResult.candleSuccess,
+          candleFailed: agentStatus.lastCycleResult.candleFailed,
+          priceSuccess: agentStatus.lastCycleResult.priceSuccess,
+          priceFailed: agentStatus.lastCycleResult.priceFailed,
+          balanceSuccess: agentStatus.lastCycleResult.balanceSuccess,
+          balanceFailed: agentStatus.lastCycleResult.balanceFailed,
           // ── 진단 필드 ──
           uiSignalsCount: agentStatus.lastCycleResult.uiSignalsCount,
           executableSignalsCount: agentStatus.lastCycleResult.executableSignalsCount,

@@ -312,9 +312,25 @@ let tokenIssuancePromise: Promise<string> | null = null;
  * /api/agent/status, /api/system/local-health에서 참조
  */
 export interface KisLastErrorInfo {
-  phase: string;       // 'domesticPrice' | 'domesticCandle' | 'overseasPrice' | 'overseasCandle' | 'token' | 'order'
-  httpStatus: number;
+  /** 호출 단계: token | domesticCandle | domesticPrice | balance | overseasCandle | overseasPrice | order | orderValidation */
+  phase: string;
+  /** 종목코드 (조회 API인 경우). 민감정보 아님 */
+  stockCode?: string;
+  /** API endpoint 경로 (예: /uapi/domestic-stock/v1/quotations/inquire-price) */
+  endpointPath?: string;
+  /** KIS TR ID (예: FHKST01010100). 민감정보 아님 */
+  trId?: string;
+  /** 서버 타입 */
   server: 'vts' | 'real' | 'unknown';
+  /** HTTP 상태 코드 */
+  httpStatus: number;
+  /** KIS 응답 rt_cd (예: '0', '1') */
+  rt_cd?: string;
+  /** KIS 응답 msg_cd (예: 'EGW00201') */
+  msg_cd?: string;
+  /** KIS 응답 msg1 (민감값 redact 후, 최대 120자). 원문 절대 노출 금지 */
+  msg1?: string;
+  /** 오류 원인 추정 */
   probableCauses: string[];
   timestamp: string;
 }
@@ -331,28 +347,72 @@ function recordKisError(info: Omit<KisLastErrorInfo, 'timestamp'>): void {
   lastKisError = { ...info, timestamp: new Date().toISOString() };
 }
 
-/** HTTP 상태 코드 기준 probableCauses 생성 */
-function classifyKisHttpError(httpStatus: number, phase: string, server: 'vts' | 'real' | 'unknown', apiMsg?: string): string[] {
+/**
+ * 민감값 redact — accessToken, appKey, appSecret, 계좌번호 원문 제거
+ * 긴 hex 문자열(20자 이상), 숫자 8자리 이상 계좌번호 패턴 제거
+ */
+function redactSensitive(s: string): string {
+  return s
+    .replace(/[0-9a-fA-F]{20,}/g, '[REDACTED]')
+    .replace(/\d{8,12}/g, (m) => m.length >= 10 ? '[ACCOUNT_REDACTED]' : m.substring(0, 2) + '****' + m.substring(m.length - 2))
+    .substring(0, 120);
+}
+
+/** KIS 응답 본문에서 안전한 필드만 추출 */
+function extractKisResponseSafe(result: Record<string, unknown>): { rt_cd?: string; msg_cd?: string; msg1?: string } {
+  const rt_cd = typeof result.rt_cd === 'string' ? result.rt_cd : undefined;
+  const msg_cd = typeof result.msg_cd === 'string' ? result.msg_cd : undefined;
+  const rawMsg1 = typeof result.msg1 === 'string' ? result.msg1 : undefined;
+  return { rt_cd, msg_cd, msg1: rawMsg1 ? redactSensitive(rawMsg1) : undefined };
+}
+
+/** HTTP 상태 코드 + phase 기준 probableCauses 생성 */
+function classifyKisHttpError(
+  httpStatus: number,
+  phase: string,
+  server: 'vts' | 'real' | 'unknown',
+  trId?: string,
+  rt_cd?: string,
+  msg_cd?: string,
+): string[] {
   const causes: string[] = [];
   if (httpStatus === 500) {
-    causes.push('KIS 서버 일시 오류');
-    if (server === 'vts') causes.push('모의투자 서버 일시 오류');
-    causes.push('TR ID 또는 endpoint mismatch');
-    causes.push('모의투자에서 지원하지 않는 종목/조회');
-    causes.push('토큰/계좌 구분 오류');
+    if (server === 'vts') {
+      causes.push('KIS VTS 서버 일시 오류');
+      // phase별 구체화
+      if (phase === 'domesticPrice') {
+        causes.push(`TR ID=${trId || '?'} 또는 endpoint mismatch (시세 조회)`);
+        causes.push('모의투자 미지원 종목 시세 조회 가능성');
+        causes.push('계좌상품코드 오류로 인한 VTS 인증 불일치');
+      } else if (phase === 'domesticCandle') {
+        causes.push(`TR ID=${trId || '?'} 또는 endpoint mismatch (일봉 조회)`);
+        causes.push('모의투자 미지원 기간/종목 일봉 조회 가능성');
+      } else if (phase === 'balance') {
+        causes.push(`TR ID=${trId || '?'} 또는 endpoint mismatch (잔고 조회)`);
+        causes.push('계좌상품코드 오류 (VTS 계좌와 실전 계좌 혼용)');
+      } else if (phase === 'token') {
+        causes.push('VTS 토큰 발급 오류 (appKey/appSecret 불일치)');
+      } else {
+        causes.push(`TR ID=${trId || '?'} 또는 endpoint mismatch (${phase})`);
+      }
+      // 공통
+      causes.push('토큰은 발급됐으나 조회 권한/환경 불일치');
+    } else {
+      causes.push('KIS 서버 일시 오류');
+      causes.push(`TR ID=${trId || '?'} 또는 endpoint mismatch`);
+    }
   } else if (httpStatus === 401 || httpStatus === 403) {
     causes.push('토큰 만료 또는 인증 실패');
     causes.push('appKey/appSecret 불일치');
+    if (msg_cd) causes.push(`KIS 에러 코드: ${msg_cd}`);
   } else if (httpStatus === 429) {
     causes.push('초당 거래건수 초과 (EGW00201)');
-    causes.push('API 호출 스로틀링');
+    causes.push('API 호출 스로틀링 — KIS_THROTTLE_MS 증가 고려');
   } else {
     causes.push(`HTTP ${httpStatus} 오류`);
   }
-  if (apiMsg) {
-    // KIS 응답 본문에 민감값이 있을 수 있으므로 msg_cd/msg1의 코드만 추가
-    const safeMsg = apiMsg.replace(/[0-9a-fA-F]{20,}/g, '[REDACTED]').substring(0, 80);
-    causes.push(`KIS 메시지: ${safeMsg}`);
+  if (msg_cd) {
+    causes.push(`msg_cd=${msg_cd}`);
   }
   return causes;
 }
@@ -566,6 +626,10 @@ export class KisApiClient {
         FID_INPUT_ISCD: normalizedCode,
       });
 
+      const trId = 'FHKST01010100';
+      const endpointPath = '/uapi/domestic-stock/v1/quotations/inquire-price';
+      const serverType = baseUrl.includes('openapivts') ? 'vts' as const : 'real' as const;
+
       try {
         const response = await fetch(`${url}?${params.toString()}`, {
           method: 'GET',
@@ -574,16 +638,31 @@ export class KisApiClient {
             Authorization: `Bearer ${token}`,
             appKey: this.config.appKey,
             appSecret: this.config.appSecret,
-            tr_id: 'FHKST01010100',
+            tr_id: trId,
           },
         });
 
         if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
+          // HTTP 오류 — 응답 본문 파싱 시도
+          let kisResp: { rt_cd?: string; msg_cd?: string; msg1?: string } = {};
+          try { kisResp = extractKisResponseSafe(await response.json()); } catch { /* json 파싱 실패 무시 */ }
+          const httpStatus = response.status;
+          recordKisError({
+            phase: 'domesticPrice', stockCode, endpointPath, trId, server: serverType, httpStatus,
+            rt_cd: kisResp.rt_cd, msg_cd: kisResp.msg_cd, msg1: kisResp.msg1,
+            probableCauses: classifyKisHttpError(httpStatus, 'domesticPrice', serverType, trId, kisResp.rt_cd, kisResp.msg_cd),
+          });
+          throw new Error(`HTTP ${httpStatus}`);
         }
 
         const result = await response.json();
         if (result.rt_cd !== '0') {
+          const kisResp = extractKisResponseSafe(result);
+          recordKisError({
+            phase: 'domesticPrice', stockCode, endpointPath, trId, server: serverType, httpStatus: 200,
+            rt_cd: kisResp.rt_cd, msg_cd: kisResp.msg_cd, msg1: kisResp.msg1,
+            probableCauses: classifyKisHttpError(200, 'domesticPrice', serverType, trId, kisResp.rt_cd, kisResp.msg_cd),
+          });
           throw new Error(`${result.msg1 || '시세 조회 에러'} (rt_cd=${result.rt_cd}, msg_cd=${result.msg_cd || ''})`);
         }
 
@@ -607,15 +686,8 @@ export class KisApiClient {
         const errorMsg = error instanceof Error ? error.message : String(error);
         errors.push(`${baseUrl}: ${errorMsg}`);
         console.warn(`[KIS API] Stock price failed on ${baseUrl}: ${stockCode} - ${errorMsg}`);
-        const httpMatch = errorMsg.match(/HTTP (\d+)/);
-        if (httpMatch) {
-          recordKisError({
-            phase: 'domesticPrice',
-            httpStatus: parseInt(httpMatch[1]),
-            server: baseUrl.includes('openapivts') ? 'vts' : 'real',
-            probableCauses: classifyKisHttpError(parseInt(httpMatch[1]), 'domesticPrice', baseUrl.includes('openapivts') ? 'vts' : 'real', errorMsg),
-          });
-        }
+        // recordKisError는 위에서 이미 호출됨 (HTTP 오류 / rt_cd≠0 경우)
+        // 여기서는 fallback 루프용 에러 수집만
       }
     }
 
@@ -652,6 +724,12 @@ export class KisApiClient {
 
       console.log(`[KIS API] Daily candles request: originalCode=${stockCode}, normalizedCode=${normalizedCode}, base=${baseUrl}, date=${startDate}~${endDate}`);
 
+      const trId = 'FHKST03010100';
+      const endpointPath = '/uapi/domestic-stock/v1/quotations/inquire-daily-itemchartprice';
+      const serverType = baseUrl.includes('openapivts') ? 'vts' as const : 'real' as const;
+
+      console.log(`[KIS API] Daily candles request: originalCode=${stockCode}, normalizedCode=${normalizedCode}, base=${baseUrl}, date=${startDate}~${endDate}`);
+
       try {
         const response = await fetch(`${url}?${params.toString()}`, {
           method: 'GET',
@@ -660,12 +738,20 @@ export class KisApiClient {
             Authorization: `Bearer ${token}`,
             appKey: this.config.appKey,
             appSecret: this.config.appSecret,
-            tr_id: 'FHKST03010100',
+            tr_id: trId,
           },
         });
 
         if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
+          let kisResp: { rt_cd?: string; msg_cd?: string; msg1?: string } = {};
+          try { kisResp = extractKisResponseSafe(await response.json()); } catch { /* json 파싱 실패 무시 */ }
+          const httpStatus = response.status;
+          recordKisError({
+            phase: 'domesticCandle', stockCode, endpointPath, trId, server: serverType, httpStatus,
+            rt_cd: kisResp.rt_cd, msg_cd: kisResp.msg_cd, msg1: kisResp.msg1,
+            probableCauses: classifyKisHttpError(httpStatus, 'domesticCandle', serverType, trId, kisResp.rt_cd, kisResp.msg_cd),
+          });
+          throw new Error(`HTTP ${httpStatus}`);
         }
 
         const result = await response.json();
@@ -681,6 +767,12 @@ export class KisApiClient {
         });
 
         if (result.rt_cd !== '0') {
+          const kisResp = extractKisResponseSafe(result);
+          recordKisError({
+            phase: 'domesticCandle', stockCode, endpointPath, trId, server: serverType, httpStatus: 200,
+            rt_cd: kisResp.rt_cd, msg_cd: kisResp.msg_cd, msg1: kisResp.msg1,
+            probableCauses: classifyKisHttpError(200, 'domesticCandle', serverType, trId, kisResp.rt_cd, kisResp.msg_cd),
+          });
           throw new Error(`${result.msg1 || '일봉 조회 에러'} (rt_cd=${result.rt_cd}, msg_cd=${result.msg_cd || ''})`);
         }
 
@@ -701,15 +793,7 @@ export class KisApiClient {
         const errorMsg = error instanceof Error ? error.message : String(error);
         errors.push(`[${baseUrl}] ${errorMsg}`);
         console.warn(`[KIS API] Daily candles failed: originalCode=${stockCode}, normalizedCode=${normalizedCode}, baseUrl=${baseUrl}, error=${errorMsg}`);
-        const httpMatch = errorMsg.match(/HTTP (\d+)/);
-        if (httpMatch) {
-          recordKisError({
-            phase: 'domesticCandle',
-            httpStatus: parseInt(httpMatch[1]),
-            server: baseUrl.includes('openapivts') ? 'vts' : 'real',
-            probableCauses: classifyKisHttpError(parseInt(httpMatch[1]), 'domesticCandle', baseUrl.includes('openapivts') ? 'vts' : 'real', errorMsg),
-          });
-        }
+        // recordKisError는 위에서 이미 호출됨
       }
     }
 
@@ -1962,15 +2046,7 @@ export class KisApiClient {
         const ovCandleErrMsg = error instanceof Error ? error.message : String(error);
         errors.push(`[${baseUrl}] ${ovCandleErrMsg}`);
         console.warn(`[KIS API] Overseas daily candles failed: stockCode=${stockCode}, EXCD=${normExchange}, baseUrl=${baseUrl}, error=${ovCandleErrMsg}`);
-        const httpMatch = ovCandleErrMsg.match(/HTTP (\d+)/);
-        if (httpMatch) {
-          recordKisError({
-            phase: 'overseasCandle',
-            httpStatus: parseInt(httpMatch[1]),
-            server: baseUrl.includes('openapivts') ? 'vts' : 'real',
-            probableCauses: classifyKisHttpError(parseInt(httpMatch[1]), 'overseasCandle', baseUrl.includes('openapivts') ? 'vts' : 'real', ovCandleErrMsg),
-          });
-        }
+        // recordKisError는 HTTP 500/rt_cd 오류 시 상단에서 이미 호출됨
       }
     }
 

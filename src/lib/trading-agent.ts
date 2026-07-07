@@ -55,6 +55,13 @@ export interface AgentCycleResult {
   domesticFailed: number;
   overseasSuccess: number;
   overseasFailed: number;
+  // ── KIS 호출 단계별 성공/실패 카운트 ──
+  candleSuccess: number;
+  candleFailed: number;
+  priceSuccess: number;
+  priceFailed: number;
+  balanceSuccess: number;
+  balanceFailed: number;
   // stocksAnalyzed가 0일 때 원인
   zeroAnalysisReason?: string;
   // ── 진단 필드 (status API에서 사용) ──
@@ -1397,6 +1404,13 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
   let domesticFailed = 0;
   let overseasSuccess = 0;
   let overseasFailed = 0;
+  // ── KIS 호출 단계별 카운트 ──
+  let candleSuccess = 0;
+  let candleFailed = 0;
+  let priceSuccess = 0;
+  let priceFailed = 0;
+  let balanceSuccess = 0;
+  let balanceFailed = 0;
   const candleErrors: string[] = [];
 
   addLog('INFO', 'DOMESTIC', '자동 분석 사이클 시작');
@@ -1417,6 +1431,7 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
       stocksAnalyzed: 0, signalsGenerated: 0, ordersPlaced: 0,
       positionsMonitored: 0, exitsExecuted: 0, logs: agentState.logs.slice(0, 10), errors: [],
       domesticSuccess: 0, domesticFailed: 0, overseasSuccess: 0, overseasFailed: 0,
+      candleSuccess: 0, candleFailed: 0, priceSuccess: 0, priceFailed: 0, balanceSuccess: 0, balanceFailed: 0,
       zeroAnalysisReason: 'autoAnalysisEnabled=false',
     };
   }
@@ -1432,6 +1447,7 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
         stocksAnalyzed: 0, signalsGenerated: 0, ordersPlaced: 0,
         positionsMonitored: 0, exitsExecuted: 0, logs: agentState.logs.slice(0, 10), errors: [],
         domesticSuccess: 0, domesticFailed: 0, overseasSuccess: 0, overseasFailed: 0,
+      candleSuccess: 0, candleFailed: 0, priceSuccess: 0, priceFailed: 0, balanceSuccess: 0, balanceFailed: 0,
         zeroAnalysisReason: 'runAnalysisOnlyDuringMarketHours + 장외',
       };
     }
@@ -1454,6 +1470,7 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
       stocksAnalyzed: 0, signalsGenerated: 0, ordersPlaced: 0,
       positionsMonitored: 0, exitsExecuted: 0, logs: agentState.logs.slice(0, 10), errors: [],
       domesticSuccess: 0, domesticFailed: 0, overseasSuccess: 0, overseasFailed: 0,
+      candleSuccess: 0, candleFailed: 0, priceSuccess: 0, priceFailed: 0, balanceSuccess: 0, balanceFailed: 0,
       zeroAnalysisReason: `KIS 설정 불완전으로 분석 스킵`,
     };
   }
@@ -1532,7 +1549,14 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
   let forceTestSignalUsed = false;
 
   // 4. 현재 포지션 조회
-  const domesticPositions = await fetchPositions(kisClient, 'DOMESTIC');
+  let domesticPositions: Awaited<ReturnType<typeof fetchPositions>> = { positions: [], overseasPositions: [], accountBalance: 0 };
+  try {
+    domesticPositions = await fetchPositions(kisClient, 'DOMESTIC');
+    if (kisClient) balanceSuccess++;
+  } catch (e) {
+    if (kisClient) balanceFailed++;
+    addLog('ERROR', 'DOMESTIC', `국내 잔고 조회 실패: ${e instanceof Error ? e.message : 'Unknown'}`);
+  }
 
   // ── 포지션 조회 실패 감지 ──
   // KIS 클라이언트가 있는데도 잔고/포지션이 0이면 조회 실패 가능성
@@ -1573,6 +1597,7 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
 
       if (candleError) {
         domesticFailed++;
+        candleFailed++;
         candleErrors.push(`${stock.name}: ${candleError}`);
         // 실패해도 다음 종목으로 계속
         continue;
@@ -1580,6 +1605,7 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
 
       if (candles.length < 30) {
         domesticFailed++;
+        candleFailed++;
         addLog('INFO', 'DOMESTIC', `${stock.name} 데이터 부족 (캔들 ${candles.length}개, 최소 30개 필요)`, {
           stockCode: stock.code,
           candlesLength: candles.length,
@@ -1588,6 +1614,7 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
         continue;
       }
 
+      candleSuccess++;
       domesticSuccess++;
       stocksAnalyzed++;
 
@@ -1608,6 +1635,7 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
       if (kisClient && signal.price > 0) {
         try {
           const rtPrice = await kisClient.getStockPrice(stock.code);
+          priceSuccess++;
           domesticCurrentPrice = rtPrice.currentPrice || 0;
           domesticPriceAnomalyResult = checkPriceAnomaly(
             signal.price, // 분석 기준가 (캔들 lastClose)
@@ -1652,6 +1680,7 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
             );
           }
         } catch (cpErr) {
+          priceFailed++;
           addLog('ERROR', 'DOMESTIC',
             `${stock.name} 현재가 조회 실패 (anomaly 검증 생략): ${cpErr instanceof Error ? cpErr.message : 'Unknown'}`,
             { stockCode: stock.code }
@@ -2405,6 +2434,13 @@ export async function runAgentCycle(): Promise<AgentCycleResult> {
     domesticFailed,
     overseasSuccess,
     overseasFailed,
+    // ── KIS 호출 단계별 카운트 ──
+    candleSuccess,
+    candleFailed,
+    priceSuccess,
+    priceFailed,
+    balanceSuccess,
+    balanceFailed,
     zeroAnalysisReason,
     // ── 진단 필드 ──
     uiSignalsCount,
