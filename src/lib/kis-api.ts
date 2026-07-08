@@ -344,7 +344,19 @@ export function getKisLastError(): KisLastErrorInfo | null {
 
 /** KIS HTTP 오러 기록 (민감정보 제외) */
 function recordKisError(info: Omit<KisLastErrorInfo, 'timestamp'>): void {
-  lastKisError = { ...info, timestamp: new Date().toISOString() };
+  lastKisError = {
+    phase: info.phase,
+    stockCode: info.stockCode ?? null,
+    endpointPath: info.endpointPath ?? null,
+    trId: info.trId ?? null,
+    server: info.server,
+    httpStatus: info.httpStatus,
+    rt_cd: info.rt_cd ?? null,
+    msg_cd: info.msg_cd ?? null,
+    msg1: info.msg1 ?? null,
+    probableCauses: info.probableCauses,
+    timestamp: new Date().toISOString(),
+  };
 }
 
 /**

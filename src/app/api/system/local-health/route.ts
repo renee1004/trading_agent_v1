@@ -48,7 +48,22 @@ export async function GET() {
         baseUrl: kisDiag.baseUrlType,
         missingKeys: kisDiag.missingKeys,
         allowRealFallback: kisDiag.allowRealFallback,
-        ...(kisLastError ? { lastError: kisLastError } : {}),
+        isDemo: kisDiag.isDemo,
+        ...(kisLastError ? {
+          lastError: {
+            phase: kisLastError.phase,
+            stockCode: kisLastError.stockCode ?? null,
+            endpointPath: kisLastError.endpointPath ?? null,
+            trId: kisLastError.trId ?? null,
+            server: kisLastError.server,
+            httpStatus: kisLastError.httpStatus,
+            rt_cd: kisLastError.rt_cd ?? null,
+            msg_cd: kisLastError.msg_cd ?? null,
+            msg1: kisLastError.msg1 ?? null,
+            probableCauses: kisLastError.probableCauses,
+            timestamp: kisLastError.timestamp,
+          },
+        } : {}),
       },
       safety: {
         effectiveSafetyMode: safetyMode,
